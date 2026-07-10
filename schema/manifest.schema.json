@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.mcmod.cn/schemas/mcwiki-export-v1-manifest.json",
+  "title": "MC百科导出包清单",
+  "type": "object",
+  "required": ["schema_version", "exporter_version", "status", "started_at", "minecraft_version", "loader", "package_format", "configuration", "stages", "errors", "error_count"],
+  "properties": {
+    "schema_version": { "const": "mcwiki-export/v1" },
+    "exporter_version": { "type": "string" },
+    "status": { "enum": ["running", "complete", "cancelled"] },
+    "started_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": "string", "format": "date-time" },
+    "duration_ms": { "type": "integer", "minimum": 0 },
+    "minecraft_version": { "type": "string" },
+    "loader": { "enum": ["fabric", "forge", "neoforge", "unknown"] },
+    "package_format": { "enum": ["directory", "zip"] },
+    "archive_name": { "type": "string", "pattern": "\\.zip$" },
+    "configuration": {
+      "type": "object",
+      "required": ["namespaces", "all_namespaces", "languages", "image_sizes", "profile", "automatic"],
+      "properties": {
+        "namespaces": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "all_namespaces": { "type": "boolean" },
+        "languages": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
+        "image_sizes": { "type": "array", "items": { "type": "integer", "minimum": 16 }, "contains": { "const": 32 } },
+        "profile": { "enum": ["data", "images", "all"] },
+        "automatic": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "stages": { "type": "array", "items": { "$ref": "#/$defs/stage" } },
+    "errors": { "type": "array", "items": { "$ref": "#/$defs/error" } },
+    "error_count": { "type": "integer", "minimum": 0 }
+  },
+  "$defs": {
+    "stage": {
+      "type": "object",
+      "required": ["id", "status", "counts"],
+      "properties": {
+        "id": { "type": "string" },
+        "status": { "enum": ["running", "complete", "failed"] },
+        "counts": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } }
+      },
+      "additionalProperties": true
+    },
+    "error": {
+      "type": "object",
+      "required": ["stage", "subject", "message"],
+      "properties": {
+        "stage": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

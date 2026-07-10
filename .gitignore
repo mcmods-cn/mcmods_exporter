@@ -1,0 +1,8 @@
+.gradle/
+.architectury-transformer/
+build/
+**/build/
+run/
+**/run/
+*.iml
+.idea/

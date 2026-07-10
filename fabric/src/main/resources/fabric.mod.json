@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "mcmods_exporter",
+  "version": "${version}",
+  "name": "mcmods_exporter",
+  "description": "将模组注册表、语言、标签、配方、进度、资源和渲染图导出为网站可读取的规范格式。",
+  "authors": ["MC百科工具链"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "cn.mcmod.wiki.exporter.fabric.McWikiExporterFabric"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.14.23",
+    "fabric-api": "*",
+    "minecraft": "1.20.1",
+    "java": ">=17",
+    "architectury": ">=9.2.14"
+  },
+  "suggests": {
+    "jei": "*"
+  }
+}

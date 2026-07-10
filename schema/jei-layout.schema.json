@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.mcmod.cn/schemas/mcwiki-jei-layout-v3.json",
+  "title": "MC百科 JEI 可交互配方布局",
+  "type": "object",
+  "required": ["schema_version", "recipe_type_id", "render_locale", "background", "background_contains_ingredients", "coordinate_space", "image_scale", "canvas", "content", "slots"],
+  "properties": {
+    "schema_version": { "const": "mcwiki-jei-layout/v3" },
+    "recipe_type_id": { "type": "string" },
+    "recipe_id": { "type": "string" },
+    "render_locale": { "type": "string" },
+    "background": { "type": "string" },
+    "background_contains_ingredients": { "const": false },
+    "coordinate_space": { "const": "logical_pixels" },
+    "image_scale": { "type": "integer", "minimum": 1 },
+    "canvas": { "$ref": "#/$defs/rect" },
+    "image_pixels": { "$ref": "#/$defs/rect" },
+    "content": { "$ref": "#/$defs/rect" },
+    "slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["index", "role", "clickable", "alternatives"],
+        "properties": {
+          "index": { "type": "integer", "minimum": 0 },
+          "role": { "enum": ["input", "output", "catalyst", "render_only"] },
+          "name": { "type": "string" },
+          "clickable": { "type": "boolean" },
+          "item_tag_equivalent": { "type": "string" },
+          "rect": { "$ref": "#/$defs/rect" },
+          "visual_rect": { "$ref": "#/$defs/rect" },
+          "coordinates_available": { "type": "boolean" },
+          "alternatives": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["type"],
+              "properties": {
+                "type": { "type": "string" },
+                "resource_location": { "type": "string" },
+                "unique_id": { "type": "string" },
+                "amount": { "type": "integer", "minimum": 0 },
+                "item": { "type": "string" },
+                "count": { "type": "integer", "minimum": 0 },
+                "translation_key": { "type": "string" },
+                "names": { "type": "object", "additionalProperties": { "type": "string" } }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "$defs": {
+    "rect": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" },
+        "width": { "type": "integer", "minimum": 0 },
+        "height": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

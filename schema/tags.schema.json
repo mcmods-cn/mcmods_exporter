@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.mcmod.cn/schemas/mcwiki-tags-v1.json",
+  "type": "object",
+  "required": ["schema_version", "registry_count", "registries"],
+  "properties": {
+    "schema_version": { "const": "mcwiki-tags/v1" },
+    "registry_count": { "type": "integer", "minimum": 0 },
+    "registries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["registry", "tag_count", "tags"],
+        "properties": {
+          "registry": { "type": "string" },
+          "tag_count": { "type": "integer", "minimum": 0 },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "values", "value_count"],
+              "properties": {
+                "id": { "type": "string" },
+                "values": { "type": "array", "items": { "type": "string" } },
+                "value_count": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

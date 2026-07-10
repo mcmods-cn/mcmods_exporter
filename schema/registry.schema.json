@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.mcmod.cn/schemas/mcwiki-registry-v1.json",
+  "type": "object",
+  "required": ["schema_version", "registry", "count", "entries"],
+  "properties": {
+    "schema_version": { "const": "mcwiki-registry/v1" },
+    "registry": { "type": "string" },
+    "count": { "type": "integer", "minimum": 0 },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$" },
+          "translation_key": { "type": "string" },
+          "names": { "type": "object", "additionalProperties": { "type": "string" } }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.mcmod.cn/schemas/mcwiki-recipes-v1.json",
+  "type": "object",
+  "required": ["schema_version", "count", "recipes"],
+  "properties": {
+    "schema_version": { "const": "mcwiki-recipes/v1" },
+    "count": { "type": "integer", "minimum": 0 },
+    "recipes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "ingredients", "result"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string" },
+          "serializer": { "type": "string" },
+          "ingredients": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["alternatives", "alternative_count"],
+              "properties": {
+                "alternatives": { "type": "array", "items": { "$ref": "#/$defs/stack" } },
+                "alternative_count": { "type": "integer", "minimum": 0 }
+              }
+            }
+          },
+          "result": { "$ref": "#/$defs/stack" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "$defs": {
+    "stack": {
+      "type": "object",
+      "properties": {
+        "empty": { "type": "boolean" },
+        "item": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 },
+        "nbt_snbt": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.mcmod.cn/schemas/mcwiki-ingredients-v1.json",
+  "title": "MC Wiki normalized non-item ingredients",
+  "type": "object",
+  "required": ["schema_version", "type_count", "ingredient_count", "types"],
+  "properties": {
+    "schema_version": { "const": "mcwiki-ingredients/v1" },
+    "type_count": { "type": "integer", "minimum": 0 },
+    "ingredient_count": { "type": "integer", "minimum": 0 },
+    "types": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ingredient_type", "path_key", "count", "entries"],
+        "properties": {
+          "ingredient_type": { "type": "string", "minLength": 1 },
+          "path_key": { "type": "string", "pattern": "^[a-z0-9._-]+$" },
+          "count": { "type": "integer", "minimum": 0 },
+          "entries": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/ingredient" }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "$defs": {
+    "ingredient": {
+      "type": "object",
+      "required": ["resource_location", "unique_id", "names", "tags", "icons"],
+      "properties": {
+        "resource_location": { "type": "string", "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$" },
+        "unique_id": { "type": "string", "minLength": 1 },
+        "amount": { "type": "integer", "minimum": 0 },
+        "names": { "type": "object", "additionalProperties": { "type": "string" } },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "icons": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "pattern": "\\.png$" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
