@@ -1,7 +1,7 @@
 package cn.mcmod.wiki.exporter.forge;
 
 import cn.mcmod.wiki.exporter.ExportBootstrap;
-import cn.mcmod.wiki.exporter.McWikiExporter;
+import cn.mcmod.wiki.exporter.McModsExporter;
 import cn.mcmod.wiki.exporter.config.ExportProfile;
 import cn.mcmod.wiki.exporter.task.ExportCoordinator;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -16,12 +16,12 @@ import net.minecraftforge.api.distmarker.Dist;
 
 import java.util.function.Consumer;
 
-@Mod(McWikiExporter.MOD_ID)
-public final class McWikiExporterForge {
-    public McWikiExporterForge() {
+@Mod(McModsExporter.MOD_ID)
+public final class McModsExporterForge {
+    public McModsExporterForge() {
         if (FMLEnvironment.dist == Dist.CLIENT) {
-            MinecraftForge.EVENT_BUS.addListener(McWikiExporterForge::onClientTick);
-            MinecraftForge.EVENT_BUS.addListener(McWikiExporterForge::onRegisterCommands);
+            MinecraftForge.EVENT_BUS.addListener(McModsExporterForge::onClientTick);
+            MinecraftForge.EVENT_BUS.addListener(McModsExporterForge::onRegisterCommands);
         }
     }
 
@@ -33,7 +33,7 @@ public final class McWikiExporterForge {
 
     private static void onRegisterCommands(RegisterClientCommandsEvent event) {
         event.getDispatcher().register(
-            Commands.literal("mcwiki_export")
+            Commands.literal("mcmods_export")
                 .executes(context -> start(context.getSource()::sendSystemMessage, "all", ExportProfile.ALL))
                 .then(Commands.literal("status").executes(context -> {
                     context.getSource().sendSystemMessage(Component.literal("[mcmods_exporter] " + ExportCoordinator.get().status()));

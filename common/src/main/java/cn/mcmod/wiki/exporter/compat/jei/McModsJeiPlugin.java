@@ -1,18 +1,18 @@
 package cn.mcmod.wiki.exporter.compat.jei;
 
-import cn.mcmod.wiki.exporter.McWikiExporter;
+import cn.mcmod.wiki.exporter.McModsExporter;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.resources.ResourceLocation;
 
 @JeiPlugin
-public final class McWikiJeiPlugin implements IModPlugin {
+public final class McModsJeiPlugin implements IModPlugin {
     private static volatile IJeiRuntime runtime;
 
     @Override
     public ResourceLocation getPluginUid() {
-        return new ResourceLocation(McWikiExporter.MOD_ID, "exporter");
+        return new ResourceLocation(McModsExporter.MOD_ID, "exporter");
     }
 
     @Override

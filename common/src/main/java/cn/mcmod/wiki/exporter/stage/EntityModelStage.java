@@ -92,7 +92,7 @@ public final class EntityModelStage implements ExportStage {
         consumer.write(objPath, id.toString());
         ResourceLocation texture = renderer.getTextureLocation(entity);
         JsonObject metadata = new JsonObject();
-        metadata.addProperty("schema_version", "mcwiki-entity-model/v1");
+        metadata.addProperty("schema_version", "mcmods-entity-model/v1");
         metadata.addProperty("id", id.toString());
         metadata.addProperty("texture", texture == null ? "" : texture.toString());
         metadata.addProperty("vertex_count", consumer.vertexCount());

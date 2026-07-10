@@ -32,7 +32,7 @@ public final class ResourceStage extends OnceStage {
         assetCount += copyGroup(context, context.minecraft().getResourceManager(), "textures", "assets", index);
 
         JsonObject output = new JsonObject();
-        output.addProperty("schema_version", "mcwiki-resources/v1");
+        output.addProperty("schema_version", "mcmods-resources/v1");
         output.addProperty("asset_count", assetCount);
         output.add("files", index);
         context.writeJson("resources/index.json", output);

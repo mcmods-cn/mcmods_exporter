@@ -1,6 +1,6 @@
 package cn.mcmod.wiki.exporter.task;
 
-import cn.mcmod.wiki.exporter.McWikiExporter;
+import cn.mcmod.wiki.exporter.McModsExporter;
 import cn.mcmod.wiki.exporter.config.ExportConfig;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -55,8 +55,8 @@ public final class ExportReport {
 
     public JsonObject manifest(ExportConfig config, List<String> exportedLanguages, String archiveName) {
         JsonObject root = new JsonObject();
-        root.addProperty("schema_version", McWikiExporter.SCHEMA_VERSION);
-        root.addProperty("exporter_version", McWikiExporter.VERSION);
+        root.addProperty("schema_version", McModsExporter.SCHEMA_VERSION);
+        root.addProperty("exporter_version", McModsExporter.VERSION);
         root.addProperty("status", status);
         root.addProperty("started_at", startedAt.toString());
         if (finishedAt != null) {

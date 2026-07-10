@@ -1,6 +1,6 @@
 package cn.mcmod.wiki.exporter.stage;
 
-import cn.mcmod.wiki.exporter.compat.jei.McWikiJeiPlugin;
+import cn.mcmod.wiki.exporter.compat.jei.McModsJeiPlugin;
 import cn.mcmod.wiki.exporter.render.OffscreenRenderer;
 import cn.mcmod.wiki.exporter.task.ExportContext;
 import cn.mcmod.wiki.exporter.task.ExportStage;
@@ -54,7 +54,7 @@ public final class JeiIngredientStage implements ExportStage {
     @Override
     @SuppressWarnings({"rawtypes", "unchecked"})
     public void start(ExportContext context) {
-        runtime = McWikiJeiPlugin.runtime();
+        runtime = McModsJeiPlugin.runtime();
         if (runtime == null) {
             return;
         }
@@ -184,7 +184,7 @@ public final class JeiIngredientStage implements ExportStage {
             exportedCount += output.entries().size();
         }
         JsonObject root = new JsonObject();
-        root.addProperty("schema_version", "mcwiki-ingredients/v1");
+        root.addProperty("schema_version", "mcmods-ingredients/v1");
         root.addProperty("type_count", types.size());
         root.addProperty("ingredient_count", exportedCount);
         root.add("types", types);

@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://www.mcmod.cn/schemas/mcwiki-export-v1-manifest.json",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-export-v1-manifest.json",
   "title": "MC百科导出包清单",
   "type": "object",
   "required": ["schema_version", "exporter_version", "status", "started_at", "minecraft_version", "loader", "package_format", "configuration", "stages", "errors", "error_count"],
   "properties": {
-    "schema_version": { "const": "mcwiki-export/v1" },
+    "schema_version": { "const": "mcmods-export/v1" },
     "exporter_version": { "type": "string" },
     "status": { "enum": ["running", "complete", "cancelled"] },
     "started_at": { "type": "string", "format": "date-time" },

@@ -10,12 +10,12 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.network.chat.Component;
 
-public final class McWikiExporterFabric implements ClientModInitializer {
+public final class McModsExporterFabric implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         ClientTickEvents.END_CLIENT_TICK.register(ExportBootstrap::tick);
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
-            ClientCommandManager.literal("mcwiki_export")
+            ClientCommandManager.literal("mcmods_export")
                 .executes(context -> start(context.getSource()::sendFeedback, "all", ExportProfile.ALL))
                 .then(ClientCommandManager.literal("status").executes(context -> {
                     context.getSource().sendFeedback(Component.literal("[mcmods_exporter] " + ExportCoordinator.get().status()));

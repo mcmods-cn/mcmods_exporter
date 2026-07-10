@@ -1,6 +1,6 @@
 package cn.mcmod.wiki.exporter.config;
 
-import cn.mcmod.wiki.exporter.McWikiExporter;
+import cn.mcmod.wiki.exporter.McModsExporter;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -43,26 +43,26 @@ public final class ExportConfig {
     }
 
     public static boolean autoEnabled() {
-        return Boolean.parseBoolean(System.getProperty("mcwiki.export.auto", "false"));
+        return Boolean.parseBoolean(System.getProperty("mcmods.export.auto", "false"));
     }
 
     public static ExportConfig fromSystemProperties(Path gameDirectory, boolean automatic, String namespaceOverride, ExportProfile profileOverride) {
-        String outputValue = System.getProperty("mcwiki.export.output", "mcwiki-export").trim();
+        String outputValue = System.getProperty("mcmods.export.output", "mcmods-export").trim();
         Path output = Path.of(outputValue);
         if (!output.isAbsolute()) {
             output = gameDirectory.resolve(output);
         }
 
         Set<String> namespaces = parseNamespaces(
-            namespaceOverride == null ? System.getProperty("mcwiki.export.namespaces", "") : namespaceOverride
+            namespaceOverride == null ? System.getProperty("mcmods.export.namespaces", "") : namespaceOverride
         );
-        List<String> languages = parseLanguages(System.getProperty("mcwiki.export.languages", "zh_cn,en_us"));
-        List<Integer> sizes = parseSizes(System.getProperty("mcwiki.export.sizes", "32,128,256"));
+        List<String> languages = parseLanguages(System.getProperty("mcmods.export.languages", "zh_cn,en_us"));
+        List<Integer> sizes = parseSizes(System.getProperty("mcmods.export.sizes", "32,128,256"));
         ExportProfile profile = profileOverride == null
-            ? ExportProfile.parse(System.getProperty("mcwiki.export.profile", "all"))
+            ? ExportProfile.parse(System.getProperty("mcmods.export.profile", "all"))
             : profileOverride;
-        boolean exit = automatic && Boolean.parseBoolean(System.getProperty("mcwiki.export.exit", "false"));
-        long budgetMs = parseLong(System.getProperty("mcwiki.export.tickBudgetMs", "12"), 12L, 1L, 100L);
+        boolean exit = automatic && Boolean.parseBoolean(System.getProperty("mcmods.export.exit", "false"));
+        long budgetMs = parseLong(System.getProperty("mcmods.export.tickBudgetMs", "12"), 12L, 1L, 100L);
 
         return new ExportConfig(output.normalize(), namespaces, languages, sizes, profile, automatic, exit, budgetMs * 1_000_000L);
     }
@@ -123,7 +123,7 @@ public final class ExportConfig {
     }
 
     public boolean matchesNamespace(String namespace) {
-        return namespaces.isEmpty() ? !McWikiExporter.MOD_ID.equals(namespace) : namespaces.contains(namespace);
+        return namespaces.isEmpty() ? !McModsExporter.MOD_ID.equals(namespace) : namespaces.contains(namespace);
     }
 
     public Path outputRoot() {

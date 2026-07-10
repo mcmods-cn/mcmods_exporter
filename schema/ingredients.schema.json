@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://www.mcmod.cn/schemas/mcwiki-ingredients-v1.json",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-ingredients-v1.json",
   "title": "MC Wiki normalized non-item ingredients",
   "type": "object",
   "required": ["schema_version", "type_count", "ingredient_count", "types"],
   "properties": {
-    "schema_version": { "const": "mcwiki-ingredients/v1" },
+    "schema_version": { "const": "mcmods-ingredients/v1" },
     "type_count": { "type": "integer", "minimum": 0 },
     "ingredient_count": { "type": "integer", "minimum": 0 },
     "types": {
