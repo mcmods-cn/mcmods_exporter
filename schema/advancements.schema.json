@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://www.mcmod.cn/schemas/mcwiki-advancements-v1.json",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-advancements-v1.json",
   "title": "MC百科进度/成就网",
   "type": "object",
   "required": ["schema_version", "source", "count", "language_count", "roots", "advancements"],
   "properties": {
-    "schema_version": { "const": "mcwiki-advancements/v1" },
+    "schema_version": { "const": "mcmods-advancements/v1" },
     "source": { "enum": ["integrated_server", "client_sync"] },
     "count": { "type": "integer", "minimum": 0 },
     "language_count": { "type": "integer", "minimum": 1 },

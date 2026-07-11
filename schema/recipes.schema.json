@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://www.mcmod.cn/schemas/mcwiki-recipes-v1.json",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-recipes-v1.json",
   "type": "object",
   "required": ["schema_version", "count", "recipes"],
   "properties": {
-    "schema_version": { "const": "mcwiki-recipes/v1" },
+    "schema_version": { "const": "mcmods-recipes/v1" },
     "count": { "type": "integer", "minimum": 0 },
     "recipes": {
       "type": "array",

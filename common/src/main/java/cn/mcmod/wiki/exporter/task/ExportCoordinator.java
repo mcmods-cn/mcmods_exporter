@@ -1,6 +1,6 @@
 package cn.mcmod.wiki.exporter.task;
 
-import cn.mcmod.wiki.exporter.McWikiExporter;
+import cn.mcmod.wiki.exporter.McModsExporter;
 import cn.mcmod.wiki.exporter.config.ExportConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -32,7 +32,7 @@ public final class ExportCoordinator {
             notifier.accept(Component.literal("[mcmods_exporter] 任务已创建: " + lastOutput.toAbsolutePath()));
             return true;
         } catch (Exception exception) {
-            McWikiExporter.LOGGER.error("Could not create export job", exception);
+            McModsExporter.LOGGER.error("Could not create export job", exception);
             notifier.accept(Component.literal("[mcmods_exporter] 无法创建任务: " + exception.getMessage()));
             return false;
         }

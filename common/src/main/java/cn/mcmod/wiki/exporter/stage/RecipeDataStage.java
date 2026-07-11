@@ -40,7 +40,7 @@ public final class RecipeDataStage extends OnceStage {
             }
         }
         JsonObject root = new JsonObject();
-        root.addProperty("schema_version", "mcwiki-recipes/v1");
+        root.addProperty("schema_version", "mcmods-recipes/v1");
         root.addProperty("count", data.size());
         root.add("recipes", data);
         context.writeJson("recipes/recipes.json", root);

@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://www.mcmod.cn/schemas/mcwiki-jei-layout-v3.json",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-jei-layout-v3.json",
   "title": "MC百科 JEI 可交互配方布局",
   "type": "object",
   "required": ["schema_version", "recipe_type_id", "render_locale", "background", "background_contains_ingredients", "coordinate_space", "image_scale", "canvas", "content", "slots"],
   "properties": {
-    "schema_version": { "const": "mcwiki-jei-layout/v3" },
+    "schema_version": { "const": "mcmods-jei-layout/v3" },
     "recipe_type_id": { "type": "string" },
     "recipe_id": { "type": "string" },
     "render_locale": { "type": "string" },

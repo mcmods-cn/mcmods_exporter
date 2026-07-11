@@ -29,29 +29,29 @@
 4. 执行命令：
 
 ```text
-/mcwiki_export examplemod all
-/mcwiki_export examplemod data
-/mcwiki_export examplemod images
-/mcwiki_export all all
-/mcwiki_export status
-/mcwiki_export cancel
+/mcmods_export examplemod all
+/mcmods_export examplemod data
+/mcmods_export examplemod images
+/mcmods_export all all
+/mcmods_export status
+/mcmods_export cancel
 ```
 
-默认输出到游戏目录的 `mcwiki-export/`，最终文件名为 `<导出的Mod ID>-<yyyyMMdd-HHmmss-SSS>.zip`；多个 ID 使用 `+` 连接，例如 `create+mekanism-20260710-153012-123.zip`。导出过程中使用的隐藏暂存目录会在 ZIP 成功生成后删除。命名空间支持命令补全；`all` 会导出所有命名空间（导出器自身除外），文件名前缀为 `all-mods`。
+默认输出到游戏目录的 `mcmods-export/`，最终文件名为 `<导出的Mod ID>-<yyyyMMdd-HHmmss-SSS>.zip`；多个 ID 使用 `+` 连接，例如 `create+mekanism-20260710-153012-123.zip`。导出过程中使用的隐藏暂存目录会在 ZIP 成功生成后删除。命名空间支持命令补全；`all` 会导出所有命名空间（导出器自身除外），文件名前缀为 `all-mods`。
 
 ## 启动参数自动导出
 
 以下均为 JVM 参数，应填在启动器的“额外 JVM 参数”中：
 
 ```text
--Dmcwiki.export.auto=true
--Dmcwiki.export.namespaces=examplemod,anothermod
--Dmcwiki.export.output=mcwiki-export
--Dmcwiki.export.languages=zh_cn,en_us,ja_jp
--Dmcwiki.export.profile=all
--Dmcwiki.export.sizes=32,128,256
--Dmcwiki.export.tickBudgetMs=12
--Dmcwiki.export.exit=true
+-Dmcmods.export.auto=true
+-Dmcmods.export.namespaces=examplemod,anothermod
+-Dmcmods.export.output=mcmods-export
+-Dmcmods.export.languages=zh_cn,en_us,ja_jp
+-Dmcmods.export.profile=all
+-Dmcmods.export.sizes=32,128,256
+-Dmcmods.export.tickBudgetMs=12
+-Dmcmods.export.exit=true
 ```
 
 参数说明：
@@ -71,7 +71,7 @@
 --quickPlaySingleplayer ExportWorld
 ```
 
-它会打开名为 `ExportWorld` 的测试世界，导出器随后自动工作并按 `mcwiki.export.exit` 退出。渲染依赖 OpenGL，因此不能在纯服务端或没有图形上下文的 headless 环境运行。
+它会打开名为 `ExportWorld` 的测试世界，导出器随后自动工作并按 `mcmods.export.exit` 退出。渲染依赖 OpenGL，因此不能在纯服务端或没有图形上下文的 headless 环境运行。
 
 ## i18n 自动汉化更新兼容方式
 
@@ -145,8 +145,8 @@ $env:JAVA_HOME='C:\path\to\jdk-17'
 
 产物：
 
-- `fabric/build/libs/mcmods_exporter-0.4.0.jar`
-- `forge/build/libs/mcmods_exporter-0.4.0.jar`
+- `fabric/build/libs/mcmods_exporter-0.5.0.jar`
+- `forge/build/libs/mcmods_exporter-0.5.0.jar`
 
 ## 后续版本适配
 

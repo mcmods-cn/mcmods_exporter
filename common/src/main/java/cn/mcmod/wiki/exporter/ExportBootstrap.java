@@ -51,13 +51,13 @@ public final class ExportBootstrap {
         BuiltInRegistries.ITEM.keySet().forEach(id -> result.add(id.getNamespace()));
         BuiltInRegistries.BLOCK.keySet().forEach(id -> result.add(id.getNamespace()));
         BuiltInRegistries.ENTITY_TYPE.keySet().forEach(id -> result.add(id.getNamespace()));
-        result.remove(McWikiExporter.MOD_ID);
+        result.remove(McModsExporter.MOD_ID);
         return result;
     }
 
     private static Consumer<Component> automaticNotifier(Minecraft minecraft) {
         return component -> {
-            McWikiExporter.LOGGER.info(component.getString());
+            McModsExporter.LOGGER.info(component.getString());
             if (minecraft.player != null) {
                 minecraft.player.sendSystemMessage(component);
             }

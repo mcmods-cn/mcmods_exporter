@@ -1,6 +1,6 @@
 package cn.mcmod.wiki.exporter.task;
 
-import cn.mcmod.wiki.exporter.McWikiExporter;
+import cn.mcmod.wiki.exporter.McModsExporter;
 import cn.mcmod.wiki.exporter.config.ExportConfig;
 import cn.mcmod.wiki.exporter.stage.AdvancementStage;
 import cn.mcmod.wiki.exporter.stage.BlockIconStage;
@@ -134,7 +134,7 @@ final class ExportJob {
                     notify(Component.literal("[mcmods_exporter] " + stage.id() + " " + stage.progress()));
                 }
             } catch (Throwable throwable) {
-                McWikiExporter.LOGGER.error("Export stage {} failed", stage.id(), throwable);
+                McModsExporter.LOGGER.error("Export stage {} failed", stage.id(), throwable);
                 context.report().stageFailed(stage.id(), throwable);
                 notify(Component.literal("[mcmods_exporter] 阶段失败，已记录并继续: " + stage.id()));
                 stageIndex++;
@@ -163,13 +163,13 @@ final class ExportJob {
                 try {
                     ExportArchives.deleteTree(context.root());
                 } catch (IOException cleanupFailure) {
-                    McWikiExporter.LOGGER.warn("Could not remove export staging directory {}", context.root(), cleanupFailure);
+                    McModsExporter.LOGGER.warn("Could not remove export staging directory {}", context.root(), cleanupFailure);
                 }
                 notify(Component.literal("[mcmods_exporter] 导出完成: " + archive.toAbsolutePath()));
                 packagedSuccessfully = true;
             }
         } catch (IOException exception) {
-            McWikiExporter.LOGGER.error("Could not write export package", exception);
+            McModsExporter.LOGGER.error("Could not write export package", exception);
             context.report().error("package", "zip", exception);
             try {
                 JsonFiles.write(context.root().resolve("manifest.json"), context.report().manifest(config, context.languages(), null));

@@ -9,7 +9,7 @@
   "environment": "client",
   "entrypoints": {
     "client": [
-      "cn.mcmod.wiki.exporter.fabric.McWikiExporterFabric"
+      "cn.mcmod.wiki.exporter.fabric.McModsExporterFabric"
     ]
   },
   "depends": {

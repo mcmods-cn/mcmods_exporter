@@ -13,13 +13,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ExportConfigTest {
     private static final List<String> PROPERTIES = List.of(
-        "mcwiki.export.output",
-        "mcwiki.export.namespaces",
-        "mcwiki.export.languages",
-        "mcwiki.export.profile",
-        "mcwiki.export.sizes",
-        "mcwiki.export.tickBudgetMs",
-        "mcwiki.export.exit"
+        "mcmods.export.output",
+        "mcmods.export.namespaces",
+        "mcmods.export.languages",
+        "mcmods.export.profile",
+        "mcmods.export.sizes",
+        "mcmods.export.tickBudgetMs",
+        "mcmods.export.exit"
     );
 
     @AfterEach
@@ -29,8 +29,8 @@ class ExportConfigTest {
 
     @Test
     void manualOverrideKeepsRequiredImageSizes(@TempDir Path gameDirectory) {
-        System.setProperty("mcwiki.export.sizes", "64,256");
-        System.setProperty("mcwiki.export.languages", "zh_cn,ja_jp");
+        System.setProperty("mcmods.export.sizes", "64,256");
+        System.setProperty("mcmods.export.languages", "zh_cn,ja_jp");
 
         ExportConfig config = ExportConfig.fromSystemProperties(gameDirectory, false, "examplemod", ExportProfile.IMAGES);
 
@@ -53,7 +53,7 @@ class ExportConfigTest {
 
     @Test
     void relativeOutputIsResolvedAgainstGameDirectory(@TempDir Path gameDirectory) {
-        System.setProperty("mcwiki.export.output", "exports/wiki");
+        System.setProperty("mcmods.export.output", "exports/wiki");
 
         ExportConfig config = ExportConfig.fromSystemProperties(gameDirectory, true, "examplemod", ExportProfile.DATA);
 

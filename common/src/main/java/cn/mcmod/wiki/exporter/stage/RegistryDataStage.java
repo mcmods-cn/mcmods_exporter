@@ -310,7 +310,7 @@ public final class RegistryDataStage extends OnceStage {
 
     private static void writeRegistry(ExportContext context, String name, JsonArray data) throws Exception {
         JsonObject root = new JsonObject();
-        root.addProperty("schema_version", "mcwiki-registry/v1");
+        root.addProperty("schema_version", "mcmods-registry/v1");
         root.addProperty("registry", name);
         root.addProperty("count", data.size());
         root.add("entries", data);

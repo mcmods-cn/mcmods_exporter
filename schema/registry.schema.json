@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://www.mcmod.cn/schemas/mcwiki-registry-v1.json",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-registry-v1.json",
   "type": "object",
   "required": ["schema_version", "registry", "count", "entries"],
   "properties": {
-    "schema_version": { "const": "mcwiki-registry/v1" },
+    "schema_version": { "const": "mcmods-registry/v1" },
     "registry": { "type": "string" },
     "count": { "type": "integer", "minimum": 0 },
     "entries": {

@@ -1,6 +1,6 @@
 package cn.mcmod.wiki.exporter.stage;
 
-import cn.mcmod.wiki.exporter.compat.jei.McWikiJeiPlugin;
+import cn.mcmod.wiki.exporter.compat.jei.McModsJeiPlugin;
 import cn.mcmod.wiki.exporter.render.OffscreenRenderer;
 import cn.mcmod.wiki.exporter.task.ExportContext;
 import cn.mcmod.wiki.exporter.task.ExportStage;
@@ -58,7 +58,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
     @Override
     @SuppressWarnings({"rawtypes", "unchecked", "removal"})
     public void start(ExportContext context) throws Exception {
-        runtime = McWikiJeiPlugin.runtime();
+        runtime = McModsJeiPlugin.runtime();
         if (runtime == null) {
             context.report().addCount(ID, "runtime_unavailable", 1);
             return;
@@ -107,7 +107,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
             }
         }
         JsonObject indexJson = new JsonObject();
-        indexJson.addProperty("schema_version", "mcwiki-jei-categories/v3");
+        indexJson.addProperty("schema_version", "mcmods-jei-categories/v3");
         indexJson.addProperty("category_count", categories.size());
         indexJson.addProperty("recipe_count", entries.size());
         indexJson.add("categories", categories);
@@ -154,7 +154,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
         renderCategoryBackground(context, entry, layout, canvasWidth, canvasHeight);
 
         JsonObject metadata = new JsonObject();
-        metadata.addProperty("schema_version", "mcwiki-jei-layout/v3");
+        metadata.addProperty("schema_version", "mcmods-jei-layout/v3");
         metadata.addProperty("recipe_type_id", entry.type.getUid().toString());
         if (entry.recipe instanceof Recipe<?> recipe) {
             metadata.addProperty("recipe_id", recipe.getId().toString());

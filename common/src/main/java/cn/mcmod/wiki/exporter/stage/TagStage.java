@@ -41,7 +41,7 @@ public final class TagStage extends OnceStage {
             }
         });
         JsonObject root = new JsonObject();
-        root.addProperty("schema_version", "mcwiki-tags/v1");
+        root.addProperty("schema_version", "mcmods-tags/v1");
         root.addProperty("registry_count", registryData.size());
         root.add("registries", registryData);
         context.writeJson("tags/tags.json", root);

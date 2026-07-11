@@ -63,7 +63,7 @@ public final class AdvancementStage extends OnceStage {
         }
 
         JsonObject output = new JsonObject();
-        output.addProperty("schema_version", "mcwiki-advancements/v1");
+        output.addProperty("schema_version", "mcmods-advancements/v1");
         output.addProperty("source", server == null ? "client_sync" : "integrated_server");
         output.addProperty("count", data.size());
         output.addProperty("language_count", context.languages().size());
@@ -85,7 +85,7 @@ public final class AdvancementStage extends OnceStage {
                 localizedEntries.add(localized);
             }
             JsonObject localizedOutput = new JsonObject();
-            localizedOutput.addProperty("schema_version", "mcwiki-advancements-localized/v1");
+            localizedOutput.addProperty("schema_version", "mcmods-advancements-localized/v1");
             localizedOutput.addProperty("locale", language);
             localizedOutput.addProperty("count", localizedEntries.size());
             localizedOutput.add("advancements", localizedEntries);

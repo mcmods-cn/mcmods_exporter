@@ -73,7 +73,7 @@ public final class LanguageStage extends OnceStage {
             context.translations().put(locale, localizationTranslations);
 
             JsonObject output = new JsonObject();
-            output.addProperty("schema_version", "mcwiki-language/v1");
+            output.addProperty("schema_version", "mcmods-language/v1");
             output.addProperty("locale", locale);
             JsonObject values = new JsonObject();
             exportedTranslations.forEach(values::addProperty);
@@ -88,7 +88,7 @@ public final class LanguageStage extends OnceStage {
             languageIndex.add(languageEntry);
         }
         JsonObject languages = new JsonObject();
-        languages.addProperty("schema_version", "mcwiki-languages/v1");
+        languages.addProperty("schema_version", "mcmods-languages/v1");
         languages.addProperty("count", languageIndex.size());
         languages.add("languages", languageIndex);
         context.writeJson("translations/languages.json", languages);
