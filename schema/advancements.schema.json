@@ -14,7 +14,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "children", "criteria", "requirements", "max_criteria_required"],
+        "required": ["id", "children", "criteria", "requirements", "max_criteria_required", "rewards"],
         "properties": {
           "id": { "type": "string" },
           "parent": { "type": "string" },
@@ -34,7 +34,8 @@
             "type": "array",
             "items": { "type": "array", "items": { "type": "string" } }
           },
-          "max_criteria_required": { "type": "integer", "minimum": 0 }
+          "max_criteria_required": { "type": "integer", "minimum": 0 },
+          "rewards": { "type": "object" }
         },
         "additionalProperties": true
       }

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-resources-v2.json",
+  "type": "object",
+  "required": ["schema_version", "selection", "asset_count", "dependency_count", "counts_by_kind", "files"],
+  "properties": {
+    "schema_version": { "const": "mcmods-resources/v2" },
+    "selection": { "const": "registered_content_dependency_closure" },
+    "asset_count": { "type": "integer", "minimum": 0 },
+    "dependency_count": { "type": "integer", "minimum": 0 },
+    "counts_by_kind": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "id", "path", "size_bytes", "selected_namespace", "inclusion_reason"],
+        "properties": {
+          "kind": { "enum": ["blockstate", "model", "obj", "material", "texture", "texture_metadata", "resource"] },
+          "id": { "type": "string" },
+          "path": { "type": "string" },
+          "size_bytes": { "type": "integer", "minimum": 0 },
+          "selected_namespace": { "type": "boolean" },
+          "inclusion_reason": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": true
+}

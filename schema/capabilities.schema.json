@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-capabilities-v1.json",
+  "type": "object",
+  "required": ["schema_version", "minecraft_version", "loader", "profile", "format_contract", "binary_compatibility", "porting_policy", "capabilities"],
+  "properties": {
+    "schema_version": { "const": "mcmods-capabilities/v1" },
+    "minecraft_version": { "type": "string" },
+    "loader": { "enum": ["fabric", "forge", "unknown"] },
+    "profile": { "enum": ["data", "images", "all"] },
+    "format_contract": { "const": "mcmods-export/v1" },
+    "binary_compatibility": { "const": "exact_minecraft_version_build_required" },
+    "porting_policy": { "type": "string" },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "source"],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "enum": ["available", "degraded", "unavailable"] },
+          "source": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": true
+}

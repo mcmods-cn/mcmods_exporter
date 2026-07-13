@@ -35,7 +35,7 @@ side="CLIENT"
 
 [[dependencies.mcmods_exporter]]
 modId="jei"
-mandatory=false
+mandatory=true
 versionRange="[15.20,)"
 ordering="AFTER"
 side="CLIENT"

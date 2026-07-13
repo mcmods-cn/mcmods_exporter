@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-jei-categories-v4.json",
+  "title": "MC百科 JEI 配方类别索引",
+  "type": "object",
+  "required": ["schema_version", "category_count", "recipe_count", "categories", "recipes"],
+  "properties": {
+    "schema_version": { "const": "mcmods-jei-categories/v4" },
+    "category_count": { "type": "integer", "minimum": 0 },
+    "recipe_count": { "type": "integer", "minimum": 0 },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["recipe_type_id", "width", "height", "recipe_count", "background", "layout_collection", "background_contains_ingredients", "image_scale", "canvas", "catalyst_count", "catalysts"],
+        "properties": {
+          "recipe_type_id": { "type": "string" },
+          "title_component": { "type": "string" },
+          "title_translation_key": { "type": "string" },
+          "title_names": { "$ref": "#/$defs/names" },
+          "width": { "type": "integer", "minimum": 0 },
+          "height": { "type": "integer", "minimum": 0 },
+          "recipe_count": { "type": "integer", "minimum": 0 },
+          "background": { "type": "string" },
+          "layout_collection": { "type": "string" },
+          "background_contains_ingredients": { "const": false },
+          "image_scale": { "type": "integer", "minimum": 1 },
+          "canvas": { "$ref": "#/$defs/rect" },
+          "catalyst_count": { "type": "integer", "minimum": 0 },
+          "catalysts": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/ingredient" }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "recipes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["recipe_type_id", "recipe_id", "recipe_id_source", "recipe_id_canonical", "layout_collection", "layout_key", "background"],
+        "properties": {
+          "recipe_type_id": { "type": "string" },
+          "recipe_id": { "type": "string" },
+          "recipe_id_source": { "enum": ["minecraft_recipe", "jei_category", "generated_index"] },
+          "recipe_id_canonical": { "type": "boolean" },
+          "layout_collection": { "type": "string" },
+          "layout_key": { "type": "string" },
+          "background": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "$defs": {
+    "names": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "rect": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" },
+        "width": { "type": "integer", "minimum": 0 },
+        "height": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "ingredient": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string" },
+        "resource_location": { "type": "string" },
+        "resource_location_unavailable": { "type": "boolean" },
+        "unique_id": { "type": "string" },
+        "unique_id_unavailable": { "type": "boolean" },
+        "amount": { "type": "integer", "minimum": 0 },
+        "item": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 },
+        "nbt_snbt": { "type": "string" },
+        "translation_key": { "type": "string" },
+        "names": { "$ref": "#/$defs/names" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

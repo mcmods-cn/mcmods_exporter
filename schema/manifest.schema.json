@@ -17,14 +17,15 @@
     "archive_name": { "type": "string", "pattern": "\\.zip$" },
     "configuration": {
       "type": "object",
-      "required": ["namespaces", "all_namespaces", "languages", "image_sizes", "profile", "automatic"],
+      "required": ["namespaces", "all_namespaces", "languages", "image_sizes", "profile", "automatic", "modules"],
       "properties": {
         "namespaces": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
         "all_namespaces": { "type": "boolean" },
         "languages": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
         "image_sizes": { "type": "array", "items": { "type": "integer", "minimum": 16 }, "contains": { "const": 32 } },
         "profile": { "enum": ["data", "images", "all"] },
-        "automatic": { "type": "boolean" }
+        "automatic": { "type": "boolean" },
+        "modules": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
       },
       "additionalProperties": true
     },

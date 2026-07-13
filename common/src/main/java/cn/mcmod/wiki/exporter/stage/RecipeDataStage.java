@@ -82,6 +82,9 @@ public final class RecipeDataStage extends OnceStage {
             json.addProperty("cooking_time_ticks", cooking.getCookingTime());
             json.addProperty("experience", cooking.getExperience());
         }
+        JsonObject parameters = RecipeParameterExtractor.extract(recipe);
+        json.addProperty("parameter_count", parameters.size());
+        json.add("parameters", parameters);
         return json;
     }
 }
