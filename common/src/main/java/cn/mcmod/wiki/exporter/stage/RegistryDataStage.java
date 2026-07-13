@@ -7,16 +7,28 @@ import com.google.gson.JsonObject;
 import dev.architectury.platform.Mod;
 import dev.architectury.platform.Platform;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.network.chat.Component;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
-import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.AgeableMob;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.animal.WaterAnimal;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.alchemy.Potion;
-import net.minecraft.world.item.alchemy.PotionUtils;
+import net.minecraft.world.item.SpawnEggItem;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
@@ -27,7 +39,10 @@ import net.minecraft.world.level.material.FluidState;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.List;
+import java.util.Map;
 
 public final class RegistryDataStage extends OnceStage {
     public static final String ID = "registry_data";
@@ -44,7 +59,6 @@ public final class RegistryDataStage extends OnceStage {
         exportEntities(context);
         exportEffects(context);
         exportEnchantments(context);
-        exportPotions(context);
         exportFluids(context);
         exportKeyMappings(context);
         exportMods(context);
@@ -64,6 +78,12 @@ public final class RegistryDataStage extends OnceStage {
                 json.addProperty("max_damage", item.getMaxDamage());
                 json.addProperty("edible", item.isEdible());
                 json.addProperty("rarity", stack.getRarity().name().toLowerCase());
+                try {
+                    RegistryPropertyExtractor.addItemProperties(json, item, stack);
+                } catch (RuntimeException throwable) {
+                    context.report().error(ID, id + ":properties", throwable);
+                }
+                addLocalizedTooltips(context, json, stack);
                 if (stack.hasTag()) {
                     json.addProperty("default_nbt_snbt", stack.getTag().toString());
                 }
@@ -91,6 +111,11 @@ public final class RegistryDataStage extends OnceStage {
                 json.addProperty("can_occlude", state.canOcclude());
                 json.addProperty("render_shape", state.getRenderShape().name().toLowerCase());
                 json.addProperty("has_block_entity", block instanceof EntityBlock);
+                try {
+                    RegistryPropertyExtractor.addBlockProperties(json, block, state);
+                } catch (RuntimeException throwable) {
+                    context.report().error(ID, id + ":properties", throwable);
+                }
                 Item item = block.asItem();
                 if (item != Items.AIR) {
                     json.addProperty("item", BuiltInRegistries.ITEM.getKey(item).toString());
@@ -111,6 +136,7 @@ public final class RegistryDataStage extends OnceStage {
     }
 
     private static void exportEntities(ExportContext context) throws Exception {
+        Map<EntityType<?>, List<ResourceLocation>> spawnEggs = spawnEggs();
         JsonArray data = new JsonArray();
         BuiltInRegistries.ENTITY_TYPE.entrySet().stream()
             .sorted(Comparator.comparing(entry -> entry.getKey().location().toString()))
@@ -127,6 +153,11 @@ public final class RegistryDataStage extends OnceStage {
                 json.addProperty("fire_immune", type.fireImmune());
                 json.addProperty("client_tracking_range", type.clientTrackingRange());
                 json.addProperty("update_interval", type.updateInterval());
+                JsonArray eggs = new JsonArray();
+                spawnEggs.getOrDefault(type, List.of()).forEach(egg -> eggs.add(egg.toString()));
+                json.add("spawn_eggs", eggs);
+                json.addProperty("spawn_egg_count", eggs.size());
+                addEntityRuntimeProperties(context, id, type, json);
                 data.add(json);
             });
         writeRegistry(context, "entity_types", data);
@@ -145,6 +176,22 @@ public final class RegistryDataStage extends OnceStage {
                 json.addProperty("color_rgb", effect.getColor());
                 json.addProperty("instant", effect.isInstantenous());
                 json.addProperty("beneficial", effect.isBeneficial());
+                JsonArray modifiers = new JsonArray();
+                effect.getAttributeModifiers().entrySet().stream()
+                    .sorted(Comparator.comparing(attributeEntry -> String.valueOf(BuiltInRegistries.ATTRIBUTE.getKey(attributeEntry.getKey()))))
+                    .forEach(attributeEntry -> {
+                        AttributeModifier modifier = attributeEntry.getValue();
+                        JsonObject modifierJson = new JsonObject();
+                        ResourceLocation attributeId = BuiltInRegistries.ATTRIBUTE.getKey(attributeEntry.getKey());
+                        modifierJson.addProperty("attribute", attributeId == null ? "unregistered:unknown" : attributeId.toString());
+                        modifierJson.addProperty("uuid", modifier.getId().toString());
+                        modifierJson.addProperty("operation", modifier.getOperation().name().toLowerCase(Locale.ROOT));
+                        modifierJson.addProperty("base_amount", modifier.getAmount());
+                        modifierJson.addProperty("amount_at_amplifier_0", effect.getAttributeModifierValue(0, modifier));
+                        modifierJson.addProperty("amount_at_amplifier_1", effect.getAttributeModifierValue(1, modifier));
+                        modifiers.add(modifierJson);
+                    });
+                json.add("effect_attribute_modifiers", modifiers);
                 data.add(json);
             });
         writeRegistry(context, "mob_effects", data);
@@ -173,55 +220,19 @@ public final class RegistryDataStage extends OnceStage {
         writeRegistry(context, "enchantments", data);
     }
 
-    private static void exportPotions(ExportContext context) throws Exception {
-        JsonArray data = new JsonArray();
-        BuiltInRegistries.POTION.entrySet().stream()
-            .sorted(Comparator.comparing(entry -> entry.getKey().location().toString()))
-            .filter(entry -> context.matches(entry.getKey().location()))
-            .forEach(entry -> {
-                ResourceLocation id = entry.getKey().location();
-                Potion potion = entry.getValue();
-                String translationKey = potion.getName("item.minecraft.potion.effect.");
-                JsonObject json = baseNamed(context, id, translationKey);
-                json.addProperty("color_rgb", PotionUtils.getColor(potion));
-                json.addProperty("has_instant_effects", potion.hasInstantEffects());
-                JsonArray effects = new JsonArray();
-                for (MobEffectInstance instance : potion.getEffects()) {
-                    JsonObject effect = new JsonObject();
-                    ResourceLocation effectId = BuiltInRegistries.MOB_EFFECT.getKey(instance.getEffect());
-                    effect.addProperty("effect", effectId == null ? "unknown" : effectId.toString());
-                    effect.addProperty("duration_ticks", instance.getDuration());
-                    effect.addProperty("amplifier", instance.getAmplifier());
-                    effect.addProperty("ambient", instance.isAmbient());
-                    effect.addProperty("visible", instance.isVisible());
-                    effect.addProperty("show_icon", instance.showIcon());
-                    effects.add(effect);
-                }
-                json.add("effects", effects);
-                JsonArray forms = new JsonArray();
-                forms.add("potion");
-                forms.add("splash_potion");
-                forms.add("lingering_potion");
-                forms.add("tipped_arrow");
-                json.add("rendered_forms", forms);
-                data.add(json);
-            });
-        writeRegistry(context, "potions", data);
-    }
-
     private static void exportFluids(ExportContext context) throws Exception {
         JsonArray data = new JsonArray();
         BuiltInRegistries.FLUID.entrySet().stream()
             .sorted(Comparator.comparing(entry -> entry.getKey().location().toString()))
             .filter(entry -> context.matches(entry.getKey().location()))
+            .filter(entry -> entry.getValue().defaultFluidState().isSource())
             .forEach(entry -> {
                 ResourceLocation id = entry.getKey().location();
                 Fluid fluid = entry.getValue();
                 Item bucket = fluid.getBucket();
-                String translationKey = bucket == Items.AIR
-                    ? firstTranslationKey(context, id)
-                    : bucket.getDescriptionId();
+                String translationKey = firstTranslationKey(context, id);
                 JsonObject json = baseNamed(context, id, translationKey);
+                json.addProperty("ingredient_kind", "fluid");
                 FluidState state = fluid.defaultFluidState();
                 json.addProperty("source", state.isSource());
                 json.addProperty("amount", state.getAmount());
@@ -237,7 +248,12 @@ public final class RegistryDataStage extends OnceStage {
         JsonArray data = new JsonArray();
         List<KeyMapping> mappings = new ArrayList<>(List.of(context.minecraft().options.keyMappings));
         mappings.sort(Comparator.comparing(KeyMapping::getName));
+        int excluded = 0;
         for (KeyMapping mapping : mappings) {
+            if (!isRelevantKeyMapping(context, mapping.getName(), mapping.getCategory())) {
+                excluded++;
+                continue;
+            }
             JsonObject json = new JsonObject();
             json.addProperty("id", mapping.getName());
             json.addProperty("translation_key", mapping.getName());
@@ -251,6 +267,7 @@ public final class RegistryDataStage extends OnceStage {
             data.add(json);
         }
         writeRegistry(context, "key_mappings", data);
+        context.report().addCount(ID, "key_mappings_excluded", excluded);
     }
 
     private static void exportMods(ExportContext context) throws Exception {
@@ -289,6 +306,149 @@ public final class RegistryDataStage extends OnceStage {
         json.addProperty("translation_key", translationKey);
         json.add("names", context.names(translationKey));
         return json;
+    }
+
+    private static void addLocalizedTooltips(ExportContext context, JsonObject json, ItemStack stack) {
+        try {
+            List<Component> lines = stack.getTooltipLines(context.minecraft().player, TooltipFlag.NORMAL);
+            JsonObject localized = new JsonObject();
+            for (String language : context.languages()) {
+                JsonArray values = new JsonArray();
+                for (Component line : lines) {
+                    values.add(context.localize(line, language));
+                }
+                localized.add(language, values);
+            }
+            json.add("tooltips", localized);
+            json.addProperty("tooltip_context", "default_stack_normal");
+        } catch (Throwable throwable) {
+            context.report().error(ID, stack.getDescriptionId() + ":tooltips", throwable);
+        }
+    }
+
+    private static Map<EntityType<?>, List<ResourceLocation>> spawnEggs() {
+        Map<EntityType<?>, List<ResourceLocation>> result = new LinkedHashMap<>();
+        BuiltInRegistries.ITEM.entrySet().stream()
+            .sorted(Comparator.comparing(entry -> entry.getKey().location().toString()))
+            .forEach(entry -> {
+                if (entry.getValue() instanceof SpawnEggItem egg) {
+                    EntityType<?> type = egg.getType(null);
+                    result.computeIfAbsent(type, ignored -> new ArrayList<>()).add(entry.getKey().location());
+                }
+            });
+        return result;
+    }
+
+    private static void addEntityRuntimeProperties(
+        ExportContext context,
+        ResourceLocation id,
+        EntityType<?> type,
+        JsonObject json
+    ) {
+        if (context.minecraft().level == null) {
+            json.addProperty("runtime_properties_available", false);
+            return;
+        }
+        Entity entity = null;
+        try {
+            entity = type.create(context.minecraft().level);
+            if (entity == null) {
+                json.addProperty("runtime_properties_available", false);
+                return;
+            }
+            json.addProperty("runtime_properties_available", true);
+            json.addProperty("eye_height", entity.getEyeHeight());
+            json.addProperty("max_air_supply", entity.getMaxAirSupply());
+            json.addProperty("living", entity instanceof LivingEntity);
+            json.addProperty("mob", entity instanceof Mob);
+            json.addProperty("animal", entity instanceof Animal);
+            json.addProperty("ageable", entity instanceof AgeableMob);
+            json.addProperty("tamable", entity instanceof TamableAnimal);
+            json.addProperty("hostile", entity instanceof Enemy || type.getCategory() == MobCategory.MONSTER);
+            json.addProperty("water_animal", entity instanceof WaterAnimal);
+            if (entity instanceof Animal animal) {
+                JsonArray breedingItems = new JsonArray();
+                BuiltInRegistries.ITEM.entrySet().stream()
+                    .sorted(Comparator.comparing(itemEntry -> itemEntry.getKey().location().toString()))
+                    .filter(itemEntry -> {
+                        try {
+                            return animal.isFood(itemEntry.getValue().getDefaultInstance());
+                        } catch (Throwable ignored) {
+                            return false;
+                        }
+                    })
+                    .forEach(itemEntry -> breedingItems.add(itemEntry.getKey().location().toString()));
+                json.add("breeding_items", breedingItems);
+            }
+            if (entity instanceof LivingEntity living) {
+                json.addProperty("mob_type", mobTypeName(living));
+                json.addProperty("max_health", living.getMaxHealth());
+                json.addProperty("armor_value", living.getArmorValue());
+                json.addProperty("default_loot_table", living.getLootTable().toString());
+                JsonArray attributes = new JsonArray();
+                BuiltInRegistries.ATTRIBUTE.entrySet().stream()
+                    .sorted(Comparator.comparing(entry -> entry.getKey().location().toString()))
+                    .forEach(entry -> {
+                        AttributeInstance instance = living.getAttribute(entry.getValue());
+                        if (instance == null) {
+                            return;
+                        }
+                        JsonObject attribute = new JsonObject();
+                        attribute.addProperty("attribute", entry.getKey().location().toString());
+                        attribute.addProperty("base_value", instance.getBaseValue());
+                        attribute.addProperty("default_value", instance.getValue());
+                        attributes.add(attribute);
+                    });
+                json.add("default_attributes", attributes);
+                JsonArray equipment = new JsonArray();
+                for (EquipmentSlot slot : EquipmentSlot.values()) {
+                    ItemStack stack = living.getItemBySlot(slot);
+                    if (stack.isEmpty()) {
+                        continue;
+                    }
+                    JsonObject equipped = ExportContext.stackJson(stack);
+                    equipped.addProperty("slot", slot.getName());
+                    equipment.add(equipped);
+                }
+                json.add("default_equipment", equipment);
+            }
+        } catch (Throwable throwable) {
+            json.addProperty("runtime_properties_available", false);
+            context.report().error(ID, id + ":runtime_properties", throwable);
+        } finally {
+            if (entity != null) {
+                entity.discard();
+            }
+        }
+    }
+
+    private static String mobTypeName(LivingEntity living) {
+        if (living.getMobType() == net.minecraft.world.entity.MobType.UNDEAD) return "undead";
+        if (living.getMobType() == net.minecraft.world.entity.MobType.ARTHROPOD) return "arthropod";
+        if (living.getMobType() == net.minecraft.world.entity.MobType.ILLAGER) return "illager";
+        if (living.getMobType() == net.minecraft.world.entity.MobType.WATER) return "water";
+        return "undefined";
+    }
+
+    static boolean keyTranslationMatchesNamespaces(String translationKey, Iterable<String> namespaces) {
+        String normalized = translationKey.toLowerCase(Locale.ROOT);
+        String[] parts = normalized.split("[^a-z0-9_]+", -1);
+        for (String namespace : namespaces) {
+            for (String part : parts) {
+                if (part.equals(namespace)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean isRelevantKeyMapping(ExportContext context, String name, String category) {
+        if (context.config().namespaces().isEmpty()) {
+            return !keyTranslationMatchesNamespaces(name, List.of("mcmods_exporter"));
+        }
+        return keyTranslationMatchesNamespaces(name, context.config().namespaces())
+            || keyTranslationMatchesNamespaces(category, context.config().namespaces());
     }
 
     private static String firstTranslationKey(ExportContext context, ResourceLocation id) {

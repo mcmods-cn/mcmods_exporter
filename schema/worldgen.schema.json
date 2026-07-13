@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-worldgen-v1.json",
+  "title": "mcmods_exporter world data indexes",
+  "oneOf": [
+    { "$ref": "#/$defs/registries" },
+    { "$ref": "#/$defs/files" },
+    { "$ref": "#/$defs/dimensions" },
+    { "$ref": "#/$defs/biomes" },
+    { "$ref": "#/$defs/entitySpawns" },
+    { "$ref": "#/$defs/naturalGeneration" },
+    { "$ref": "#/$defs/structures" },
+    { "$ref": "#/$defs/lootTables" }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$"
+    },
+    "namedDefinition": {
+      "type": "object",
+      "required": ["id", "namespace", "path", "runtime_registered"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "namespace": { "type": "string" },
+        "path": { "type": "string" },
+        "runtime_registered": { "type": "boolean" },
+        "translation_key": { "type": "string" },
+        "names": { "type": "object", "additionalProperties": { "type": "string" } },
+        "runtime_definition": true,
+        "definition_path": { "type": "string" },
+        "definition": true
+      },
+      "additionalProperties": true
+    },
+    "registries": {
+      "type": "object",
+      "required": ["schema_version", "registry_count", "entry_count", "registries"],
+      "properties": {
+        "schema_version": { "const": "mcmods-worldgen-registries/v1" },
+        "registry_count": { "type": "integer", "minimum": 0 },
+        "entry_count": { "type": "integer", "minimum": 0 },
+        "registries": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
+    "files": {
+      "type": "object",
+      "required": ["schema_version", "resource_source", "remote_server_data_complete", "count", "files"],
+      "properties": {
+        "schema_version": { "const": "mcmods-worldgen-files/v1" },
+        "resource_source": { "enum": ["integrated_server_resource_stack", "installed_mod_fallback"] },
+        "remote_server_data_complete": { "type": "boolean" },
+        "count": { "type": "integer", "minimum": 0 },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["kind", "resource_id", "object_id", "path", "size_bytes"],
+            "properties": {
+              "kind": { "type": "string" },
+              "resource_id": { "$ref": "#/$defs/id" },
+              "object_id": { "$ref": "#/$defs/id" },
+              "path": { "type": "string" },
+              "size_bytes": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "dimensions": {
+      "type": "object",
+      "required": ["schema_version", "dimension_count", "dimension_type_count", "dimensions", "dimension_types"],
+      "properties": {
+        "schema_version": { "const": "mcmods-dimensions/v1" },
+        "dimension_count": { "type": "integer", "minimum": 0 },
+        "dimension_type_count": { "type": "integer", "minimum": 0 },
+        "dimensions": { "type": "array", "items": { "$ref": "#/$defs/namedDefinition" } },
+        "dimension_types": { "type": "array", "items": { "$ref": "#/$defs/namedDefinition" } }
+      },
+      "additionalProperties": true
+    },
+    "biomes": {
+      "type": "object",
+      "required": ["schema_version", "count", "biomes"],
+      "properties": {
+        "schema_version": { "const": "mcmods-biomes/v1" },
+        "count": { "type": "integer", "minimum": 0 },
+        "biomes": { "type": "array", "items": { "$ref": "#/$defs/namedDefinition" } }
+      },
+      "additionalProperties": true
+    },
+    "entitySpawns": {
+      "type": "object",
+      "required": ["schema_version", "source", "biome_count", "spawn_count", "biomes"],
+      "properties": {
+        "schema_version": { "const": "mcmods-entity-spawns/v1" },
+        "source": { "enum": ["runtime_biome_registry", "unavailable"] },
+        "biome_count": { "type": "integer", "minimum": 0 },
+        "spawn_count": { "type": "integer", "minimum": 0 },
+        "biomes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "selected_namespace", "inclusion_reason", "spawn_count", "spawns"],
+            "properties": {
+              "id": { "$ref": "#/$defs/id" },
+              "selected_namespace": { "type": "boolean" },
+              "inclusion_reason": { "enum": ["target_biome", "contains_target_entity_spawn"] },
+              "spawn_count": { "type": "integer", "minimum": 0 },
+              "spawns": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["entity", "category", "weight", "min_count", "max_count"],
+                  "properties": {
+                    "entity": { "$ref": "#/$defs/id" },
+                    "category": { "type": "string" },
+                    "weight": { "type": "integer", "minimum": 1 },
+                    "min_count": { "type": "integer", "minimum": 0 },
+                    "max_count": { "type": "integer", "minimum": 0 }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "naturalGeneration": {
+      "type": "object",
+      "required": ["schema_version", "category_count", "entry_count", "categories"],
+      "properties": {
+        "schema_version": { "const": "mcmods-natural-generation/v1" },
+        "category_count": { "type": "integer", "minimum": 0 },
+        "entry_count": { "type": "integer", "minimum": 0 },
+        "categories": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
+    "structures": {
+      "type": "object",
+      "required": ["schema_version", "count", "definition_count", "template_count", "structures"],
+      "properties": {
+        "schema_version": { "const": "mcmods-structures/v1" },
+        "count": { "type": "integer", "minimum": 0 },
+        "definition_count": { "type": "integer", "minimum": 0 },
+        "template_count": { "type": "integer", "minimum": 0 },
+        "structures": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
+    "lootTables": {
+      "type": "object",
+      "required": ["schema_version", "count", "dependency_count", "predicate_count", "item_modifier_count", "counts_by_category", "loot_tables", "predicates", "item_modifiers"],
+      "properties": {
+        "schema_version": { "const": "mcmods-loot-tables/v1" },
+        "count": { "type": "integer", "minimum": 0 },
+        "dependency_count": { "type": "integer", "minimum": 0 },
+        "predicate_count": { "type": "integer", "minimum": 0 },
+        "item_modifier_count": { "type": "integer", "minimum": 0 },
+        "counts_by_category": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "loot_tables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "namespace", "path", "category", "selected_namespace", "inclusion_reason", "runtime_loaded"],
+            "properties": {
+              "id": { "$ref": "#/$defs/id" },
+              "namespace": { "type": "string" },
+              "path": { "type": "string" },
+              "category": { "type": "string" },
+              "selected_namespace": { "type": "boolean" },
+              "inclusion_reason": { "enum": ["target_namespace", "external_namespace"] },
+              "runtime_loaded": { "type": "boolean" },
+              "data_path": { "type": "string" },
+              "definition": true,
+              "referenced_loot_tables": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/id" }
+              },
+              "possible_item_count": { "type": "integer", "minimum": 0 },
+              "possible_item_ids": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true },
+              "possible_item_tags": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true },
+              "possible_items_complete": { "const": false },
+              "possible_items_analysis": { "const": "static_candidates_including_nested_tables" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "predicates": { "type": "array" },
+        "item_modifiers": { "type": "array" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

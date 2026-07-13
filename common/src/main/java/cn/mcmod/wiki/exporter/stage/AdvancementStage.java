@@ -6,6 +6,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.AdvancementList;
+import net.minecraft.advancements.AdvancementRewards;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.server.IntegratedServer;
@@ -137,7 +138,12 @@ public final class AdvancementStage extends OnceStage {
         }
         json.add("requirements", requirements);
         json.addProperty("max_criteria_required", advancement.getMaxCriteraRequired());
+        addRewards(json, advancement.getRewards());
         return json;
+    }
+
+    private static void addRewards(JsonObject json, AdvancementRewards rewards) {
+        json.add("rewards", rewards.serializeToJson());
     }
 
     private static void addComponent(ExportContext context, JsonObject target, String field, Component component) {

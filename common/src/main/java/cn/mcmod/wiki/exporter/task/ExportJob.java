@@ -2,22 +2,8 @@ package cn.mcmod.wiki.exporter.task;
 
 import cn.mcmod.wiki.exporter.McModsExporter;
 import cn.mcmod.wiki.exporter.config.ExportConfig;
-import cn.mcmod.wiki.exporter.stage.AdvancementStage;
-import cn.mcmod.wiki.exporter.stage.BlockIconStage;
-import cn.mcmod.wiki.exporter.stage.EntityModelStage;
-import cn.mcmod.wiki.exporter.stage.EntityRenderStage;
-import cn.mcmod.wiki.exporter.stage.ItemIconStage;
-import cn.mcmod.wiki.exporter.stage.JeiIngredientStage;
-import cn.mcmod.wiki.exporter.stage.JeiRecipeGuiStage;
-import cn.mcmod.wiki.exporter.stage.LanguageStage;
-import cn.mcmod.wiki.exporter.stage.PotionIconStage;
-import cn.mcmod.wiki.exporter.stage.RecipeDataStage;
-import cn.mcmod.wiki.exporter.stage.RegistryDataStage;
-import cn.mcmod.wiki.exporter.stage.ResourceStage;
-import cn.mcmod.wiki.exporter.stage.TagStage;
 import cn.mcmod.wiki.exporter.util.ExportArchives;
 import cn.mcmod.wiki.exporter.util.JsonFiles;
-import dev.architectury.platform.Platform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
@@ -26,7 +12,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -56,7 +41,9 @@ final class ExportJob {
         Files.createDirectories(root);
         ExportReport report = new ExportReport();
         this.context = new ExportContext(minecraft, config, root, report);
-        this.stages = createStages(config);
+        ExportPipeline.Selection pipeline = ExportPipeline.create(config);
+        this.stages = pipeline.stages();
+        report.modulesSelected(pipeline.modules());
     }
 
     private static PackagePaths uniqueResultPaths(ExportConfig config) {
@@ -70,35 +57,6 @@ final class ExportJob {
             candidateStaging = config.outputRoot().resolve("." + suffixed + ".staging");
         }
         return new PackagePaths(candidateStaging, candidateArchive);
-    }
-
-    private static List<ExportStage> createStages(ExportConfig config) {
-        List<ExportStage> result = new ArrayList<>();
-        // Every profile can emit textual metadata (notably JEI category and ingredient names),
-        // so language discovery must always run before any other stage.
-        result.add(new LanguageStage());
-        if (config.profile().includesData()) {
-            result.add(new RegistryDataStage());
-            result.add(new TagStage());
-            result.add(new RecipeDataStage());
-            result.add(new AdvancementStage());
-            result.add(new ResourceStage());
-            result.add(new EntityModelStage());
-            if (Platform.isModLoaded("jei") && !config.profile().includesImages()) {
-                result.add(new JeiIngredientStage(false));
-            }
-        }
-        if (config.profile().includesImages()) {
-            result.add(new ItemIconStage());
-            result.add(new BlockIconStage());
-            result.add(new PotionIconStage());
-            if (Platform.isModLoaded("jei")) {
-                result.add(new JeiIngredientStage(true));
-                result.add(new JeiRecipeGuiStage());
-            }
-            result.add(new EntityRenderStage());
-        }
-        return result;
     }
 
     void tick() {

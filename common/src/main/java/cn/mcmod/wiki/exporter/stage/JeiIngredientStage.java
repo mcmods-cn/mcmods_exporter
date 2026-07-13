@@ -61,11 +61,15 @@ public final class JeiIngredientStage implements ExportStage {
         IIngredientManager manager = runtime.getIngredientManager();
         List<IIngredientType<?>> types = manager.getRegisteredIngredientTypes().stream()
             .filter(type -> type != VanillaTypes.ITEM_STACK)
+            .filter(type -> JeiIngredientPolicy.includeInCatalog(type.getUid(), type.getIngredientClass().getName()))
             .sorted(Comparator.comparing(IIngredientType::getUid))
             .toList();
         for (IIngredientType type : types) {
             String typeUid = type.getUid();
             String typeSlug = safeSlug(typeUid);
+            String ingredientClassName = type.getIngredientClass().getName();
+            String ingredientKind = JeiIngredientPolicy.kind(typeUid, ingredientClassName);
+            String chemicalType = JeiIngredientPolicy.mekanismChemicalType(ingredientClassName);
             try {
                 IIngredientHelper helper = manager.getIngredientHelper(type);
                 IIngredientRenderer renderer = manager.getIngredientRenderer(type);
@@ -75,7 +79,17 @@ public final class JeiIngredientStage implements ExportStage {
                     try {
                         ResourceLocation resourceId = helper.getResourceLocation(ingredient);
                         if (resourceId != null && context.matches(resourceId)) {
-                            entries.add(new Entry(typeUid, typeSlug, type, helper, renderer, ingredient, resourceId));
+                            entries.add(new Entry(
+                                typeUid,
+                                typeSlug,
+                                ingredientKind,
+                                chemicalType,
+                                type,
+                                helper,
+                                renderer,
+                                ingredient,
+                                resourceId
+                            ));
                         }
                     } catch (Throwable throwable) {
                         context.report().error(ID, typeUid + ":resource_id", throwable);
@@ -119,6 +133,11 @@ public final class JeiIngredientStage implements ExportStage {
         String hash = shortHash(uniqueId);
 
         JsonObject json = new JsonObject();
+        json.addProperty("ingredient_kind", entry.ingredientKind());
+        if (entry.chemicalType() != null) {
+            json.addProperty("chemical_family", "mekanism");
+            json.addProperty("chemical_type", entry.chemicalType());
+        }
         json.addProperty("resource_location", entry.resourceId().toString());
         json.addProperty("unique_id", uniqueId);
         long amount = helper.getAmount(ingredient);
@@ -126,9 +145,17 @@ public final class JeiIngredientStage implements ExportStage {
             json.addProperty("amount", amount);
         }
         JsonObject names = new JsonObject();
+        if (entry.ingredientKind().equals("fluid")) {
+            String translationKey = firstFluidTranslationKey(context, entry.resourceId());
+            JsonObject translated = context.names(translationKey);
+            if (translated.size() > 0) {
+                json.addProperty("translation_key", translationKey);
+                names = translated;
+            }
+        }
         try {
             List<Component> tooltip = renderer.getTooltip(ingredient, TooltipFlag.NORMAL);
-            if (!tooltip.isEmpty()) {
+            if (names.size() == 0 && !tooltip.isEmpty()) {
                 names = context.componentNames(tooltip.get(0));
             }
         } catch (Throwable throwable) {
@@ -163,7 +190,15 @@ public final class JeiIngredientStage implements ExportStage {
             }
         }
         json.add("icons", icons);
-        outputs.computeIfAbsent(entry.typeUid(), ignored -> new TypeOutput(entry.typeUid(), entry.typeSlug()))
+        outputs.computeIfAbsent(
+            entry.typeUid(),
+            ignored -> new TypeOutput(
+                entry.typeUid(),
+                entry.typeSlug(),
+                entry.ingredientKind(),
+                entry.chemicalType()
+            )
+        )
             .entries().add(json);
     }
 
@@ -177,6 +212,11 @@ public final class JeiIngredientStage implements ExportStage {
         for (TypeOutput output : outputs.values()) {
             JsonObject type = new JsonObject();
             type.addProperty("ingredient_type", output.uid());
+            type.addProperty("ingredient_kind", output.kind());
+            if (output.chemicalType() != null) {
+                type.addProperty("chemical_family", "mekanism");
+                type.addProperty("chemical_type", output.chemicalType());
+            }
             type.addProperty("path_key", output.slug());
             type.addProperty("count", output.entries().size());
             type.add("entries", output.entries());
@@ -200,7 +240,20 @@ public final class JeiIngredientStage implements ExportStage {
         return ExportPaths.safeResolve(base, entry.resourceId().getPath() + "--" + hash + ".png");
     }
 
-    @SuppressWarnings("rawtypes")
+    private static String firstFluidTranslationKey(ExportContext context, ResourceLocation id) {
+        List<String> candidates = List.of(
+            "fluid." + id.getNamespace() + "." + id.getPath().replace('/', '.'),
+            "block." + id.getNamespace() + "." + id.getPath().replace('/', '.')
+        );
+        for (String candidate : candidates) {
+            if (context.names(candidate).size() > 0) {
+                return candidate;
+            }
+        }
+        return candidates.get(0);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
     private static String safeUniqueId(IIngredientHelper helper, Object ingredient) {
         try {
             return helper.getUniqueId(ingredient, UidContext.Recipe);
@@ -247,6 +300,8 @@ public final class JeiIngredientStage implements ExportStage {
     private record Entry(
         String typeUid,
         String typeSlug,
+        String ingredientKind,
+        String chemicalType,
         IIngredientType type,
         IIngredientHelper helper,
         IIngredientRenderer renderer,
@@ -255,9 +310,9 @@ public final class JeiIngredientStage implements ExportStage {
     ) {
     }
 
-    private record TypeOutput(String uid, String slug, JsonArray entries) {
-        private TypeOutput(String uid, String slug) {
-            this(uid, slug, new JsonArray());
+    private record TypeOutput(String uid, String slug, String kind, String chemicalType, JsonArray entries) {
+        private TypeOutput(String uid, String slug, String kind, String chemicalType) {
+            this(uid, slug, kind, chemicalType, new JsonArray());
         }
     }
 }

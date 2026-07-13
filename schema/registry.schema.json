@@ -14,10 +14,200 @@
         "properties": {
           "id": { "type": "string", "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$" },
           "translation_key": { "type": "string" },
-          "names": { "type": "object", "additionalProperties": { "type": "string" } }
+          "names": { "type": "object", "additionalProperties": { "type": "string" } },
+          "tooltips": {
+            "type": "object",
+            "additionalProperties": { "type": "array", "items": { "type": "string" } }
+          },
+          "tooltip_context": { "const": "default_stack_normal" },
+          "max_stack_size": { "type": "integer", "minimum": 1 },
+          "max_damage": { "type": "integer", "minimum": 0 },
+          "ingredient_kind": { "enum": ["fluid"] },
+          "fire_resistant": { "type": "boolean" },
+          "use_animation": { "type": "string" },
+          "use_duration_ticks": { "type": "integer", "minimum": 0 },
+          "crafting_remainder": { "$ref": "#/$defs/resourceId" },
+          "durability": { "$ref": "#/$defs/durability" },
+          "item_tags": { "$ref": "#/$defs/resourceIds" },
+          "item_types": { "$ref": "#/$defs/strings" },
+          "primary_type": { "type": "string" },
+          "tool": { "$ref": "#/$defs/tool" },
+          "enchanting": { "$ref": "#/$defs/enchanting" },
+          "attribute_modifiers": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/attributeSlot" }
+          },
+          "combat": { "$ref": "#/$defs/combat" },
+          "equipment_slot": { "type": "string" },
+          "armor": { "$ref": "#/$defs/armor" },
+          "food": { "$ref": "#/$defs/food" },
+          "hardness": { "type": "number" },
+          "explosion_resistance": { "type": "number" },
+          "friction": { "type": "number" },
+          "speed_factor": { "type": "number" },
+          "jump_factor": { "type": "number" },
+          "light_emission": { "type": "integer", "minimum": 0 },
+          "blocks_motion": { "type": "boolean" },
+          "solid": { "type": "boolean" },
+          "liquid": { "type": "boolean" },
+          "randomly_ticking": { "type": "boolean" },
+          "piston_reaction": { "type": "string" },
+          "loot_table": { "$ref": "#/$defs/resourceId" },
+          "requires_correct_tool": { "type": "boolean" },
+          "preferred_tools": { "$ref": "#/$defs/strings" },
+          "required_tier": { "type": "string" },
+          "required_mining_level": { "type": "integer", "minimum": 0 },
+          "mining_tags": { "$ref": "#/$defs/resourceIds" },
+          "tier_tags": { "$ref": "#/$defs/resourceIds" },
+          "block_tags": { "$ref": "#/$defs/resourceIds" },
+          "spawn_eggs": { "$ref": "#/$defs/resourceIds" },
+          "runtime_properties_available": { "type": "boolean" },
+          "default_loot_table": { "$ref": "#/$defs/resourceId" },
+          "breeding_items": { "$ref": "#/$defs/resourceIds" },
+          "default_attributes": { "type": "array" },
+          "default_equipment": { "type": "array" },
+          "effect_attribute_modifiers": { "type": "array" }
         },
         "additionalProperties": true
       }
+    }
+  },
+  "$defs": {
+    "resourceId": {
+      "type": "string",
+      "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$"
+    },
+    "strings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "resourceIds": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/resourceId" },
+      "uniqueItems": true
+    },
+    "durability": {
+      "type": "object",
+      "required": ["damageable", "max_damage"],
+      "properties": {
+        "damageable": { "type": "boolean" },
+        "max_damage": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "tool": {
+      "type": "object",
+      "required": ["types"],
+      "properties": {
+        "types": { "$ref": "#/$defs/strings" },
+        "attack_damage": { "type": "number" },
+        "tier": {
+          "type": "object",
+          "required": ["mining_level", "durability", "mining_speed", "attack_damage_bonus", "enchantment_value", "repair_items"],
+          "properties": {
+            "id": { "$ref": "#/$defs/resourceId" },
+            "mining_level": { "type": "integer", "minimum": 0 },
+            "durability": { "type": "integer", "minimum": 0 },
+            "mining_speed": { "type": "number" },
+            "attack_damage_bonus": { "type": "number" },
+            "enchantment_value": { "type": "integer", "minimum": 0 },
+            "repair_items": { "$ref": "#/$defs/resourceIds" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "enchanting": {
+      "type": "object",
+      "required": ["enchantable", "enchantment_value", "compatible_enchantments"],
+      "properties": {
+        "enchantable": { "type": "boolean" },
+        "enchantment_value": { "type": "integer", "minimum": 0 },
+        "compatible_enchantments": { "$ref": "#/$defs/resourceIds" }
+      },
+      "additionalProperties": false
+    },
+    "attributeModifier": {
+      "type": "object",
+      "required": ["attribute", "id", "name", "amount", "operation", "operation_id"],
+      "properties": {
+        "attribute": { "$ref": "#/$defs/resourceId" },
+        "id": { "type": "string", "format": "uuid" },
+        "name": { "type": "string" },
+        "amount": { "type": "number" },
+        "operation": { "enum": ["addition", "multiply_base", "multiply_total"] },
+        "operation_id": { "type": "integer", "minimum": 0, "maximum": 2 }
+      },
+      "additionalProperties": false
+    },
+    "attributeSlot": {
+      "type": "object",
+      "required": ["slot", "modifiers"],
+      "properties": {
+        "slot": { "enum": ["mainhand", "offhand", "feet", "legs", "chest", "head"] },
+        "modifiers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/attributeModifier" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "combat": {
+      "type": "object",
+      "properties": {
+        "attack_damage": { "type": "number" },
+        "attack_speed": { "type": "number" },
+        "attack_damage_modifier": { "type": "number" },
+        "attack_speed_modifier": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "armor": {
+      "type": "object",
+      "required": ["type", "slot", "material", "defense", "toughness", "knockback_resistance", "enchantment_value", "repair_items"],
+      "properties": {
+        "type": { "type": "string" },
+        "slot": { "type": "string" },
+        "material": { "type": "string" },
+        "defense": { "type": "integer", "minimum": 0 },
+        "toughness": { "type": "number", "minimum": 0 },
+        "knockback_resistance": { "type": "number", "minimum": 0 },
+        "enchantment_value": { "type": "integer", "minimum": 0 },
+        "repair_items": { "$ref": "#/$defs/resourceIds" }
+      },
+      "additionalProperties": true
+    },
+    "foodEffect": {
+      "type": "object",
+      "required": ["probability", "duration_ticks", "amplifier", "ambient", "visible", "show_icon"],
+      "properties": {
+        "effect": { "$ref": "#/$defs/resourceId" },
+        "probability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "duration_ticks": { "type": "integer" },
+        "amplifier": { "type": "integer", "minimum": 0 },
+        "ambient": { "type": "boolean" },
+        "visible": { "type": "boolean" },
+        "show_icon": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "food": {
+      "type": "object",
+      "required": ["nutrition", "saturation_modifier", "meat", "always_edible", "fast_food", "effects"],
+      "properties": {
+        "nutrition": { "type": "integer", "minimum": 0 },
+        "saturation_modifier": { "type": "number", "minimum": 0 },
+        "meat": { "type": "boolean" },
+        "always_edible": { "type": "boolean" },
+        "fast_food": { "type": "boolean" },
+        "effects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/foodEffect" }
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": true

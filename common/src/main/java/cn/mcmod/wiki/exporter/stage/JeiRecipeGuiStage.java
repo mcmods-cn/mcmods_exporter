@@ -44,11 +44,14 @@ import java.util.Set;
 public final class JeiRecipeGuiStage implements ExportStage {
     public static final String ID = "jei_recipe_gui";
     private static final int PADDING = 4;
+    private static final int IMAGE_SCALE = 4;
 
     private final List<Entry> entries = new ArrayList<>();
     private final Set<String> renderedCategories = new HashSet<>();
+    private final Map<String, JsonArray> layoutsByCategory = new HashMap<>();
     private IJeiRuntime runtime;
     private int index;
+    private boolean layoutCollectionsWritten;
 
     @Override
     public String id() {
@@ -74,25 +77,40 @@ public final class JeiRecipeGuiStage implements ExportStage {
             List<?> recipes = runtime.getRecipeManager().createRecipeLookup(type).includeHidden().get().toList();
             int localIndex = 0;
             for (Object recipe : recipes) {
-                ResourceLocation vanillaId = recipe instanceof Recipe<?> vanillaRecipe ? vanillaRecipe.getId() : null;
-                if (!context.matches(type.getUid()) && (vanillaId == null || !context.matches(vanillaId))) {
+                ResourceLocation registeredId = registeredRecipeId(context, type, category, recipe);
+                if (!context.matches(type.getUid()) && (registeredId == null || !context.matches(registeredId))) {
                     continue;
                 }
-                Entry exportEntry = new Entry(type, category, recipe, localIndex++);
+                int recipeIndexInCategory = localIndex++;
+                boolean canonicalRecipeId = registeredId != null;
+                ResourceLocation recipeId = canonicalRecipeId
+                    ? registeredId
+                    : generatedRecipeId(type, recipeIndexInCategory);
+                String recipeIdSource = canonicalRecipeId
+                    ? recipeIdSource(recipe, registeredId)
+                    : "generated_index";
+                Entry exportEntry = new Entry(
+                    type,
+                    category,
+                    recipe,
+                    recipeIndexInCategory,
+                    recipeId,
+                    recipeIdSource,
+                    canonicalRecipeId
+                );
                 entries.add(exportEntry);
                 categoryCounts.merge(type.getUid().toString(), 1, Integer::sum);
-                ResourceLocation outputId = outputId(exportEntry);
                 JsonObject recipeJson = new JsonObject();
                 recipeJson.addProperty("recipe_type_id", type.getUid().toString());
-                if (vanillaId != null) {
-                    recipeJson.addProperty("recipe_id", vanillaId.toString());
-                }
-                recipeJson.addProperty("layout", relative(context, layoutPath(context, outputId)));
+                addRecipeIdentity(recipeJson, exportEntry);
+                recipeJson.addProperty("layout_collection", relative(context, layoutCollectionPath(context, type.getUid())));
+                recipeJson.addProperty("layout_key", layoutKey(exportEntry));
                 recipeJson.addProperty("background", relative(context, backgroundPath(context, type.getUid())));
                 recipeIndex.add(recipeJson);
             }
             String categoryId = type.getUid().toString();
             if (categoryCounts.containsKey(categoryId)) {
+                layoutsByCategory.putIfAbsent(categoryId, new JsonArray());
                 JsonObject categoryJson = new JsonObject();
                 categoryJson.addProperty("recipe_type_id", categoryId);
                 addLocalizedComponent(context, categoryJson, "title", category.getTitle());
@@ -100,14 +118,18 @@ public final class JeiRecipeGuiStage implements ExportStage {
                 categoryJson.addProperty("height", category.getHeight());
                 categoryJson.addProperty("recipe_count", categoryCounts.get(categoryId));
                 categoryJson.addProperty("background", relative(context, backgroundPath(context, type.getUid())));
+                categoryJson.addProperty("layout_collection", relative(context, layoutCollectionPath(context, type.getUid())));
                 categoryJson.addProperty("background_contains_ingredients", false);
-                categoryJson.addProperty("image_scale", 2);
+                categoryJson.addProperty("image_scale", IMAGE_SCALE);
                 categoryJson.add("canvas", rect(0, 0, category.getWidth() + PADDING * 2, category.getHeight() + PADDING * 2));
+                JsonArray catalysts = serializeRecipeCatalysts(context, type);
+                categoryJson.addProperty("catalyst_count", catalysts.size());
+                categoryJson.add("catalysts", catalysts);
                 categories.add(categoryJson);
             }
         }
         JsonObject indexJson = new JsonObject();
-        indexJson.addProperty("schema_version", "mcmods-jei-categories/v3");
+        indexJson.addProperty("schema_version", "mcmods-jei-categories/v4");
         indexJson.addProperty("category_count", categories.size());
         indexJson.addProperty("recipe_count", entries.size());
         indexJson.add("categories", categories);
@@ -117,7 +139,11 @@ public final class JeiRecipeGuiStage implements ExportStage {
 
     @Override
     public StageResult step(ExportContext context) {
-        if (runtime == null || index >= entries.size()) {
+        if (runtime == null) {
+            return StageResult.DONE;
+        }
+        if (index >= entries.size()) {
+            writeLayoutCollections(context);
             return StageResult.DONE;
         }
         Entry entry = entries.get(index++);
@@ -127,7 +153,11 @@ public final class JeiRecipeGuiStage implements ExportStage {
         } catch (Throwable throwable) {
             context.report().error(ID, entry.type.getUid() + "#" + entry.index, throwable);
         }
-        return index >= entries.size() ? StageResult.DONE : StageResult.MORE_WORK;
+        if (index >= entries.size()) {
+            writeLayoutCollections(context);
+            return StageResult.DONE;
+        }
+        return StageResult.MORE_WORK;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "removal"})
@@ -148,27 +178,27 @@ public final class JeiRecipeGuiStage implements ExportStage {
         int canvasWidth = contentWidth + PADDING * 2;
         int canvasHeight = contentHeight + PADDING * 2;
         layout.setPosition(PADDING, PADDING);
-        ResourceLocation recipeId = outputId(entry);
-
         JsonArray slots = serializeSlots(context, layout);
         renderCategoryBackground(context, entry, layout, canvasWidth, canvasHeight);
 
         JsonObject metadata = new JsonObject();
-        metadata.addProperty("schema_version", "mcmods-jei-layout/v3");
+        metadata.addProperty("schema_version", "mcmods-jei-layout/v4");
         metadata.addProperty("recipe_type_id", entry.type.getUid().toString());
-        if (entry.recipe instanceof Recipe<?> recipe) {
-            metadata.addProperty("recipe_id", recipe.getId().toString());
-        }
+        addRecipeIdentity(metadata, entry);
+        metadata.addProperty("layout_key", layoutKey(entry));
         metadata.addProperty("render_locale", context.minecraft().getLanguageManager().getSelected());
         metadata.addProperty("background", relative(context, backgroundPath(context, entry.type.getUid())));
         metadata.addProperty("background_contains_ingredients", false);
         metadata.addProperty("coordinate_space", "logical_pixels");
-        metadata.addProperty("image_scale", 2);
+        metadata.addProperty("image_scale", IMAGE_SCALE);
         metadata.add("canvas", rect(0, 0, canvasWidth, canvasHeight));
-        metadata.add("image_pixels", rect(0, 0, canvasWidth * 2, canvasHeight * 2));
+        metadata.add("image_pixels", rect(0, 0, canvasWidth * IMAGE_SCALE, canvasHeight * IMAGE_SCALE));
         metadata.add("content", rect(PADDING, PADDING, contentWidth, contentHeight));
+        JsonObject parameters = RecipeParameterExtractor.extract(entry.recipe);
+        metadata.addProperty("parameter_count", parameters.size());
+        metadata.add("parameters", parameters);
         metadata.add("slots", slots);
-        context.writeJson(relative(context, layoutPath(context, recipeId)), metadata);
+        layoutsByCategory.computeIfAbsent(entry.type.getUid().toString(), ignored -> new JsonArray()).add(metadata);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -191,8 +221,8 @@ public final class JeiRecipeGuiStage implements ExportStage {
             }
         }
         OffscreenRenderer.renderGui(
-            canvasWidth * 2,
-            canvasHeight * 2,
+            canvasWidth * IMAGE_SCALE,
+            canvasHeight * IMAGE_SCALE,
             canvasWidth,
             canvasHeight,
             backgroundPath(context, entry.type.getUid()),
@@ -213,7 +243,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
             slot.getSlotName().ifPresent(name -> json.addProperty("name", name));
 
             JsonArray alternatives = new JsonArray();
-            slot.getAllIngredients().forEach(ingredient -> alternatives.add(serializeIngredient(context, ingredient)));
+            slot.getAllIngredients().forEach(ingredient -> alternatives.add(serializeIngredient(ingredient)));
             json.addProperty("clickable", alternatives.size() > 0);
             json.add("alternatives", alternatives);
 
@@ -237,11 +267,35 @@ public final class JeiRecipeGuiStage implements ExportStage {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private JsonObject serializeIngredient(ExportContext context, ITypedIngredient<?> typedIngredient) {
-        return serializeTypedIngredient(context, (ITypedIngredient) typedIngredient);
+    private JsonObject serializeIngredient(ITypedIngredient<?> typedIngredient) {
+        return serializeTypedIngredient((ITypedIngredient) typedIngredient);
     }
 
-    private <T> JsonObject serializeTypedIngredient(ExportContext context, ITypedIngredient<T> typedIngredient) {
+    private JsonArray serializeRecipeCatalysts(ExportContext context, RecipeType<?> type) {
+        List<JsonObject> catalysts = new ArrayList<>();
+        try {
+            runtime.getRecipeManager()
+                .createRecipeCatalystLookup(type)
+                .includeHidden()
+                .get()
+                .forEach(ingredient -> {
+                    try {
+                        catalysts.add(serializeIngredient(ingredient));
+                    } catch (Throwable throwable) {
+                        context.report().error(
+                            ID,
+                            type.getUid() + ":catalyst",
+                            throwable
+                        );
+                    }
+                });
+        } catch (Throwable throwable) {
+            context.report().error(ID, type.getUid() + ":catalysts", throwable);
+        }
+        return JeiIngredientJson.stableUnique(catalysts);
+    }
+
+    private <T> JsonObject serializeTypedIngredient(ITypedIngredient<T> typedIngredient) {
         JsonObject json = new JsonObject();
         T ingredient = typedIngredient.getIngredient();
         IIngredientHelper<T> helper = runtime.getIngredientManager().getIngredientHelper(typedIngredient.getType());
@@ -264,8 +318,6 @@ public final class JeiRecipeGuiStage implements ExportStage {
         typedIngredient.getItemStack().ifPresent(stack -> {
             JsonObject stackJson = ExportContext.stackJson(stack);
             stackJson.entrySet().forEach(entry -> json.add(entry.getKey(), entry.getValue()));
-            json.addProperty("translation_key", stack.getDescriptionId());
-            json.add("names", context.componentNames(stack.getHoverName()));
         });
         return json;
     }
@@ -291,8 +343,8 @@ public final class JeiRecipeGuiStage implements ExportStage {
         return rect;
     }
 
-    private static Path layoutPath(ExportContext context, ResourceLocation id) {
-        return ExportPaths.idFile(context.root(), "recipes/jei/layouts", null, id, ".json");
+    private static Path layoutCollectionPath(ExportContext context, ResourceLocation categoryId) {
+        return ExportPaths.idFile(context.root(), "recipes/jei/layouts", null, categoryId, ".json");
     }
 
     private static Path backgroundPath(ExportContext context, ResourceLocation categoryId) {
@@ -303,16 +355,78 @@ public final class JeiRecipeGuiStage implements ExportStage {
         return context.root().relativize(path).toString().replace('\\', '/');
     }
 
-    private static ResourceLocation outputId(Entry entry) {
-        ResourceLocation categoryId = entry.type.getUid();
-        String name;
-        if (entry.recipe instanceof Recipe<?> vanillaRecipe) {
-            ResourceLocation recipeId = vanillaRecipe.getId();
-            name = recipeId.getNamespace() + "__" + recipeId.getPath();
-        } else {
-            name = String.format("recipe_%06d", entry.index);
+    private static String layoutKey(Entry entry) {
+        return entry.recipeId + "#" + String.format("%06d", entry.index);
+    }
+
+    private void writeLayoutCollections(ExportContext context) {
+        if (layoutCollectionsWritten) {
+            return;
         }
-        return new ResourceLocation(categoryId.getNamespace(), categoryId.getPath() + "/" + name);
+        layoutCollectionsWritten = true;
+        Map<String, Entry> categories = new HashMap<>();
+        for (Entry entry : entries) {
+            categories.putIfAbsent(entry.type.getUid().toString(), entry);
+        }
+        for (Map.Entry<String, JsonArray> collection : layoutsByCategory.entrySet()) {
+            Entry representative = categories.get(collection.getKey());
+            if (representative == null) {
+                continue;
+            }
+            JsonObject root = new JsonObject();
+            root.addProperty("schema_version", "mcmods-jei-layout-collection/v1");
+            root.addProperty("recipe_type_id", collection.getKey());
+            root.addProperty("count", collection.getValue().size());
+            root.add("layouts", collection.getValue());
+            try {
+                context.writeJson(relative(context, layoutCollectionPath(context, representative.type.getUid())), root);
+                context.report().addCount(ID, "layout_collection_files", 1);
+            } catch (Exception exception) {
+                context.report().error(ID, collection.getKey() + ":layout_collection", exception);
+            }
+        }
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static ResourceLocation registeredRecipeId(
+        ExportContext context,
+        RecipeType type,
+        IRecipeCategory category,
+        Object recipe
+    ) {
+        try {
+            ResourceLocation id = category.getRegistryName(recipe);
+            if (id != null) {
+                return id;
+            }
+        } catch (Throwable throwable) {
+            context.report().error(ID, type.getUid() + ":recipe_id", throwable);
+        }
+        if (recipe instanceof Recipe<?> vanillaRecipe) {
+            return vanillaRecipe.getId();
+        }
+        return null;
+    }
+
+    private static String recipeIdSource(Object recipe, ResourceLocation registeredId) {
+        if (recipe instanceof Recipe<?> vanillaRecipe && vanillaRecipe.getId().equals(registeredId)) {
+            return "minecraft_recipe";
+        }
+        return "jei_category";
+    }
+
+    private static ResourceLocation generatedRecipeId(RecipeType<?> type, int index) {
+        ResourceLocation categoryId = type.getUid();
+        return new ResourceLocation(
+            categoryId.getNamespace(),
+            categoryId.getPath() + "/__generated/" + String.format("recipe_%06d", index)
+        );
+    }
+
+    private static void addRecipeIdentity(JsonObject target, Entry entry) {
+        target.addProperty("recipe_id", entry.recipeId.toString());
+        target.addProperty("recipe_id_source", entry.recipeIdSource);
+        target.addProperty("recipe_id_canonical", entry.canonicalRecipeId);
     }
 
     @Override
@@ -321,6 +435,14 @@ public final class JeiRecipeGuiStage implements ExportStage {
     }
 
     @SuppressWarnings("rawtypes")
-    private record Entry(RecipeType type, IRecipeCategory category, Object recipe, int index) {
+    private record Entry(
+        RecipeType type,
+        IRecipeCategory category,
+        Object recipe,
+        int index,
+        ResourceLocation recipeId,
+        String recipeIdSource,
+        boolean canonicalRecipeId
+    ) {
     }
 }

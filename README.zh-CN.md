@@ -2,28 +2,31 @@
 
 这是一个为百科网站批量建档准备数据的客户端 Mod。它在游戏内把运行时对象整理为稳定、精简的数据结构，并把当前生效资源和真实客户端渲染结果打包成 ZIP，避免上传后再反编译 Mod、猜测资源覆盖关系或重复做格式转换。
 
-当前首发目标：Minecraft 1.20.1、Java 17、Fabric 与 Forge。Fabric 需要 Fabric API，两端都需要 Architectury API。JEI 是可选依赖；安装后会额外导出 JEI 注册的真实配方类别布局。
+当前首发目标：Minecraft 1.20.1、Java 17、Fabric 与 Forge。Fabric 需要 Fabric API，两端都需要 Architectury API 和 JEI 15.20+。JEI 是强制客户端依赖，用于导出真实配方类别布局、非物品 Ingredient 和类别级 Recipe Catalyst。
 
 ## 已实现的内容
 
 | 类别 | 输出 |
 | --- | --- |
-| 物品、方块 | 注册 ID、网页需要的属性、多语言名称，以及 32/128/256 PNG |
-| 方块模型贴图 | 生效资源包中的 blockstate、全部模型与贴图原文件，保留命名空间和路径 |
-| 进度/成就网 | 从单人服务器完整列表（远程服回退客户端同步列表）导出根节点、父子关系、显示坐标、条件、要求组、图标，并按每种已发现语言输出标题和描述 |
+| 物品、工具、装备、方块 | 注册 ID、多语言名称、堆叠/耐久/类型/等级/速度/攻击/装备/食物/附魔兼容属性、方块硬度/抗爆/挖掘要求，以及 32/128/256 PNG |
+| 方块模型贴图 | 从注册物品/方块出发递归导出生效 blockstate、父/子模型、composite、OBJ/MTL 和实际引用贴图；不复制未引用整目录 |
+| 进度/成就网 | 从单人服务器完整列表（远程服回退客户端同步列表）导出根节点、父子关系、显示坐标、条件、要求组、奖励、图标，并按每种已发现语言输出标题和描述 |
 | 标签 | 每个运行时注册表的 tag ID 及游戏已经解析完成的最终成员列表 |
-| 药水 | 药水类型、效果、时长、等级、颜色和四种载体的 32/128/256 PNG |
-| 流体与类似介质 | 原版/模组流体注册信息；通过 JEI 通用 Ingredient API 导出流体，以及 Mekanism 气体、灌注类型、颜料、浆液等第三方介质的 ID、数量、Tag、多语言名称和 32/128/256 PNG |
+| 状态效果 | 效果 ID、分类、颜色、即时/有益属性、多语言名称，以及效果自身的 32/128/256 透明 PNG；不导出药水瓶和药箭 |
+| 流体与化学品 | 流体本体 ID、名称和实际流体贴图；Mekanism 气体、灌注类型、颜料、浆液分别分类，输出数量、Tag、多语言名称和 32/128/256 PNG |
 | 配方 | 游戏已解析后的规范化输入候选、输出、类型和可用的序列化器 ID |
-| 配方 GUI | 每个 JEI 合成方式（RecipeType ID）只导出一张无物品 GUI 背景；每条配方只导出输入/输出/催化剂/仅展示槽位的坐标、数量与候选材料 JSON，由网页叠加物品图标 |
-| 生物实体 | 注册信息、透明背景且使用斜视角的真实渲染器 32/128/256 PNG、静态 idle 基础模型 OBJ、UV、法线、纹理引用 |
+| 配方 GUI | 每个 JEI 合成方式只导出一张无物品背景和一个布局集合；集合含可点击槽位、候选材料、Catalyst 与可公开取得的能量/时间/温度等参数 |
+| 生物实体 | 注册信息、默认属性/掉落/刷怪蛋/繁殖材料、群系刷怪规则、透明斜视角 32/128/256 PNG、静态 idle OBJ、UV、法线、纹理引用 |
 | 附魔 | 类型、稀有度、等级、类别、宝藏/诅咒/交易/发现属性和多语言名称 |
-| 热键 | 翻译键、类别、默认绑定、当前绑定、是否解绑和多语言名称 |
+| 热键 | 只保留目标 Mod 的翻译键、类别、默认绑定、当前绑定、是否解绑和多语言名称 |
+| 标签页、机器与交易 | 创造模式标签页成员、方块—方块实体—菜单标题关系、MenuType ID、村民/流浪商人交易的明确标记运行时样本 |
+| 世界生成数据 | Mod 新增的维度、维度类型、生物群系、配置/放置地物、结构、结构集、模板池、处理器、噪声，以及 Forge/NeoForge 生物群系与结构 Modifier 等动态注册表和生效数据定义 |
+| 结构与战利品表 | 结构定义、原始 `.nbt` 模板及箱子战利品引用；按方块、宝箱、生物、钓鱼等分类的战利品表、谓词、物品修饰器、递归依赖和静态候选产物 |
 | Mod 元数据 | Mod ID、版本、作者、许可证、主页、源码和问题链接 |
 
 ## 安装和手动导出
 
-1. 安装与 Minecraft 1.20.1 对应的导出器、Architectury API；Fabric 还需 Fabric API。
+1. 安装与 Minecraft 1.20.1 对应的导出器、JEI 15.20+、Architectury API；Fabric 还需 Fabric API。
 2. 把需要采集的 Mod、资源包、数据包和 i18n 自动汉化更新 Mod 正常装入客户端。
 3. 进入一个单人世界或服务器，等待配方、进度与标签同步完成。
 4. 执行命令：
@@ -49,6 +52,7 @@
 -Dmcmods.export.output=mcmods-export
 -Dmcmods.export.languages=zh_cn,en_us,ja_jp
 -Dmcmods.export.profile=all
+-Dmcmods.export.modules=all
 -Dmcmods.export.sizes=32,128,256
 -Dmcmods.export.tickBudgetMs=12
 -Dmcmods.export.exit=true
@@ -61,6 +65,7 @@
 - `output`：相对路径以游戏目录为基准，也可用绝对路径。
 - `languages`：额外要求输出的语言；导出器还会自动发现目标 Mod 当前资源栈内的全部 `lang/*.json`，`en_us` 总会作为回退语言加入。
 - `profile`：`data`、`images` 或 `all`。
+- `modules`：逗号分隔的模块 ID；留空或 `all` 表示启用当前 profile 允许的全部模块。可选值为 `compatibility`、`registries`、`associations`、`trades`、`tags`、`recipes`、`advancements`、`worldgen`、`resources`、`entity_models`、`item_icons`、`block_icons`、`effect_icons`、`jei`、`entity_renders`。语言模块始终启用，保证名称引用可解析。
 - `sizes`：会保留用户增加的尺寸，同时始终包含需求规定的 32、128、256。
 - `tickBudgetMs`：每个客户端 tick 的软时间预算，范围 1–100 ms。
 - `exit`：仅自动模式生效，ZIP 成功生成后关闭客户端；打包失败时保留客户端与暂存目录，便于排查。
@@ -100,13 +105,30 @@ tags/tags.json
 ingredients/ingredients.json
 ingredients/<ingredient type>/<size>/<namespace>/<id>--<hash>.png
 recipes/recipes.json
-recipes/jei/layouts/<category namespace>/<category>/<recipe>.json
+recipes/jei/layouts/<category namespace>/<category>.json
 recipes/jei/backgrounds/<category namespace>/<category>.png
 advancements/advancements.json
 advancements/localized/<locale>.json
+worldgen/registries.json
+worldgen/dimensions.json
+worldgen/biomes.json
+worldgen/entity_spawns.json
+worldgen/natural_generation.json
+worldgen/structures.json
+worldgen/loot_tables.json
+worldgen/data_files.json
+data/<namespace>/dimension/...
+data/<namespace>/dimension_type/...
+data/<namespace>/worldgen/...
+data/<namespace>/loot_tables/...
+data/<namespace>/predicates/...
+data/<namespace>/item_modifiers/...
+data/<namespace>/forge|neoforge/biome_modifier/...
+data/<namespace>/forge|neoforge/structure_modifier/...
+data/<namespace>/structures/<id>.nbt
 icons/items/<size>/<namespace>/<id>.png
 icons/blocks/<size>/<namespace>/<id>.png
-potions/<form>/<size>/<namespace>/<id>.png
+icons/mob_effects/<size>/<namespace>/<id>.png
 entities/renders/<size>/<namespace>/<id>.png
 entities/models/<namespace>/<id>.obj
 entities/models/<namespace>/<id>.json
@@ -114,6 +136,7 @@ assets/<namespace>/blockstates/...
 assets/<namespace>/models/...
 assets/<namespace>/textures/...
 resources/index.json
+compatibility/capabilities.json
 ```
 
 所有 JSON 使用 UTF-8、稳定字段名和显式 `schema_version`。核心 Schema 位于 `schema/`，完整语义见 [docs/export-format-v1.md](docs/export-format-v1.md)。`manifest.json` 记录各阶段计数和逐对象错误；某个第三方对象渲染失败不会中止整个导出。
@@ -129,12 +152,15 @@ OBJ 是实体在 idle 姿态下的基础 `EntityModel` 静态快照，含顶点�
 
 ## 配方 GUI 策略
 
-安装 JEI 后，`jei_recipe_gui` 阶段通过 JEI 公共 API 获取全部 RecipeType、隐藏配方和类别 drawable。这里严格区分两个 ID：
+`jei_recipe_gui` 阶段通过强制依赖的 JEI 公共 API 获取全部 RecipeType、隐藏配方和类别 drawable。这里严格区分两个 ID：
 
 - `recipe_type_id`：合成方式/类别 ID，例如某台机器的合成类别；它唯一对应 `recipes/jei/backgrounds/...png`；
-- `recipe_id`：某一条具体配方 ID；它只对应 `recipes/jei/layouts/...json`。
+- `recipe_id`：某一条具体配方 ID；优先读取 JEI 类别注册名，其次读取原版 Recipe ID，仍不存在时生成本次导出内唯一 ID，因此每个布局都有该字段；
+- `recipe_id_source` 和 `recipe_id_canonical`：区分原版 ID、JEI 类别权威 ID和只适合本次包内关联的合成 ID。
 
-类别背景取该 RecipeType 的第一条可导出配方创建 JEI layout，再给全部槽位设置空显示覆盖后渲染。因此背景保留空槽位、机器 GUI、箭头、能量条等类别视觉，但不包含任何输入或输出物品。`layout.json` 保存每条配方的 `rect`、`visual_rect`、角色、数量、Tag 与全部轮换候选材料。网页显示同一个类别背景，再按坐标叠加 `icons/items`、`icons/blocks` 或其他 Ingredient 图标。
+`recipes/jei/categories.json` 会按 `recipe_type_id` 导出 JEI 正式注册的 `catalysts`，即使用该类别的工作台、熔炉或模组机器方块；一个类别可以对应多个机器。没有注册 Catalyst 时输出空数组，不根据标题或背景猜测。
+
+类别背景取该 RecipeType 的第一条可导出配方创建 JEI layout，再给全部槽位设置空显示覆盖后渲染。因此背景保留空槽位、机器 GUI、箭头、能量条等类别视觉，但不包含任何输入或输出物品。每个 `recipe_type_id` 只有一个布局集合 JSON；其中 `layouts[]` 保存各配方的 `layout_key`、`rect`、`visual_rect`、角色、数量、Tag、预处理机器参数与全部轮换候选材料。布局不重复写入每个物品的完整多语言名称，网站通过注册表和 Ingredient 目录按 ID 解析名称与图标。网页显示同一个类别背景，再按坐标叠加 `icons/items`、`icons/blocks` 或其他 Ingredient 图标。
 
 ## 构建
 
@@ -145,8 +171,8 @@ $env:JAVA_HOME='C:\path\to\jdk-17'
 
 产物：
 
-- `fabric/build/libs/mcmods_exporter-0.5.0.jar`
-- `forge/build/libs/mcmods_exporter-0.5.0.jar`
+- `fabric/build/libs/mcmods_exporter-0.7.0.jar`
+- `forge/build/libs/mcmods_exporter-0.7.0.jar`
 
 ## 后续版本适配
 
@@ -155,6 +181,7 @@ $env:JAVA_HOME='C:\path\to\jdk-17'
 - `render/OffscreenRenderer.java`：RenderTarget、GuiGraphics、投影矩阵；
 - `stage/JeiRecipeGuiStage.java`：JEI 类别空白背景与配方槽位 API；
 - `stage/RecipeDataStage.java`、`AdvancementStage.java`：新版 RecipeHolder/AdvancementHolder；
+- `stage/WorldgenDataStage.java`：动态注册表、服务端数据资源栈和结构 NBT API；
 - `stage/RegistryDataStage.java`：数据驱动附魔和新版组件系统；
 - Fabric/Forge 子模块的事件和元数据。
 

@@ -17,6 +17,7 @@ public final class ExportConfig {
     private final Set<String> namespaces;
     private final List<String> languages;
     private final List<Integer> imageSizes;
+    private final Set<String> modules;
     private final ExportProfile profile;
     private final boolean automatic;
     private final boolean exitAfterExport;
@@ -27,6 +28,7 @@ public final class ExportConfig {
         Set<String> namespaces,
         List<String> languages,
         List<Integer> imageSizes,
+        Set<String> modules,
         ExportProfile profile,
         boolean automatic,
         boolean exitAfterExport,
@@ -36,6 +38,7 @@ public final class ExportConfig {
         this.namespaces = Collections.unmodifiableSet(namespaces);
         this.languages = Collections.unmodifiableList(languages);
         this.imageSizes = Collections.unmodifiableList(imageSizes);
+        this.modules = Collections.unmodifiableSet(modules);
         this.profile = profile;
         this.automatic = automatic;
         this.exitAfterExport = exitAfterExport;
@@ -58,13 +61,14 @@ public final class ExportConfig {
         );
         List<String> languages = parseLanguages(System.getProperty("mcmods.export.languages", "zh_cn,en_us"));
         List<Integer> sizes = parseSizes(System.getProperty("mcmods.export.sizes", "32,128,256"));
+        Set<String> modules = parseModules(System.getProperty("mcmods.export.modules", "all"));
         ExportProfile profile = profileOverride == null
             ? ExportProfile.parse(System.getProperty("mcmods.export.profile", "all"))
             : profileOverride;
         boolean exit = automatic && Boolean.parseBoolean(System.getProperty("mcmods.export.exit", "false"));
         long budgetMs = parseLong(System.getProperty("mcmods.export.tickBudgetMs", "12"), 12L, 1L, 100L);
 
-        return new ExportConfig(output.normalize(), namespaces, languages, sizes, profile, automatic, exit, budgetMs * 1_000_000L);
+        return new ExportConfig(output.normalize(), namespaces, languages, sizes, modules, profile, automatic, exit, budgetMs * 1_000_000L);
     }
 
     private static Set<String> parseNamespaces(String value) {
@@ -114,6 +118,20 @@ public final class ExportConfig {
         return sorted;
     }
 
+    private static Set<String> parseModules(String value) {
+        LinkedHashSet<String> result = new LinkedHashSet<>();
+        if (value == null || value.isBlank() || value.trim().equals("*") || value.trim().equalsIgnoreCase("all")) {
+            return result;
+        }
+        for (String part : value.split(",")) {
+            String module = part.trim().toLowerCase(Locale.ROOT).replace('-', '_');
+            if (module.matches("[a-z0-9_]+")) {
+                result.add(module);
+            }
+        }
+        return result;
+    }
+
     private static long parseLong(String value, long fallback, long minimum, long maximum) {
         try {
             return Math.max(minimum, Math.min(maximum, Long.parseLong(value)));
@@ -140,6 +158,15 @@ public final class ExportConfig {
 
     public List<Integer> imageSizes() {
         return imageSizes;
+    }
+
+    /** Empty means every module allowed by the selected profile. */
+    public Set<String> modules() {
+        return modules;
+    }
+
+    public boolean moduleEnabled(String id) {
+        return modules.isEmpty() || modules.contains(id);
     }
 
     public ExportProfile profile() {

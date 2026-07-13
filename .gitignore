@@ -4,5 +4,6 @@ build/
 **/build/
 run/
 **/run/
+**/logs/
 *.iml
 .idea/

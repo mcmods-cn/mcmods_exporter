@@ -15,6 +15,7 @@ public final class ExportReport {
     private final Instant startedAt = Instant.now();
     private final JsonArray errors = new JsonArray();
     private final Map<String, StageInfo> stages = new LinkedHashMap<>();
+    private List<String> selectedModules = List.of();
     private String status = "running";
     private Instant finishedAt;
 
@@ -38,6 +39,10 @@ public final class ExportReport {
     public void addCount(String stageId, String key, long amount) {
         StageInfo stage = stages.computeIfAbsent(stageId, ignored -> new StageInfo());
         stage.counts.merge(key, amount, Long::sum);
+    }
+
+    public void modulesSelected(List<String> modules) {
+        selectedModules = List.copyOf(modules);
     }
 
     public void error(String stageId, String subject, Throwable throwable) {
@@ -83,6 +88,9 @@ public final class ExportReport {
         configuration.add("image_sizes", sizes);
         configuration.addProperty("profile", config.profile().name().toLowerCase());
         configuration.addProperty("automatic", config.automatic());
+        JsonArray modules = new JsonArray();
+        selectedModules.forEach(modules::add);
+        configuration.add("modules", modules);
         root.add("configuration", configuration);
 
         JsonArray stageArray = new JsonArray();

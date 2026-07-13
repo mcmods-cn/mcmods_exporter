@@ -18,6 +18,7 @@ class ExportConfigTest {
         "mcmods.export.languages",
         "mcmods.export.profile",
         "mcmods.export.sizes",
+        "mcmods.export.modules",
         "mcmods.export.tickBudgetMs",
         "mcmods.export.exit"
     );
@@ -59,5 +60,16 @@ class ExportConfigTest {
 
         assertEquals(gameDirectory.resolve("exports/wiki").normalize(), config.outputRoot());
         assertFalse(config.exitAfterExport());
+    }
+
+    @Test
+    void parsesOptionalModuleSelection(@TempDir Path gameDirectory) {
+        System.setProperty("mcmods.export.modules", "registries, tags, item-icons");
+
+        ExportConfig config = ExportConfig.fromSystemProperties(gameDirectory, false, "examplemod", ExportProfile.ALL);
+
+        assertEquals(List.of("registries", "tags", "item_icons"), List.copyOf(config.modules()));
+        assertTrue(config.moduleEnabled("registries"));
+        assertFalse(config.moduleEnabled("worldgen"));
     }
 }

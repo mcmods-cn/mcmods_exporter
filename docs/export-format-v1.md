@@ -7,45 +7,113 @@
 - 所有注册对象使用完整的 `namespace:path`。
 - JSON 内始终使用 `/`；磁盘路径保留 ID 的子目录结构。
 - PNG 路径由类别、尺寸、命名空间和 ID 路径直接组成，不需要转义冒号。
-- 只保留网页直接使用的生效客户端资源：`assets/<namespace>/blockstates`、`models` 与 `textures`。配方、进度、Tag 和语言只保留已经解析、合并、规范化后的 JSON，不重复保存原始 data/lang 文件。
+- 客户端资源只保留网页直接使用的生效 blockstate、模型与贴图。配方、进度、Tag 和语言只保留已经解析、合并、规范化后的 JSON；世界生成、战利品表和结构数据则同时保留规范化索引与生效原始 JSON/NBT，因为它们本身就是网站需要发布和下载的数据。
 
 ## 多语言
 
-`translation_key` 是稳定键，`names` 是目标 Mod 当前资源栈内全部已发现语言的解析快照。启动参数指定的语言与自动发现语言取并集；缺少某翻译键时不写空字符串。`translations/languages.json` 是本次实际语言索引，网站可用 `translations/<locale>.json` 补全其他组件中的翻译键。
+`translation_key` 是稳定键，`names` 是目标 Mod 当前资源栈内全部已发现语言的解析快照。启动参数指定的语言与自动发现语言取并集；缺少某翻译键时不写空字符串。`translations/languages.json` 是本次实际语言索引，网站可用 `translations/<locale>.json` 补全其他组件中的翻译键。物品的默认普通提示文本已经按语言写入 `registries/items.json` 的 `tooltips.<locale>[]`，网站不应再次启动 Minecraft 生成 Tooltip。
 
 进度/成就除 `advancements.json` 内的 `title_names`、`description_names` 外，还按语言拆分为 `advancements/localized/<locale>.json`，方便网站直接按 locale 导入。
+
+## 物品、工具与方块属性
+
+`registries/items.json` 中的属性来自物品默认 `ItemStack`，已经规范化，网站不应再根据 Java 类名猜测类型：
+
+- 基础字段：`max_stack_size`、`max_damage`、`rarity`、`edible`、`fire_resistant`、`use_animation`、`use_duration_ticks`、`crafting_remainder`；
+- `durability`：是否可损坏以及最大耐久；
+- `item_types` 与 `primary_type`：剑、弓、弩、镐、斧、锹、锄、剪刀、三叉戟、钓鱼竿、盾牌、盔甲、鞘翅、方块物品、食物等规范类型。除原版基类外，也会从 Forge/NeoForge/Fabric 通用工具 Tag 补充模组工具类型；
+- `tool`：工具种类、等级 ID（能确定时）、数值挖掘等级、耐久、挖掘速度、攻击加成、附魔能力和已经展开的修复材料；
+- `enchanting`：默认物品能否附魔、附魔能力值，以及逐个调用生效附魔判定得到的 `compatible_enchantments`；
+- `attribute_modifiers`：按装备槽输出全部属性、UUID、数值与运算类型。`combat.attack_damage` 和 `combat.attack_speed` 是把主手修饰器应用到默认玩家基础值后得到的网页展示值，同时保留不含玩家基础值的 `*_modifier`；
+- `armor`：部位、材料、防御、韧性、击退抗性、附魔能力和修复材料；
+- `food`：营养值、饱和度修饰值、肉类/始终可食用/快速食用标记，以及带概率的状态效果；
+- `item_tags`：保留运行时最终 Tag，供网站展示自定义类别和无法标准化的模组能力。
+
+`registries/blocks.json` 额外包含 `hardness`、`explosion_resistance`、摩擦/速度/跳跃系数、亮度、活塞反应、战利品表和默认状态的物理标记。挖掘要求同时输出：
+
+- `requires_correct_tool`：是否需要正确工具才能掉落；
+- `preferred_tools` 与 `mining_tags`：由 `mineable/*` 等运行时 Tag 规范化出的工具类别和原始依据；
+- `required_tier`、`required_mining_level` 与 `tier_tags`：原版等级会输出稳定数字；第三方自定义等级无法可靠映射数字时，只输出等级名和原始 Tag，禁止网站自行猜测；
+- `block_tags`：该方块默认状态的全部最终 Tag。
+
+硬度 `-1` 表示不可破坏。工具攻击字段、`combat` 字段和装备属性修饰器含义不同，导入端必须分别保存，不能叠加后覆盖原始值。
+
+`registries/creative_tabs.json` 保存目标 Mod 自建标签页，以及被加入原版/其他 Mod 标签页的目标物品；外部标签页只保留目标物品，避免把整个原版创造物品栏重复导出。`block_entity_types.json` 与 `machines.json` 已将方块、方块实体类型、菜单标题整理为可入库关系。独立 `menu_types.json` 只表示注册 ID，因为 Minecraft 没有稳定公开“MenuType 属于哪个方块”的关系；机器与合成方式应使用 `machines.json` 和 JEI `catalysts` 关联，禁止按 Java 类名猜测。
 
 ## 配方
 
 `ingredients` 中每个元素是一格输入；`alternatives` 是 tag 或复合 Ingredient 展开后的可选 ItemStack。`nbt_snbt` 仅在存在 NBT 时出现。导出器在游戏中完成展开和清洗，网站不应再依赖原始配方 JSON。
 
-JEI GUI 尺寸由类别决定，按逻辑尺寸 2 倍输出，并在 `recipes/jei/categories.json` 记录逻辑宽高。未安装 JEI 时不生成猜测式或烘焙物品的 GUI 图片。
+JEI GUI 尺寸由类别决定，默认按逻辑尺寸 4 倍输出，以减少网站放大显示时的模糊；`recipes/jei/categories.json` 同时记录逻辑宽高和 `image_scale`。JEI 是强制客户端依赖；若某个低版本 JEI 缺少布局 API，只将对应能力标记为不可用，不生成猜测式或烘焙物品的 GUI 图片。
 
 JEI 使用“合成方式背景”和“具体配方数据”分离的结构：
 
 - `recipe_type_id` 是合成方式 ID，每个 ID 只对应一张 `recipes/jei/backgrounds/...png`；背景中的 JEI 槽位为空，不烘焙物品；
-- `recipe_id` 是具体配方 ID，每条配方对应一个 `recipes/jei/layouts/...json`；
+- `recipe_id` 是具体配方 ID；布局不再每条配方生成一个小文件，而是按 `recipe_type_id` 聚合到一个 `recipes/jei/layouts/<namespace>/<type>.json`；
+- `recipe_id_source` 说明 ID 来源：`minecraft_recipe` 是原版 `Recipe` ID，`jei_category` 是 JEI 类别通过 `getRegistryName` 提供的权威 ID，`generated_index` 表示第三方类别没有注册 ID；
+- 每个布局都保证存在 `recipe_id`。只有 `recipe_id_canonical=true` 时才能把它当作跨次导出稳定主键；`generated_index` 只用于本次导出内关联，网站应另用布局内容指纹做去重；
 - `canvas`、`content` 和所有槽位矩形使用 `logical_pixels`；PNG 的实际像素倍率由 `image_scale` 指定；
 - `slots[].role` 是 `input`、`output`、`catalyst` 或 `render_only`；
 - `rect` 是可点击材料区域，`visual_rect` 包含槽位自定义背景；
 - `alternatives` 包含轮换展示的所有 JEI Ingredient，而不只是截图瞬间显示的一个物品；
 - `background_contains_ingredients=false` 可供导入端校验背景没有烘焙物品。
+- `layout_collection` 指向类别布局集合，`layout_key` 在集合内唯一定位一条配方；集合根为 `mcmods-jei-layout-collection/v1`，内部 `layouts[]` 为 `mcmods-jei-layout/v4`；
+- `parameters` 是在严格白名单内从配方对象预处理出的能量、时间、温度、压力、几率等标量。没有公开参数时是空对象，网站不得从标题或类名推断。
+- 物品候选只保存配方自身需要的稳定身份、数量和 NBT，不重复嵌入完整翻译表；导入端应通过注册表或 `ingredients/ingredients.json` 解析名称和图标。
+
+导入端应在写入版本时一次计算语义指纹、精简布局、输入/输出/催化剂关联、槽位 Tag 和版本统计快照。跨模组物品来源会随其他模组的活跃版本变化，不应固化在导出包中，应由网站批量解析并缓存。
+
+`recipes/jei/categories.json` 中每个类别还包含类别级 `catalysts`。它来自 JEI 为该 `RecipeType` 正式注册的 Recipe Catalyst，表示可打开、执行或关联这个合成方式的工作站，例如工作台、熔炉或模组机器方块。每项使用与配方槽相同的规范 Ingredient 结构，包含 `type`、`resource_location`、`unique_id`，物品型 Catalyst 还包含 `item`、NBT、多语言名称和数量。`catalyst_count` 是去重后的数量；同一合成方式可以对应多个机器。
+
+类别级 `catalysts` 与布局中的 `slots[].role=catalyst` 含义不同：前者是整个 `recipe_type_id` 的工作站，后者只是某条配方画布中的催化剂材料槽。若第三方模组没有向 JEI 注册 Recipe Catalyst，则类别输出空数组，导出器不会根据类别名称或背景猜测机器。
 
 网站把类别背景的 CSS 尺寸设为 `canvas.width × canvas.height`，再按 `slots[].rect` 叠加物品或其他 Ingredient 图片与数量文字。多个具体配方共享同一个 `recipe_type_id` 背景，仅叠加数据不同。
 
 ## 流体与非物品 Ingredient
 
-`registries/fluids.json` 保存 Minecraft 流体注册表中已经注册的流体、源状态、默认量和可用的桶物品。`ingredients/ingredients.json` 则使用 JEI 的通用 Ingredient API 枚举全部非物品类型，不绑定某个加载器或某个工业 Mod 的 Java 类。因此只要模组向 JEI 注册了介质类型，就可以统一覆盖 Forge/Fabric 流体及 Mekanism 的气体、灌注类型、颜料、浆液等内容。
+`registries/fluids.json` 只保存 Minecraft 流体注册表中的源流体，不再把流动变体当成独立流体类型。名称优先使用 `fluid.<namespace>.<path>`，只把桶 ID 当作可选关联字段，绝不再用“某某桶”作为流体显示名。
 
-每条介质记录已经规范化为 `ingredient_type`、`resource_location`、用于配方判等的 `unique_id`、可选 `amount`、`tags`、多语言 `names` 和透明 PNG `icons`。图标文件名附带 `unique_id` 的短哈希，以避免同一注册 ID 的不同组件或 NBT 状态互相覆盖。未安装 JEI 时仍会导出流体注册表和原始生效贴图，但不会猜测第三方介质的私有注册系统。
+`ingredients/ingredients.json` 使用 JEI 的流体 Ingredient renderer 输出流体本身的纹理，不渲染桶。类型和条目都带 `ingredient_kind=fluid`，网站应以 `resource_location` 和 `registries/fluids.json` 关联，并直接使用其多语言 `names` 与 32/128/256 透明 `icons`。图标文件名附带 `unique_id` 的短哈希，以免同一流体的不同组件状态互相覆盖。
+
+Mekanism 1.20.1 的四套 ChemicalStack 全部保留，但必须分开入库：`mekanism_gas`、`mekanism_infuse_type`、`mekanism_pigment`、`mekanism_slurry`。类型和条目同时输出 `chemical_family=mekanism`，以及 `chemical_type=gas/infuse_type/pigment/slurry`。网站不得把四类合并成一个无类型的“化学品”列表，也不需要根据 Java 类名猜测。
+
+## 状态效果
+
+导出器只把 `MobEffect` 作为百科状态效果导出到 `registries/mob_effects.json`，包含 ID、多语言名称、类别、颜色、是否即时生效和是否有益。效果自身在客户端效果纹理图集中的 Sprite 会输出为 `icons/mob_effects/<size>/<namespace>/<id>.png`，尺寸为 32、128、256 或用户额外配置的尺寸，背景保留透明 Alpha。
+
+不再导出 `registries/potions.json`，也不生成普通药水、喷溅药水、滞留药水或药箭的瓶体渲染图。它们如果作为某条配方的真实输入或输出，仍会按普通物品出现在该配方布局中。
 
 ## 实体
 
 三个 PNG 目录分别是 32×32、128×128、256×256。物品和实体 PNG 保留 Alpha 透明通道；实体采用水平和垂直均有偏角的斜视角，以显示体积。OBJ 的一个 `f` 对应 Minecraft ModelPart 的一个四边形；顶点、UV、法线索引一一对应。实体 JSON 的 `base_model_only` 用于提醒导入端不要把它标记成带骨骼动画的完整模型。
 
+`registries/entity_types.json` 还包含默认实体实例可稳定取得的眼高、空气值、生物分类、最大生命、护甲、MobType、默认属性、默认装备、战利品表、刷怪蛋和繁殖材料。无法在当前世界创建实体时 `runtime_properties_available=false`，字段缺失表示未知而不是 0。`worldgen/entity_spawns.json` 以群系为单位输出刷怪权重和数量；当目标实体被注入原版群系时，会只带上该目标实体的外部群系行，不会复制原版群系的全部无关生物。
+
+`registries/mob_effects.json` 的 `effect_attribute_modifiers` 已包含效果对属性的运算类型及 0/1 级数值。`registries/villager_trades.json` 是代码注册交易的确定性运行时样本：原始 `ItemListing` 不公开随机范围，因此 `complete=false`，网站可展示样本但不得把它当成全部随机结果。
+
+## 维度、自然生成、结构与战利品表
+
+`worldgen/registries.json` 是运行时动态注册表快照，覆盖 `dimension`、`dimension_type` 与全部 `worldgen/*` 注册表。网站常用的数据已经按用途拆分：
+
+- `dimensions.json`：维度和维度类型，维度带多语言名称；
+- `biomes.json`：生物群系定义与多语言名称；
+- `entity_spawns.json`：目标群系完整刷怪表，以及外部群系中与目标实体有关的刷怪行；
+- `natural_generation.json`：配置/放置地物、结构集、模板池、处理器列表、噪声、密度函数、世界预设，以及 Forge/NeoForge 的生物群系与结构 Modifier 等按注册表类别整理的数据；
+- `structures.json`：结构注册定义和同 ID 的结构模板摘要；原始压缩模板位于 `data/<namespace>/structures/*.nbt`；
+- `loot_tables.json`：完整战利品表、谓词与物品修饰器定义；每张表带 `category=block/chest/entity/fishing/...`，其中原版 `gameplay/fishing/**` 会规范化为 `fishing`，根节点包含 `counts_by_category`。`possible_item_ids`/`possible_item_tags` 已递归合并嵌套表的静态候选产物，但条件、动态表与函数可能改变结果，因此固定标记 `possible_items_complete=false`；
+- `data_files.json`：全部原始服务端数据文件的逻辑 ID、ZIP 路径、类型和大小。
+
+单人世界使用集成服务器的当前生效资源栈，因此数据包覆盖也会反映在导出结果中。连接远程服务器时，Minecraft 不会把完整服务端数据包下发给客户端，导出器只能回退扫描已安装 Mod 自带的 `data/`；此时 `data_files.json` 的 `resource_source=installed_mod_fallback` 且 `remote_server_data_complete=false`，网站不得把它误认为远程服务器完整数据快照。
+
+单人世界中的标准动态注册对象还会通过 Minecraft 自身 Codec 重新编码为 `runtime_definition`。它反映注册完成后的实际对象，可保留 Fabric 等加载器通过代码注入到生物群系的自然生成配置；`definition` 则是当前资源栈中的生效原始数据文件。网站应优先展示 `runtime_definition`，并把 `definition`/原文件作为来源与下载数据。远程服务器不会提供完整动态注册对象，因此不能保证存在该字段。
+
+结构摘要包含 DataVersion、三轴尺寸、体积、结构方块数、实体数、调色板变体数、使用到的方块 ID，以及结构方块实体 NBT 中引用的 `referenced_loot_tables`。单人世界会递归复制这些宝箱表及其引用的其他表，即使它们位于 `minecraft` 等非目标命名空间，也会以 `inclusion_reason=external_namespace` 明确标记。Mod 自己打包在 `data/minecraft` 下的覆盖资源按来源 Mod 识别，不会再因命名空间不同而漏掉。方块坐标和完整实体 NBT 仍保留在原始 `.nbt`，避免 JSON 重复膨胀。
+
 ## 资源整理
 
-`resources/index.json` 只索引当前客户端资源栈最终生效的 blockstate、模型和贴图，并直接给出 ZIP 内路径。来源包、实现类、异常堆栈、原始语言/data 文件等网站不需要或可由规范化结果替代的内容不会进入最终包。连接远程服务器时，仍导出客户端同步后可见的规范化配方、进度和 Tag。
+`resources/index.json` 使用 `registered_content_dependency_closure`：从已注册方块、物品和实体默认纹理出发，递归追踪 blockstate、父模型、模型贴图、Forge/NeoForge/Fabric composite 子模型、OBJ、MTL 与贴图元数据。引用到原版或依赖 Mod 的必要父模型会以 `selected_namespace=false` 保留；目标命名空间中没有被注册内容引用的测试贴图、废弃模型不会导出。来源包、实现类、异常堆栈、重复原始语言文件等网站不需要的内容不会进入最终包。
+
+`compatibility/capabilities.json` 明确记录当前包中各功能是 `available`、`degraded` 还是 `unavailable`。网站必须按能力状态导入，不能把低版本没有某 API 导致的缺失误判成“该 Mod 没有此内容”。
 
 ## 向后兼容
 
