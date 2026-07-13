@@ -78,7 +78,7 @@ public final class TradeDataStage extends OnceStage {
             Map<?, ?> wanderingLevels = wanderingMap instanceof Map<?, ?> map ? map : Map.of();
             JsonArray wandering = sampleLevels(
                 context,
-                new ResourceLocation("minecraft", "wandering_trader"),
+                ResourceLocation.fromNamespaceAndPath("minecraft", "wandering_trader"),
                 wanderingLevels,
                 wanderingTrader,
                 context.config().namespaces().isEmpty()

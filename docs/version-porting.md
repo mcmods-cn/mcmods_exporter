@@ -1,6 +1,6 @@
 # Minecraft 多版本适配约束
 
-Minecraft Mod 的二进制不能跨大版本通用，因此每个 Minecraft 版本必须单独构建 JAR；“兼容低版本”指不同版本构建保持同一导出格式，而不是把 1.20.1 JAR 强行放进旧版本。ZIP 内 `compatibility/capabilities.json` 会告诉网站每项能力是可用、降级还是不可用。
+Minecraft Mod 的二进制不能跨大版本通用，因此每个 Minecraft 版本必须单独构建 JAR；“兼容低版本”指不同版本构建保持同一导出格式，而不是把 1.21.1 JAR 强行放进旧版本。ZIP 内 `compatibility/capabilities.json` 会告诉网站每项能力是可用、降级还是不可用。
 
 ## 稳定层与版本层
 
@@ -20,7 +20,7 @@ Minecraft Mod 的二进制不能跨大版本通用，因此每个 Minecraft 版�
 
 ## JEI 降级规则
 
-JEI 是强制客户端依赖。当前 1.20.1 构建要求 JEI 15.20+；旧 Minecraft 构建应强制依赖该 Minecraft 版本实际可用的 JEI，而不是错误地要求 JEI 15.20。旧 JEI API 若没有 `getRegistryName`、Recipe Catalyst lookup、可绘制布局或空槽 override，则对应版本构建必须：
+JEI 是强制客户端依赖。当前 1.21.1 构建要求 JEI 19.21+；1.20.1 构建要求 JEI 15.20+。其他 Minecraft 构建应强制依赖该版本实际可用的 JEI，而不是照搬新版本号。旧 JEI API 若没有 `getRegistryName`、Recipe Catalyst lookup、可绘制布局或空槽 override，则对应版本构建必须：
 
 1. 保留原版/模组 RecipeManager 配方数据；
 2. 能取得的 JEI 能力正常导出；

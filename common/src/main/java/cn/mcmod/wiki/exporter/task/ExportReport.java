@@ -69,7 +69,7 @@ public final class ExportReport {
             root.addProperty("duration_ms", finishedAt.toEpochMilli() - startedAt.toEpochMilli());
         }
         root.addProperty("minecraft_version", Platform.getMinecraftVersion());
-        root.addProperty("loader", Platform.isFabric() ? "fabric" : Platform.isForge() ? "forge" : "unknown");
+        root.addProperty("loader", Platform.isFabric() ? "fabric" : Platform.isNeoForge() ? "neoforge" : "unknown");
         root.addProperty("package_format", archiveName == null ? "directory" : "zip");
         if (archiveName != null) {
             root.addProperty("archive_name", archiveName);

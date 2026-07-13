@@ -7,6 +7,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -133,8 +134,12 @@ public final class ExportContext {
         }
         json.addProperty("item", BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
         json.addProperty("count", stack.getCount());
-        if (stack.hasTag()) {
-            json.addProperty("nbt_snbt", stack.getTag().toString());
+        if (!stack.getComponentsPatch().isEmpty()) {
+            json.addProperty("components", stack.getComponentsPatch().toString());
+        }
+        var customData = stack.get(DataComponents.CUSTOM_DATA);
+        if (customData != null && !customData.isEmpty()) {
+            json.addProperty("nbt_snbt", customData.copyTag().toString());
         }
         return json;
     }

@@ -67,11 +67,11 @@ class WorldgenDataStageTest {
 
     @Test
     void classifiesBlockChestAndEntityLootTables() {
-        assertEquals("block", WorldgenDataStage.lootTableCategory(new ResourceLocation("example", "blocks/machine")));
-        assertEquals("chest", WorldgenDataStage.lootTableCategory(new ResourceLocation("example", "chests/lab")));
-        assertEquals("entity", WorldgenDataStage.lootTableCategory(new ResourceLocation("example", "entities/robot")));
-        assertEquals("fishing", WorldgenDataStage.lootTableCategory(new ResourceLocation("minecraft", "gameplay/fishing")));
-        assertEquals("fishing", WorldgenDataStage.lootTableCategory(new ResourceLocation("minecraft", "gameplay/fishing/treasure")));
-        assertEquals("gameplay", WorldgenDataStage.lootTableCategory(new ResourceLocation("example", "gameplay/reward")));
+        assertEquals("block", WorldgenDataStage.lootTableCategory(ResourceLocation.fromNamespaceAndPath("example", "blocks/machine")));
+        assertEquals("chest", WorldgenDataStage.lootTableCategory(ResourceLocation.fromNamespaceAndPath("example", "chests/lab")));
+        assertEquals("entity", WorldgenDataStage.lootTableCategory(ResourceLocation.fromNamespaceAndPath("example", "entities/robot")));
+        assertEquals("fishing", WorldgenDataStage.lootTableCategory(ResourceLocation.fromNamespaceAndPath("minecraft", "gameplay/fishing")));
+        assertEquals("fishing", WorldgenDataStage.lootTableCategory(ResourceLocation.fromNamespaceAndPath("minecraft", "gameplay/fishing/treasure")));
+        assertEquals("gameplay", WorldgenDataStage.lootTableCategory(ResourceLocation.fromNamespaceAndPath("example", "gameplay/reward")));
     }
 }

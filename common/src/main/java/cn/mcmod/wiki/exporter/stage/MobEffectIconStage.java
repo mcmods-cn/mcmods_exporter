@@ -6,6 +6,7 @@ import cn.mcmod.wiki.exporter.task.ExportStage;
 import cn.mcmod.wiki.exporter.task.StageResult;
 import cn.mcmod.wiki.exporter.util.ExportPaths;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
@@ -31,7 +32,7 @@ public final class MobEffectIconStage implements ExportStage {
         BuiltInRegistries.MOB_EFFECT.entrySet().stream()
             .filter(entry -> context.matches(entry.getKey().location()))
             .sorted(Comparator.comparing(entry -> entry.getKey().location().toString()))
-            .forEach(entry -> entries.add(new Entry(entry.getKey().location(), entry.getValue())));
+            .forEach(entry -> entries.add(new Entry(entry.getKey().location(), BuiltInRegistries.MOB_EFFECT.wrapAsHolder(entry.getValue()))));
     }
 
     @Override
@@ -65,6 +66,6 @@ public final class MobEffectIconStage implements ExportStage {
         return index + "/" + entries.size();
     }
 
-    private record Entry(ResourceLocation id, MobEffect effect) {
+    private record Entry(ResourceLocation id, Holder<MobEffect> effect) {
     }
 }

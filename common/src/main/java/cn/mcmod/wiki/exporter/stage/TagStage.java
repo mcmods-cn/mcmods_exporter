@@ -68,7 +68,7 @@ public final class TagStage extends OnceStage {
             boolean relevant = context.matches(key.location());
             if (!relevant) {
                 for (int index = 0; index < values.size(); index++) {
-                    if (context.matches(new ResourceLocation(values.get(index).getAsString()))) {
+                    if (context.matches(ResourceLocation.parse(values.get(index).getAsString()))) {
                         relevant = true;
                         break;
                     }

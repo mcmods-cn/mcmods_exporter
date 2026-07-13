@@ -189,7 +189,7 @@ public final class ResourceStage extends OnceStage {
             context.report().error(ID, source + ":dependency_scan", throwable);
         }
         if (path.endsWith(".png")) {
-            ResourceLocation metadata = new ResourceLocation(source.getNamespace(), source.getPath() + ".mcmeta");
+            ResourceLocation metadata = ResourceLocation.fromNamespaceAndPath(source.getNamespace(), source.getPath() + ".mcmeta");
             if (context.minecraft().getResourceManager().getResource(metadata).isPresent()) {
                 enqueue(pending, queued, metadata, "texture_metadata");
             }
@@ -269,13 +269,13 @@ public final class ResourceStage extends OnceStage {
             String parent = source.getPath().contains("/")
                 ? source.getPath().substring(0, source.getPath().lastIndexOf('/') + 1)
                 : "";
-            explicit = new ResourceLocation(source.getNamespace(), parent + explicit.getPath());
+            explicit = ResourceLocation.fromNamespaceAndPath(source.getNamespace(), parent + explicit.getPath());
         }
         enqueue(pending, queued, normalizeExplicitFile(explicit), reason);
     }
 
     private static ResourceLocation asset(ResourceLocation id, String prefix, String suffix) {
-        return new ResourceLocation(id.getNamespace(), prefix + id.getPath() + suffix);
+        return ResourceLocation.fromNamespaceAndPath(id.getNamespace(), prefix + id.getPath() + suffix);
     }
 
     private static ResourceLocation modelFile(ResourceLocation id) {
@@ -286,13 +286,13 @@ public final class ResourceStage extends OnceStage {
         if (!path.endsWith(".json")) {
             path += ".json";
         }
-        return new ResourceLocation(id.getNamespace(), path);
+        return ResourceLocation.fromNamespaceAndPath(id.getNamespace(), path);
     }
 
     private static ResourceLocation modelOrCustomFile(ResourceLocation id) {
         String lower = id.getPath().toLowerCase(Locale.ROOT);
         if (lower.endsWith(".obj") || lower.endsWith(".mtl") || lower.endsWith(".json")) {
-            return normalizeExplicitFile(id.getPath().startsWith("models/") ? id : new ResourceLocation(id.getNamespace(), "models/" + id.getPath()));
+            return normalizeExplicitFile(id.getPath().startsWith("models/") ? id : ResourceLocation.fromNamespaceAndPath(id.getNamespace(), "models/" + id.getPath()));
         }
         return modelFile(id);
     }
@@ -305,7 +305,7 @@ public final class ResourceStage extends OnceStage {
         if (!path.endsWith(".png")) {
             path += ".png";
         }
-        return new ResourceLocation(id.getNamespace(), path);
+        return ResourceLocation.fromNamespaceAndPath(id.getNamespace(), path);
     }
 
     private static ResourceLocation normalizeExplicitFile(ResourceLocation id) {
@@ -313,12 +313,12 @@ public final class ResourceStage extends OnceStage {
         if (path.endsWith(".png") && !path.startsWith("textures/")) {
             path = "textures/" + path;
         }
-        return new ResourceLocation(id.getNamespace(), path);
+        return ResourceLocation.fromNamespaceAndPath(id.getNamespace(), path);
     }
 
     private static ResourceLocation parseLocation(String value, String fallbackNamespace) {
         try {
-            return value.contains(":") ? new ResourceLocation(value) : new ResourceLocation(fallbackNamespace, value);
+            return value.contains(":") ? ResourceLocation.parse(value) : ResourceLocation.fromNamespaceAndPath(fallbackNamespace, value);
         } catch (RuntimeException ignored) {
             return null;
         }

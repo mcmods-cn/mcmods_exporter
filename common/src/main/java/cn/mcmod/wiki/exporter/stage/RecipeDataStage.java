@@ -10,6 +10,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.AbstractCookingRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 
 import java.util.ArrayList;
@@ -26,17 +27,17 @@ public final class RecipeDataStage extends OnceStage {
 
     @Override
     protected void run(ExportContext context) throws Exception {
-        List<Recipe<?>> recipes = new ArrayList<>(context.minecraft().level.getRecipeManager().getRecipes());
-        recipes.sort(Comparator.comparing(recipe -> recipe.getId().toString()));
+        List<RecipeHolder<?>> recipes = new ArrayList<>(context.minecraft().level.getRecipeManager().getRecipes());
+        recipes.sort(Comparator.comparing(holder -> holder.id().toString()));
         JsonArray data = new JsonArray();
-        for (Recipe<?> recipe : recipes) {
-            if (!context.matches(recipe.getId())) {
+        for (RecipeHolder<?> holder : recipes) {
+            if (!context.matches(holder.id())) {
                 continue;
             }
             try {
-                data.add(recipeJson(context, recipe));
+                data.add(recipeJson(context, holder));
             } catch (Throwable throwable) {
-                context.report().error(ID, recipe.getId().toString(), throwable);
+                context.report().error(ID, holder.id().toString(), throwable);
             }
         }
         JsonObject root = new JsonObject();
@@ -47,9 +48,10 @@ public final class RecipeDataStage extends OnceStage {
         context.report().addCount(ID, "recipes", data.size());
     }
 
-    private static JsonObject recipeJson(ExportContext context, Recipe<?> recipe) {
+    private static JsonObject recipeJson(ExportContext context, RecipeHolder<?> holder) {
+        Recipe<?> recipe = holder.value();
         JsonObject json = new JsonObject();
-        json.addProperty("id", recipe.getId().toString());
+        json.addProperty("id", holder.id().toString());
         ResourceLocation type = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
         ResourceLocation serializer = BuiltInRegistries.RECIPE_SERIALIZER.getKey(recipe.getSerializer());
         json.addProperty("type", type == null ? recipe.getType().toString() : type.toString());

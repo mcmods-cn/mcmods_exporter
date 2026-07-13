@@ -30,7 +30,7 @@ import java.util.Map;
 
 /**
  * Loader- and mod-independent export for non-item JEI ingredients. This covers
- * Forge/Fabric fluids as well as mod-defined media such as Mekanism chemicals.
+ * NeoForge/Fabric fluids as well as mod-defined media such as Mekanism chemicals.
  */
 public final class JeiIngredientStage implements ExportStage {
     public static final String ID = "jei_ingredients";
@@ -256,7 +256,7 @@ public final class JeiIngredientStage implements ExportStage {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static String safeUniqueId(IIngredientHelper helper, Object ingredient) {
         try {
-            return helper.getUniqueId(ingredient, UidContext.Recipe);
+            return String.valueOf(helper.getUid(ingredient, UidContext.Recipe));
         } catch (Throwable throwable) {
             try {
                 return helper.getResourceLocation(ingredient).toString();

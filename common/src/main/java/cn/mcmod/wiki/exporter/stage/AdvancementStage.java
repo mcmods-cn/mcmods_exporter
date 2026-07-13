@@ -5,7 +5,7 @@ import cn.mcmod.wiki.exporter.task.OnceStage;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.advancements.Advancement;
-import net.minecraft.advancements.AdvancementList;
+import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementRewards;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -34,32 +34,35 @@ public final class AdvancementStage extends OnceStage {
         if (connection == null && server == null) {
             throw new IllegalStateException("Advancements are not available before joining a world");
         }
-        Map<String, Advancement> merged = new LinkedHashMap<>();
+        Map<String, AdvancementHolder> merged = new LinkedHashMap<>();
         if (server != null) {
-            server.getAdvancements().getAllAdvancements().forEach(advancement -> merged.put(advancement.getId().toString(), advancement));
+            server.getAdvancements().getAllAdvancements().forEach(holder -> merged.put(holder.id().toString(), holder));
         }
         if (connection != null) {
-            AdvancementList list = connection.getAdvancements().getAdvancements();
-            list.getAllAdvancements().forEach(advancement -> merged.putIfAbsent(advancement.getId().toString(), advancement));
+            connection.getAdvancements().getTree().nodes().forEach(node -> {
+                AdvancementHolder holder = node.holder();
+                merged.putIfAbsent(holder.id().toString(), holder);
+            });
         }
-        List<Advancement> advancements = new ArrayList<>(merged.values());
-        advancements.sort(Comparator.comparing(advancement -> advancement.getId().toString()));
+        List<AdvancementHolder> advancements = new ArrayList<>(merged.values());
+        advancements.sort(Comparator.comparing(holder -> holder.id().toString()));
+        Map<String, List<String>> children = collectChildren(advancements);
 
         JsonArray data = new JsonArray();
         JsonArray roots = new JsonArray();
-        List<Advancement> exported = new ArrayList<>();
-        for (Advancement advancement : advancements) {
-            if (!context.matches(advancement.getId())) {
+        List<AdvancementHolder> exported = new ArrayList<>();
+        for (AdvancementHolder holder : advancements) {
+            if (!context.matches(holder.id())) {
                 continue;
             }
             try {
-                data.add(toJson(context, advancement));
-                exported.add(advancement);
-                if (advancement.getParent() == null) {
-                    roots.add(advancement.getId().toString());
+                data.add(toJson(context, holder, children.getOrDefault(holder.id().toString(), List.of())));
+                exported.add(holder);
+                if (holder.value().parent().isEmpty()) {
+                    roots.add(holder.id().toString());
                 }
             } catch (Throwable throwable) {
-                context.report().error(ID, advancement.getId().toString(), throwable);
+                context.report().error(ID, holder.id().toString(), throwable);
             }
         }
 
@@ -74,13 +77,13 @@ public final class AdvancementStage extends OnceStage {
 
         for (String language : context.languages()) {
             JsonArray localizedEntries = new JsonArray();
-            for (Advancement advancement : exported) {
-                DisplayInfo display = advancement.getDisplay();
+            for (AdvancementHolder holder : exported) {
+                DisplayInfo display = holder.value().display().orElse(null);
                 if (display == null) {
                     continue;
                 }
                 JsonObject localized = new JsonObject();
-                localized.addProperty("id", advancement.getId().toString());
+                localized.addProperty("id", holder.id().toString());
                 localized.addProperty("title", context.localize(display.getTitle(), language));
                 localized.addProperty("description", context.localize(display.getDescription(), language));
                 localizedEntries.add(localized);
@@ -97,26 +100,34 @@ public final class AdvancementStage extends OnceStage {
         context.report().addCount(ID, "localized_files", context.languages().size());
     }
 
-    private static JsonObject toJson(ExportContext context, Advancement advancement) {
-        JsonObject json = new JsonObject();
-        json.addProperty("id", advancement.getId().toString());
-        if (advancement.getParent() != null) {
-            json.addProperty("parent", advancement.getParent().getId().toString());
+    private static Map<String, List<String>> collectChildren(List<AdvancementHolder> advancements) {
+        Map<String, List<String>> children = new LinkedHashMap<>();
+        for (AdvancementHolder holder : advancements) {
+            holder.value().parent().ifPresent(parent -> children
+                .computeIfAbsent(parent.toString(), ignored -> new ArrayList<>())
+                .add(holder.id().toString()));
         }
+        children.values().forEach(values -> values.sort(String::compareTo));
+        return children;
+    }
+
+    private static JsonObject toJson(ExportContext context, AdvancementHolder holder, List<String> childIds) {
+        Advancement advancement = holder.value();
+        JsonObject json = new JsonObject();
+        json.addProperty("id", holder.id().toString());
+        advancement.parent().ifPresent(parent -> json.addProperty("parent", parent.toString()));
         JsonArray children = new JsonArray();
-        advancement.getChildren().forEach(child -> children.add(child.getId().toString()));
+        childIds.forEach(children::add);
         json.add("children", children);
 
-        DisplayInfo display = advancement.getDisplay();
+        DisplayInfo display = advancement.display().orElse(null);
         if (display != null) {
             JsonObject displayJson = new JsonObject();
             addComponent(context, displayJson, "title", display.getTitle());
             addComponent(context, displayJson, "description", display.getDescription());
             displayJson.add("icon", ExportContext.stackJson(display.getIcon()));
-            displayJson.addProperty("frame", display.getFrame().name().toLowerCase());
-            if (display.getBackground() != null) {
-                displayJson.addProperty("background", display.getBackground().toString());
-            }
+            displayJson.addProperty("frame", display.getType().name().toLowerCase());
+            display.getBackground().ifPresent(background -> displayJson.addProperty("background", background.toString()));
             displayJson.addProperty("x", display.getX());
             displayJson.addProperty("y", display.getY());
             displayJson.addProperty("hidden", display.isHidden());
@@ -126,10 +137,10 @@ public final class AdvancementStage extends OnceStage {
         }
 
         JsonArray criteria = new JsonArray();
-        advancement.getCriteria().keySet().stream().sorted().forEach(criteria::add);
+        advancement.criteria().keySet().stream().sorted().forEach(criteria::add);
         json.add("criteria", criteria);
         JsonArray requirements = new JsonArray();
-        for (String[] group : advancement.getRequirements()) {
+        for (List<String> group : advancement.requirements().requirements()) {
             JsonArray groupJson = new JsonArray();
             for (String criterion : group) {
                 groupJson.add(criterion);
@@ -137,13 +148,22 @@ public final class AdvancementStage extends OnceStage {
             requirements.add(groupJson);
         }
         json.add("requirements", requirements);
-        json.addProperty("max_criteria_required", advancement.getMaxCriteraRequired());
-        addRewards(json, advancement.getRewards());
+        json.addProperty("max_criteria_required", advancement.requirements().size());
+        addRewards(json, advancement.rewards());
         return json;
     }
 
     private static void addRewards(JsonObject json, AdvancementRewards rewards) {
-        json.add("rewards", rewards.serializeToJson());
+        JsonObject output = new JsonObject();
+        output.addProperty("experience", rewards.experience());
+        JsonArray loot = new JsonArray();
+        rewards.loot().forEach(key -> loot.add(key.location().toString()));
+        output.add("loot", loot);
+        JsonArray recipes = new JsonArray();
+        rewards.recipes().forEach(recipe -> recipes.add(recipe.toString()));
+        output.add("recipes", recipes);
+        rewards.function().ifPresent(function -> output.addProperty("function", function.getId().toString()));
+        json.add("rewards", output);
     }
 
     private static void addComponent(ExportContext context, JsonObject target, String field, Component component) {

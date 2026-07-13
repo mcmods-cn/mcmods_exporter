@@ -1,4 +1,4 @@
-package cn.mcmod.wiki.exporter.forge;
+package cn.mcmod.wiki.exporter.neoforge;
 
 import cn.mcmod.wiki.exporter.ExportBootstrap;
 import cn.mcmod.wiki.exporter.McModsExporter;
@@ -7,28 +7,23 @@ import cn.mcmod.wiki.exporter.task.ExportCoordinator;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.client.event.RegisterClientCommandsEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.loading.FMLEnvironment;
-import net.minecraftforge.api.distmarker.Dist;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.function.Consumer;
 
-@Mod(McModsExporter.MOD_ID)
-public final class McModsExporterForge {
-    public McModsExporterForge() {
-        if (FMLEnvironment.dist == Dist.CLIENT) {
-            MinecraftForge.EVENT_BUS.addListener(McModsExporterForge::onClientTick);
-            MinecraftForge.EVENT_BUS.addListener(McModsExporterForge::onRegisterCommands);
-        }
+@Mod(value = McModsExporter.MOD_ID, dist = Dist.CLIENT)
+public final class McModsExporterNeoForge {
+    public McModsExporterNeoForge() {
+        NeoForge.EVENT_BUS.addListener(McModsExporterNeoForge::onClientTick);
+        NeoForge.EVENT_BUS.addListener(McModsExporterNeoForge::onRegisterCommands);
     }
 
-    private static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) {
-            ExportBootstrap.tick(net.minecraft.client.Minecraft.getInstance());
-        }
+    private static void onClientTick(ClientTickEvent.Post event) {
+        ExportBootstrap.tick(net.minecraft.client.Minecraft.getInstance());
     }
 
     private static void onRegisterCommands(RegisterClientCommandsEvent event) {

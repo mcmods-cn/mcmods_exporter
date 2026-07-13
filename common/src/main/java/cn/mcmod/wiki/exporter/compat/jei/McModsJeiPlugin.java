@@ -12,7 +12,7 @@ public final class McModsJeiPlugin implements IModPlugin {
 
     @Override
     public ResourceLocation getPluginUid() {
-        return new ResourceLocation(McModsExporter.MOD_ID, "exporter");
+        return ResourceLocation.fromNamespaceAndPath(McModsExporter.MOD_ID, "exporter");
     }
 
     @Override

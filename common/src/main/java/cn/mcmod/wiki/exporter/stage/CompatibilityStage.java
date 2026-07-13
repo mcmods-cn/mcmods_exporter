@@ -30,7 +30,7 @@ public final class CompatibilityStage extends OnceStage {
         JsonObject root = new JsonObject();
         root.addProperty("schema_version", "mcmods-capabilities/v1");
         root.addProperty("minecraft_version", Platform.getMinecraftVersion());
-        root.addProperty("loader", Platform.isFabric() ? "fabric" : Platform.isForge() ? "forge" : "unknown");
+        root.addProperty("loader", Platform.isFabric() ? "fabric" : Platform.isNeoForge() ? "neoforge" : "unknown");
         root.addProperty("profile", context.config().profile().name().toLowerCase(java.util.Locale.ROOT));
         root.addProperty("format_contract", "mcmods-export/v1");
         root.addProperty("binary_compatibility", "exact_minecraft_version_build_required");

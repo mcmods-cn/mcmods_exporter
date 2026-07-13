@@ -1,5 +1,5 @@
 modLoader="javafml"
-loaderVersion="[47,)"
+loaderVersion="[4,)"
 license="MIT"
 
 [[mods]]
@@ -7,35 +7,34 @@ modId="mcmods_exporter"
 version="${version}"
 displayName="mcmods_exporter"
 authors="MC百科工具链"
-displayTest="IGNORE_SERVER_VERSION"
 description='''
 将模组注册表、语言、标签、配方、进度、资源和渲染图导出为网站可读取的规范格式。
 '''
 
 [[dependencies.mcmods_exporter]]
-modId="forge"
-mandatory=true
-versionRange="[47,)"
+modId="neoforge"
+type="required"
+versionRange="[21.1,)"
 ordering="NONE"
 side="CLIENT"
 
 [[dependencies.mcmods_exporter]]
 modId="minecraft"
-mandatory=true
-versionRange="[1.20.1,1.20.2)"
+type="required"
+versionRange="[1.21.1,1.21.2)"
 ordering="NONE"
 side="CLIENT"
 
 [[dependencies.mcmods_exporter]]
 modId="architectury"
-mandatory=true
-versionRange="[9.2.14,)"
+type="required"
+versionRange="[13.0.8,)"
 ordering="AFTER"
 side="CLIENT"
 
 [[dependencies.mcmods_exporter]]
 modId="jei"
-mandatory=true
-versionRange="[15.20,)"
+type="required"
+versionRange="[19.21,)"
 ordering="AFTER"
 side="CLIENT"

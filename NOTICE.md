@@ -7,4 +7,4 @@
 - [guapi-exe/resoureexporter](https://github.com/guapi-exe/resoureexporter) — 仓库未提供明确许可证；仅观察功能边界，没有复制源码。
 - [AlexModGuy/WikiZoomer](https://github.com/AlexModGuy/WikiZoomer) — 仓库未提供明确许可证；仅观察离屏实体截图思路，没有复制源码。
 
-构建脚手架依据 Architectury 官方 1.20.1 Fabric/Forge 模板（CC0）。Minecraft、Fabric、Forge、Architectury、JEI 及其商标和代码分别属于其权利人；这些依赖不会被打包进导出器 jar。
+构建脚手架依据 Architectury 官方模板（CC0），当前目标为 Minecraft 1.21.1 Fabric/NeoForge。Minecraft、Fabric、NeoForge、Architectury、JEI 及其商标和代码分别属于其权利人；这些依赖不会被打包进导出器 jar。

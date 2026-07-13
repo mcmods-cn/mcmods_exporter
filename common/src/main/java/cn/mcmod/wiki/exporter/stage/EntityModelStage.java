@@ -86,7 +86,7 @@ public final class EntityModelStage implements ExportStage {
         model.prepareMobModel(entity, 0.0F, 0.0F, 0.0F);
         model.setupAnim(entity, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
         ObjVertexConsumer consumer = new ObjVertexConsumer();
-        model.renderToBuffer(new PoseStack(), consumer, 15728880, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
+        model.renderToBuffer(new PoseStack(), consumer, 15728880, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF);
 
         Path objPath = ExportPaths.idFile(context.root(), "entities/models", null, id, ".obj");
         consumer.write(objPath, id.toString());

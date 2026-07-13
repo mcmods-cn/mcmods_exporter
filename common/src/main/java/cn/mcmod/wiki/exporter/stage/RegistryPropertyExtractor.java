@@ -1,10 +1,13 @@
 package cn.mcmod.wiki.exporter.stage;
 
-import com.google.common.collect.Multimap;
+import cn.mcmod.wiki.exporter.task.ExportContext;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.mojang.datafixers.util.Pair;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -13,6 +16,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.ArmorMaterial;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.BowItem;
@@ -36,6 +40,7 @@ import net.minecraft.world.item.Tiers;
 import net.minecraft.world.item.TridentItem;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -66,7 +71,7 @@ final class RegistryPropertyExtractor {
     private RegistryPropertyExtractor() {
     }
 
-    static void addItemProperties(JsonObject json, Item item, ItemStack stack) {
+    static void addItemProperties(ExportContext context, JsonObject json, Item item, ItemStack stack) {
         List<String> itemTags = stack.getTags()
             .map(tag -> tag.location().toString())
             .sorted()
@@ -79,9 +84,11 @@ final class RegistryPropertyExtractor {
         durability.addProperty("max_damage", stack.getMaxDamage());
         json.add("durability", durability);
 
-        json.addProperty("fire_resistant", item.isFireResistant());
+        json.addProperty("fire_resistant", stack.has(DataComponents.FIRE_RESISTANT));
         json.addProperty("use_animation", stack.getUseAnimation().name().toLowerCase(Locale.ROOT));
-        json.addProperty("use_duration_ticks", stack.getUseDuration());
+        if (context.minecraft().player != null) {
+            json.addProperty("use_duration_ticks", stack.getUseDuration(context.minecraft().player));
+        }
         if (item.hasCraftingRemainingItem()) {
             ResourceLocation remainder = BuiltInRegistries.ITEM.getKey(item.getCraftingRemainingItem());
             if (remainder != null) {
@@ -89,17 +96,17 @@ final class RegistryPropertyExtractor {
             }
         }
 
-        LinkedHashSet<String> types = classifyItem(item, itemTags);
+        LinkedHashSet<String> types = classifyItem(item, stack, itemTags);
         json.add("item_types", strings(types));
         if (!types.isEmpty()) {
             json.addProperty("primary_type", primaryType(types));
         }
 
         addTool(json, item, types);
-        addEnchanting(json, item, stack);
+        addEnchanting(context, json, item, stack);
         addAttributes(json, stack);
         addEquipment(json, item);
-        addFood(json, item);
+        addFood(json, stack);
     }
 
     static void addBlockProperties(JsonObject json, Block block, BlockState state) {
@@ -114,9 +121,8 @@ final class RegistryPropertyExtractor {
         json.addProperty("liquid", state.liquid());
         json.addProperty("randomly_ticking", state.isRandomlyTicking());
         json.addProperty("piston_reaction", state.getPistonPushReaction().name().toLowerCase(Locale.ROOT));
-        ResourceLocation lootTable = block.getLootTable();
-        if (lootTable != null) {
-            json.addProperty("loot_table", lootTable.toString());
+        if (block.getLootTable() != null) {
+            json.addProperty("loot_table", block.getLootTable().location().toString());
         }
 
         List<String> blockTags = state.getTags()
@@ -195,7 +201,11 @@ final class RegistryPropertyExtractor {
             if (tierId != null) {
                 tierJson.addProperty("id", tierId);
             }
-            tierJson.addProperty("mining_level", tier.getLevel());
+            Integer miningLevel = vanillaTierLevel(tier);
+            if (miningLevel != null) {
+                tierJson.addProperty("mining_level", miningLevel);
+            }
+            tierJson.addProperty("incorrect_blocks_for_drops", tier.getIncorrectBlocksForDrops().location().toString());
             tierJson.addProperty("durability", tier.getUses());
             tierJson.addProperty("mining_speed", tier.getSpeed());
             tierJson.addProperty("attack_damage_bonus", tier.getAttackDamageBonus());
@@ -203,21 +213,17 @@ final class RegistryPropertyExtractor {
             tierJson.add("repair_items", ingredientItems(tier.getRepairIngredient()));
             tool.add("tier", tierJson);
         }
-        if (item instanceof DiggerItem diggerItem) {
-            tool.addProperty("attack_damage", diggerItem.getAttackDamage());
-        } else if (item instanceof SwordItem swordItem) {
-            tool.addProperty("attack_damage", swordItem.getDamage());
-        }
         json.add("tool", tool);
     }
 
-    private static void addEnchanting(JsonObject json, Item item, ItemStack stack) {
+    private static void addEnchanting(ExportContext context, JsonObject json, Item item, ItemStack stack) {
         JsonObject enchanting = new JsonObject();
         enchanting.addProperty("enchantable", stack.isEnchantable());
         enchanting.addProperty("enchantment_value", item.getEnchantmentValue());
 
         JsonArray compatible = new JsonArray();
-        BuiltInRegistries.ENCHANTMENT.entrySet().stream()
+        Registry<Enchantment> registry = context.minecraft().level.registryAccess().registryOrThrow(Registries.ENCHANTMENT);
+        registry.entrySet().stream()
             .sorted(Comparator.comparing(entry -> entry.getKey().location().toString()))
             .forEach(entry -> {
                 try {
@@ -234,32 +240,39 @@ final class RegistryPropertyExtractor {
     }
 
     private static void addAttributes(JsonObject json, ItemStack stack) {
+        ItemAttributeModifiers component = stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY);
         JsonArray slots = new JsonArray();
         for (EquipmentSlot slot : EquipmentSlot.values()) {
-            Multimap<Attribute, AttributeModifier> modifiers = stack.getAttributeModifiers(slot);
+            List<AttributeEntry> modifiers = new ArrayList<>();
+            component.forEach(slot, (attribute, modifier) -> modifiers.add(new AttributeEntry(attribute, modifier)));
             if (modifiers.isEmpty()) {
                 continue;
             }
             JsonObject slotJson = new JsonObject();
             slotJson.addProperty("slot", slot.getName());
             JsonArray values = new JsonArray();
-            modifiers.entries().stream()
+            modifiers.stream()
                 .sorted(Comparator
-                    .comparing((Map.Entry<Attribute, AttributeModifier> entry) -> attributeId(entry.getKey()))
-                    .thenComparing(entry -> entry.getValue().getId().toString()))
-                .forEach(entry -> values.add(attributeModifier(entry.getKey(), entry.getValue())));
+                    .comparing((AttributeEntry entry) -> attributeId(entry.attribute()))
+                    .thenComparing(entry -> entry.modifier().id().toString()))
+                .forEach(entry -> values.add(attributeModifier(entry.attribute(), entry.modifier())));
             slotJson.add("modifiers", values);
             slots.add(slotJson);
         }
         json.add("attribute_modifiers", slots);
 
-        Multimap<Attribute, AttributeModifier> mainHand = stack.getAttributeModifiers(EquipmentSlot.MAINHAND);
-        if (mainHand.containsKey(Attributes.ATTACK_DAMAGE) || mainHand.containsKey(Attributes.ATTACK_SPEED)) {
+        List<AttributeModifier> attackDamage = new ArrayList<>();
+        List<AttributeModifier> attackSpeed = new ArrayList<>();
+        component.forEach(EquipmentSlot.MAINHAND, (attribute, modifier) -> {
+            if (attribute.equals(Attributes.ATTACK_DAMAGE)) attackDamage.add(modifier);
+            if (attribute.equals(Attributes.ATTACK_SPEED)) attackSpeed.add(modifier);
+        });
+        if (!attackDamage.isEmpty() || !attackSpeed.isEmpty()) {
             JsonObject combat = new JsonObject();
-            addModifierSummary(combat, "attack_damage_modifier", mainHand.get(Attributes.ATTACK_DAMAGE));
-            addModifierSummary(combat, "attack_speed_modifier", mainHand.get(Attributes.ATTACK_SPEED));
-            combat.addProperty("attack_damage", applyModifiers(1.0D, mainHand.get(Attributes.ATTACK_DAMAGE)));
-            combat.addProperty("attack_speed", applyModifiers(4.0D, mainHand.get(Attributes.ATTACK_SPEED)));
+            addModifierSummary(combat, "attack_damage_modifier", attackDamage);
+            addModifierSummary(combat, "attack_speed_modifier", attackSpeed);
+            combat.addProperty("attack_damage", applyModifiers(1.0D, attackDamage));
+            combat.addProperty("attack_speed", applyModifiers(4.0D, attackSpeed));
             json.add("combat", combat);
         }
     }
@@ -275,36 +288,35 @@ final class RegistryPropertyExtractor {
         JsonObject armor = new JsonObject();
         armor.addProperty("type", armorItem.getType().getName());
         armor.addProperty("slot", armorItem.getEquipmentSlot().getName());
-        armor.addProperty("material", armorItem.getMaterial().getName());
+        Holder<ArmorMaterial> materialHolder = armorItem.getMaterial();
+        ArmorMaterial material = materialHolder.value();
+        materialHolder.unwrapKey().ifPresent(key -> armor.addProperty("material", key.location().toString()));
         armor.addProperty("defense", armorItem.getDefense());
         armor.addProperty("toughness", armorItem.getToughness());
-        armor.addProperty("knockback_resistance", armorItem.getMaterial().getKnockbackResistance());
+        armor.addProperty("knockback_resistance", material.knockbackResistance());
         armor.addProperty("enchantment_value", armorItem.getEnchantmentValue());
-        armor.add("repair_items", ingredientItems(armorItem.getMaterial().getRepairIngredient()));
+        armor.add("repair_items", ingredientItems(material.repairIngredient().get()));
         json.add("armor", armor);
     }
 
-    private static void addFood(JsonObject json, Item item) {
-        FoodProperties properties = item.getFoodProperties();
+    private static void addFood(JsonObject json, ItemStack stack) {
+        FoodProperties properties = stack.get(DataComponents.FOOD);
         if (properties == null) {
             return;
         }
 
         JsonObject food = new JsonObject();
-        food.addProperty("nutrition", properties.getNutrition());
-        food.addProperty("saturation_modifier", properties.getSaturationModifier());
-        food.addProperty("meat", properties.isMeat());
+        food.addProperty("nutrition", properties.nutrition());
+        food.addProperty("saturation_modifier", properties.saturation());
         food.addProperty("always_edible", properties.canAlwaysEat());
-        food.addProperty("fast_food", properties.isFastFood());
+        food.addProperty("eat_duration_ticks", properties.eatDurationTicks());
+        properties.usingConvertsTo().ifPresent(converted -> food.add("using_converts_to", stackJson(converted)));
         JsonArray effects = new JsonArray();
-        for (Pair<MobEffectInstance, Float> pair : properties.getEffects()) {
-            MobEffectInstance instance = pair.getFirst();
-            ResourceLocation effectId = BuiltInRegistries.MOB_EFFECT.getKey(instance.getEffect());
+        for (FoodProperties.PossibleEffect possibleEffect : properties.effects()) {
+            MobEffectInstance instance = possibleEffect.effect();
             JsonObject effect = new JsonObject();
-            if (effectId != null) {
-                effect.addProperty("effect", effectId.toString());
-            }
-            effect.addProperty("probability", pair.getSecond());
+            instance.getEffect().unwrapKey().ifPresent(key -> effect.addProperty("effect", key.location().toString()));
+            effect.addProperty("probability", possibleEffect.probability());
             effect.addProperty("duration_ticks", instance.getDuration());
             effect.addProperty("amplifier", instance.getAmplifier());
             effect.addProperty("ambient", instance.isAmbient());
@@ -316,7 +328,7 @@ final class RegistryPropertyExtractor {
         json.add("food", food);
     }
 
-    private static LinkedHashSet<String> classifyItem(Item item, Collection<String> itemTags) {
+    private static LinkedHashSet<String> classifyItem(Item item, ItemStack stack, Collection<String> itemTags) {
         LinkedHashSet<String> types = new LinkedHashSet<>();
         if (item instanceof BlockItem) types.add("block_item");
         if (item instanceof PickaxeItem) types.add("pickaxe");
@@ -335,8 +347,8 @@ final class RegistryPropertyExtractor {
         if (item instanceof ProjectileWeaponItem) types.add("projectile_weapon");
         if (item instanceof DiggerItem) types.add("mining_tool");
         if (item instanceof TieredItem) types.add("tiered");
-        if (item.isEdible()) types.add("food");
-        if (item.canBeDepleted()) types.add("damageable");
+        if (stack.has(DataComponents.FOOD)) types.add("food");
+        if (stack.isDamageableItem()) types.add("damageable");
 
         for (String tag : itemTags) {
             String path = resourcePath(tag);
@@ -385,20 +397,21 @@ final class RegistryPropertyExtractor {
         return strings(ids.stream().sorted().toList());
     }
 
-    private static JsonObject attributeModifier(Attribute attribute, AttributeModifier modifier) {
+    private static JsonObject attributeModifier(Holder<Attribute> attribute, AttributeModifier modifier) {
         JsonObject json = new JsonObject();
         json.addProperty("attribute", attributeId(attribute));
-        json.addProperty("id", modifier.getId().toString());
-        json.addProperty("name", modifier.getName());
-        json.addProperty("amount", modifier.getAmount());
-        json.addProperty("operation", modifier.getOperation().name().toLowerCase(Locale.ROOT));
-        json.addProperty("operation_id", modifier.getOperation().toValue());
+        json.addProperty("id", modifier.id().toString());
+        json.addProperty("name", modifier.id().toString());
+        json.addProperty("amount", modifier.amount());
+        json.addProperty("operation", modifier.operation().getSerializedName());
+        json.addProperty("operation_id", modifier.operation().id());
         return json;
     }
 
-    private static String attributeId(Attribute attribute) {
-        ResourceLocation id = BuiltInRegistries.ATTRIBUTE.getKey(attribute);
-        return id == null ? "unregistered:unknown" : id.toString();
+    private static String attributeId(Holder<Attribute> attribute) {
+        return attribute.unwrapKey()
+            .map(key -> key.location().toString())
+            .orElseGet(() -> String.valueOf(BuiltInRegistries.ATTRIBUTE.getKey(attribute.value())));
     }
 
     private static void addModifierSummary(
@@ -410,8 +423,8 @@ final class RegistryPropertyExtractor {
             return;
         }
         double addition = modifiers.stream()
-            .filter(modifier -> modifier.getOperation() == AttributeModifier.Operation.ADDITION)
-            .mapToDouble(AttributeModifier::getAmount)
+            .filter(modifier -> modifier.operation() == AttributeModifier.Operation.ADD_VALUE)
+            .mapToDouble(AttributeModifier::amount)
             .sum();
         target.addProperty(name, addition);
     }
@@ -419,18 +432,18 @@ final class RegistryPropertyExtractor {
     static double applyModifiers(double baseValue, Collection<AttributeModifier> modifiers) {
         double value = baseValue;
         for (AttributeModifier modifier : modifiers) {
-            if (modifier.getOperation() == AttributeModifier.Operation.ADDITION) {
-                value += modifier.getAmount();
+            if (modifier.operation() == AttributeModifier.Operation.ADD_VALUE) {
+                value += modifier.amount();
             }
         }
         for (AttributeModifier modifier : modifiers) {
-            if (modifier.getOperation() == AttributeModifier.Operation.MULTIPLY_BASE) {
-                value += baseValue * modifier.getAmount();
+            if (modifier.operation() == AttributeModifier.Operation.ADD_MULTIPLIED_BASE) {
+                value += baseValue * modifier.amount();
             }
         }
         for (AttributeModifier modifier : modifiers) {
-            if (modifier.getOperation() == AttributeModifier.Operation.MULTIPLY_TOTAL) {
-                value *= 1.0D + modifier.getAmount();
+            if (modifier.operation() == AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL) {
+                value *= 1.0D + modifier.amount();
             }
         }
         return value;
@@ -444,6 +457,25 @@ final class RegistryPropertyExtractor {
         if (tier == Tiers.NETHERITE) return "minecraft:netherite";
         if (tier == Tiers.GOLD) return "minecraft:gold";
         return null;
+    }
+
+    private static Integer vanillaTierLevel(Tier tier) {
+        if (tier == Tiers.WOOD || tier == Tiers.GOLD) return 0;
+        if (tier == Tiers.STONE) return 1;
+        if (tier == Tiers.IRON) return 2;
+        if (tier == Tiers.DIAMOND) return 3;
+        if (tier == Tiers.NETHERITE) return 4;
+        return null;
+    }
+
+    private static JsonObject stackJson(ItemStack stack) {
+        JsonObject json = new JsonObject();
+        json.addProperty("item", String.valueOf(BuiltInRegistries.ITEM.getKey(stack.getItem())));
+        json.addProperty("count", stack.getCount());
+        return json;
+    }
+
+    private record AttributeEntry(Holder<Attribute> attribute, AttributeModifier modifier) {
     }
 
     private static String resourcePath(String id) {

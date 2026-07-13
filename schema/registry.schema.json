@@ -104,7 +104,7 @@
         "attack_damage": { "type": "number" },
         "tier": {
           "type": "object",
-          "required": ["mining_level", "durability", "mining_speed", "attack_damage_bonus", "enchantment_value", "repair_items"],
+          "required": ["durability", "mining_speed", "attack_damage_bonus", "enchantment_value", "repair_items"],
           "properties": {
             "id": { "$ref": "#/$defs/resourceId" },
             "mining_level": { "type": "integer", "minimum": 0 },
@@ -134,10 +134,10 @@
       "required": ["attribute", "id", "name", "amount", "operation", "operation_id"],
       "properties": {
         "attribute": { "$ref": "#/$defs/resourceId" },
-        "id": { "type": "string", "format": "uuid" },
+        "id": { "type": "string" },
         "name": { "type": "string" },
         "amount": { "type": "number" },
-        "operation": { "enum": ["addition", "multiply_base", "multiply_total"] },
+        "operation": { "enum": ["addition", "multiply_base", "multiply_total", "add_value", "add_multiplied_base", "add_multiplied_total"] },
         "operation_id": { "type": "integer", "minimum": 0, "maximum": 2 }
       },
       "additionalProperties": false
@@ -195,19 +195,21 @@
     },
     "food": {
       "type": "object",
-      "required": ["nutrition", "saturation_modifier", "meat", "always_edible", "fast_food", "effects"],
+      "required": ["nutrition", "saturation_modifier", "always_edible", "effects"],
       "properties": {
         "nutrition": { "type": "integer", "minimum": 0 },
         "saturation_modifier": { "type": "number", "minimum": 0 },
         "meat": { "type": "boolean" },
         "always_edible": { "type": "boolean" },
         "fast_food": { "type": "boolean" },
+        "eat_duration_ticks": { "type": "integer", "minimum": 0 },
+        "using_converts_to": { "type": "object" },
         "effects": {
           "type": "array",
           "items": { "$ref": "#/$defs/foodEffect" }
         }
       },
-      "additionalProperties": false
+      "additionalProperties": true
     }
   },
   "additionalProperties": true

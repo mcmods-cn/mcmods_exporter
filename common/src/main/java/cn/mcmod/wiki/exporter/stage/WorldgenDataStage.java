@@ -16,6 +16,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.RegistryDataLoader;
@@ -261,7 +262,7 @@ public final class WorldgenDataStage extends OnceStage {
                             }
                             String namespace = relative.getName(0).toString();
                             String resourcePath = relative.subpath(1, relative.getNameCount()).toString().replace('\\', '/');
-                            ResourceLocation resourceId = new ResourceLocation(namespace, resourcePath);
+                            ResourceLocation resourceId = ResourceLocation.fromNamespaceAndPath(namespace, resourcePath);
                             if ((!selectedOwner && !context.matches(resourceId))
                                 || classify(resourcePath) == null
                                 || files.containsKey(resourceId.toString())) {
@@ -325,7 +326,7 @@ public final class WorldgenDataStage extends OnceStage {
                 if (!attempted.add(reference) || hasLootTable(files, reference)) {
                     continue;
                 }
-                ResourceLocation resourceId = new ResourceLocation(
+                ResourceLocation resourceId = ResourceLocation.fromNamespaceAndPath(
                     reference.getNamespace(),
                     "loot_tables/" + reference.getPath() + ".json"
                 );
@@ -371,7 +372,7 @@ public final class WorldgenDataStage extends OnceStage {
         if (classification == null) {
             return null;
         }
-        ResourceLocation objectId = new ResourceLocation(resourceId.getNamespace(), classification.objectPath());
+        ResourceLocation objectId = ResourceLocation.fromNamespaceAndPath(resourceId.getNamespace(), classification.objectPath());
         return new DataFile(classification.kind(), resourceId, objectId, target, Files.size(target));
     }
 
@@ -651,7 +652,7 @@ public final class WorldgenDataStage extends OnceStage {
         Map<String, JsonElement> encodedStructures = runtimeDefinitions.get("minecraft:worldgen/structure");
         if (encodedStructures != null) {
             encodedStructures.forEach((id, definition) -> {
-                ResourceLocation resourceId = new ResourceLocation(id);
+                ResourceLocation resourceId = ResourceLocation.parse(id);
                 structures.computeIfAbsent(id, ignored -> new StructureEntry(resourceId)).runtimeDefinition = definition;
             });
         }
@@ -791,7 +792,7 @@ public final class WorldgenDataStage extends OnceStage {
         Set<ResourceLocation> additionallyIncluded
     ) {
         TreeSet<ResourceLocation> result = new TreeSet<>(Comparator.comparing(ResourceLocation::toString));
-        context.minecraft().getSingleplayerServer().getLootData().getKeys(type).stream()
+        context.minecraft().getSingleplayerServer().reloadableRegistries().getKeys(type.registryKey()).stream()
             .filter(id -> context.matches(id) || additionallyIncluded.contains(id))
             .forEach(result::add);
         return result;
@@ -823,7 +824,7 @@ public final class WorldgenDataStage extends OnceStage {
         }
         if (runtimeDefinitions != null) {
             runtimeDefinitions.forEach((id, definition) -> {
-                ResourceLocation resourceId = new ResourceLocation(id);
+                ResourceLocation resourceId = ResourceLocation.parse(id);
                 IndexedObject entry = result.computeIfAbsent(id, ignored -> new IndexedObject(resourceId));
                 entry.runtime = true;
                 entry.runtimeDefinition = definition;
@@ -946,7 +947,7 @@ public final class WorldgenDataStage extends OnceStage {
     private static CompoundTag readStructureNbt(Path path) throws Exception {
         CompoundTag root;
         try (InputStream input = Files.newInputStream(path)) {
-            root = NbtIo.readCompressed(input);
+            root = NbtIo.readCompressed(input, NbtAccounter.unlimitedHeap());
         } catch (Exception compressedFailure) {
             try (DataInputStream input = new DataInputStream(Files.newInputStream(path))) {
                 root = NbtIo.read(input);
@@ -965,7 +966,7 @@ public final class WorldgenDataStage extends OnceStage {
             CompoundTag nbt = block.getCompound("nbt");
             if (nbt.contains("LootTable", Tag.TAG_STRING)) {
                 try {
-                    target.add(new ResourceLocation(nbt.getString("LootTable")));
+                    target.add(ResourceLocation.parse(nbt.getString("LootTable")));
                 } catch (RuntimeException ignored) {
                 }
             }
@@ -1104,7 +1105,7 @@ public final class WorldgenDataStage extends OnceStage {
             && object.has("name")
             && object.get("name").isJsonPrimitive()) {
             try {
-                target.add(new ResourceLocation(object.get("name").getAsString()));
+                target.add(ResourceLocation.parse(object.get("name").getAsString()));
             } catch (RuntimeException ignored) {
             }
         }

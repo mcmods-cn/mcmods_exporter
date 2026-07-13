@@ -75,7 +75,7 @@ JEI 使用“合成方式背景”和“具体配方数据”分离的结构：
 
 `ingredients/ingredients.json` 使用 JEI 的流体 Ingredient renderer 输出流体本身的纹理，不渲染桶。类型和条目都带 `ingredient_kind=fluid`，网站应以 `resource_location` 和 `registries/fluids.json` 关联，并直接使用其多语言 `names` 与 32/128/256 透明 `icons`。图标文件名附带 `unique_id` 的短哈希，以免同一流体的不同组件状态互相覆盖。
 
-Mekanism 1.20.1 的四套 ChemicalStack 全部保留，但必须分开入库：`mekanism_gas`、`mekanism_infuse_type`、`mekanism_pigment`、`mekanism_slurry`。类型和条目同时输出 `chemical_family=mekanism`，以及 `chemical_type=gas/infuse_type/pigment/slurry`。网站不得把四类合并成一个无类型的“化学品”列表，也不需要根据 Java 类名猜测。
+Mekanism 对应 Minecraft 版本提供的四类化学品全部保留，但必须分开入库：`mekanism_gas`、`mekanism_infuse_type`、`mekanism_pigment`、`mekanism_slurry`。类型和条目同时输出 `chemical_family=mekanism`，以及 `chemical_type=gas/infuse_type/pigment/slurry`。网站不得把四类合并成一个无类型的“化学品”列表，也不需要根据 Java 类名猜测。
 
 ## 状态效果
 

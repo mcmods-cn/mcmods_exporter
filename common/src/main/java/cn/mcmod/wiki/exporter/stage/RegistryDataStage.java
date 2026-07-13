@@ -8,7 +8,12 @@ import dev.architectury.platform.Mod;
 import dev.architectury.platform.Platform;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.Entity;
@@ -30,6 +35,8 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.SpawnEggItem;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.tags.EnchantmentTags;
+import net.minecraft.tags.EntityTypeTags;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -74,18 +81,22 @@ public final class RegistryDataStage extends OnceStage {
                 Item item = entry.getValue();
                 ItemStack stack = item.getDefaultInstance();
                 JsonObject json = baseNamed(context, id, item.getDescriptionId());
-                json.addProperty("max_stack_size", item.getMaxStackSize());
-                json.addProperty("max_damage", item.getMaxDamage());
-                json.addProperty("edible", item.isEdible());
+                json.addProperty("max_stack_size", stack.getMaxStackSize());
+                json.addProperty("max_damage", stack.getMaxDamage());
+                json.addProperty("edible", stack.has(DataComponents.FOOD));
                 json.addProperty("rarity", stack.getRarity().name().toLowerCase());
                 try {
-                    RegistryPropertyExtractor.addItemProperties(json, item, stack);
+                    RegistryPropertyExtractor.addItemProperties(context, json, item, stack);
                 } catch (RuntimeException throwable) {
                     context.report().error(ID, id + ":properties", throwable);
                 }
                 addLocalizedTooltips(context, json, stack);
-                if (stack.hasTag()) {
-                    json.addProperty("default_nbt_snbt", stack.getTag().toString());
+                var customData = stack.get(DataComponents.CUSTOM_DATA);
+                if (customData != null && !customData.isEmpty()) {
+                    json.addProperty("default_nbt_snbt", customData.copyTag().toString());
+                }
+                if (!stack.getComponentsPatch().isEmpty()) {
+                    json.addProperty("default_components", stack.getComponentsPatch().toString());
                 }
                 Block block = Block.byItem(item);
                 ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(block);
@@ -176,21 +187,7 @@ public final class RegistryDataStage extends OnceStage {
                 json.addProperty("color_rgb", effect.getColor());
                 json.addProperty("instant", effect.isInstantenous());
                 json.addProperty("beneficial", effect.isBeneficial());
-                JsonArray modifiers = new JsonArray();
-                effect.getAttributeModifiers().entrySet().stream()
-                    .sorted(Comparator.comparing(attributeEntry -> String.valueOf(BuiltInRegistries.ATTRIBUTE.getKey(attributeEntry.getKey()))))
-                    .forEach(attributeEntry -> {
-                        AttributeModifier modifier = attributeEntry.getValue();
-                        JsonObject modifierJson = new JsonObject();
-                        ResourceLocation attributeId = BuiltInRegistries.ATTRIBUTE.getKey(attributeEntry.getKey());
-                        modifierJson.addProperty("attribute", attributeId == null ? "unregistered:unknown" : attributeId.toString());
-                        modifierJson.addProperty("uuid", modifier.getId().toString());
-                        modifierJson.addProperty("operation", modifier.getOperation().name().toLowerCase(Locale.ROOT));
-                        modifierJson.addProperty("base_amount", modifier.getAmount());
-                        modifierJson.addProperty("amount_at_amplifier_0", effect.getAttributeModifierValue(0, modifier));
-                        modifierJson.addProperty("amount_at_amplifier_1", effect.getAttributeModifierValue(1, modifier));
-                        modifiers.add(modifierJson);
-                    });
+                JsonArray modifiers = effectModifiers(effect);
                 json.add("effect_attribute_modifiers", modifiers);
                 data.add(json);
             });
@@ -199,22 +196,47 @@ public final class RegistryDataStage extends OnceStage {
 
     private static void exportEnchantments(ExportContext context) throws Exception {
         JsonArray data = new JsonArray();
-        BuiltInRegistries.ENCHANTMENT.entrySet().stream()
+        Registry<Enchantment> registry = context.minecraft().level.registryAccess().registryOrThrow(Registries.ENCHANTMENT);
+        registry.entrySet().stream()
             .sorted(Comparator.comparing(entry -> entry.getKey().location().toString()))
             .filter(entry -> context.matches(entry.getKey().location()))
             .forEach(entry -> {
                 ResourceLocation id = entry.getKey().location();
                 Enchantment enchantment = entry.getValue();
-                JsonObject json = baseNamed(context, id, enchantment.getDescriptionId());
-                json.addProperty("category", enchantment.category.name().toLowerCase());
-                json.addProperty("rarity", enchantment.getRarity().name().toLowerCase());
-                json.addProperty("rarity_weight", enchantment.getRarity().getWeight());
+                Holder.Reference<Enchantment> holder = registry.getHolderOrThrow(entry.getKey());
+                String translationKey = enchantment.description().getContents() instanceof TranslatableContents translatable
+                    ? translatable.getKey()
+                    : "enchantment." + id.getNamespace() + "." + id.getPath();
+                JsonObject json = baseNamed(context, id, translationKey);
+                json.addProperty("rarity", rarityName(enchantment.getWeight()));
+                json.addProperty("rarity_weight", enchantment.getWeight());
                 json.addProperty("min_level", enchantment.getMinLevel());
                 json.addProperty("max_level", enchantment.getMaxLevel());
-                json.addProperty("treasure_only", enchantment.isTreasureOnly());
-                json.addProperty("curse", enchantment.isCurse());
-                json.addProperty("tradeable", enchantment.isTradeable());
-                json.addProperty("discoverable", enchantment.isDiscoverable());
+                json.addProperty("anvil_cost", enchantment.getAnvilCost());
+                json.addProperty("treasure_only", holder.is(EnchantmentTags.TREASURE));
+                json.addProperty("curse", holder.is(EnchantmentTags.CURSE));
+                json.addProperty("tradeable", holder.is(EnchantmentTags.TRADEABLE));
+                json.addProperty("discoverable", holder.is(EnchantmentTags.IN_ENCHANTING_TABLE) || holder.is(EnchantmentTags.ON_RANDOM_LOOT));
+                JsonArray slots = new JsonArray();
+                enchantment.definition().slots().forEach(slot -> slots.add(slot.getSerializedName()));
+                json.add("slots", slots);
+                enchantment.getSupportedItems().unwrapKey().ifPresent(tag -> json.addProperty("supported_items_tag", tag.location().toString()));
+                json.add("supported_items", holderIds(enchantment.getSupportedItems()));
+                enchantment.definition().primaryItems().ifPresent(primary -> {
+                    primary.unwrapKey().ifPresent(tag -> json.addProperty("primary_items_tag", tag.location().toString()));
+                    json.add("primary_items", holderIds(primary));
+                });
+                json.add("exclusive_with", holderIds(enchantment.exclusiveSet()));
+                JsonArray costs = new JsonArray();
+                for (int level = enchantment.getMinLevel(); level <= enchantment.getMaxLevel(); level++) {
+                    JsonObject cost = new JsonObject();
+                    cost.addProperty("level", level);
+                    cost.addProperty("minimum", enchantment.getMinCost(level));
+                    cost.addProperty("maximum", enchantment.getMaxCost(level));
+                    costs.add(cost);
+                }
+                json.add("costs", costs);
+                json.addProperty("effect_component_count", enchantment.effects().size());
                 data.add(json);
             });
         writeRegistry(context, "enchantments", data);
@@ -310,7 +332,7 @@ public final class RegistryDataStage extends OnceStage {
 
     private static void addLocalizedTooltips(ExportContext context, JsonObject json, ItemStack stack) {
         try {
-            List<Component> lines = stack.getTooltipLines(context.minecraft().player, TooltipFlag.NORMAL);
+            List<Component> lines = stack.getTooltipLines(Item.TooltipContext.of(context.minecraft().level), context.minecraft().player, TooltipFlag.NORMAL);
             JsonObject localized = new JsonObject();
             for (String language : context.languages()) {
                 JsonArray values = new JsonArray();
@@ -384,12 +406,12 @@ public final class RegistryDataStage extends OnceStage {
                 json.addProperty("mob_type", mobTypeName(living));
                 json.addProperty("max_health", living.getMaxHealth());
                 json.addProperty("armor_value", living.getArmorValue());
-                json.addProperty("default_loot_table", living.getLootTable().toString());
+                json.addProperty("default_loot_table", living.getLootTable().location().toString());
                 JsonArray attributes = new JsonArray();
                 BuiltInRegistries.ATTRIBUTE.entrySet().stream()
                     .sorted(Comparator.comparing(entry -> entry.getKey().location().toString()))
                     .forEach(entry -> {
-                        AttributeInstance instance = living.getAttribute(entry.getValue());
+                        AttributeInstance instance = living.getAttribute(BuiltInRegistries.ATTRIBUTE.wrapAsHolder(entry.getValue()));
                         if (instance == null) {
                             return;
                         }
@@ -423,11 +445,60 @@ public final class RegistryDataStage extends OnceStage {
     }
 
     private static String mobTypeName(LivingEntity living) {
-        if (living.getMobType() == net.minecraft.world.entity.MobType.UNDEAD) return "undead";
-        if (living.getMobType() == net.minecraft.world.entity.MobType.ARTHROPOD) return "arthropod";
-        if (living.getMobType() == net.minecraft.world.entity.MobType.ILLAGER) return "illager";
-        if (living.getMobType() == net.minecraft.world.entity.MobType.WATER) return "water";
+        if (living.getType().is(EntityTypeTags.UNDEAD)) return "undead";
+        if (living.getType().is(EntityTypeTags.ARTHROPOD)) return "arthropod";
+        if (living.getType().is(EntityTypeTags.ILLAGER)) return "illager";
+        if (living.getType().is(EntityTypeTags.AQUATIC)) return "water";
         return "undefined";
+    }
+
+    private static JsonArray effectModifiers(MobEffect effect) {
+        Map<String, AttributeModifier> amplifierOne = new LinkedHashMap<>();
+        effect.createModifiers(1, (attribute, modifier) -> amplifierOne.put(modifierKey(attribute, modifier), modifier));
+        List<EffectModifier> amplifierZero = new ArrayList<>();
+        effect.createModifiers(0, (attribute, modifier) -> amplifierZero.add(new EffectModifier(attribute, modifier)));
+        amplifierZero.sort(Comparator.comparing(value -> modifierKey(value.attribute(), value.modifier())));
+        JsonArray output = new JsonArray();
+        for (EffectModifier value : amplifierZero) {
+            AttributeModifier modifier = value.modifier();
+            AttributeModifier levelOne = amplifierOne.get(modifierKey(value.attribute(), modifier));
+            JsonObject json = new JsonObject();
+            json.addProperty("attribute", value.attribute().unwrapKey().map(key -> key.location().toString()).orElse("unregistered:unknown"));
+            json.addProperty("uuid", modifier.id().toString());
+            json.addProperty("operation", modifier.operation().getSerializedName());
+            json.addProperty("base_amount", modifier.amount());
+            json.addProperty("amount_at_amplifier_0", modifier.amount());
+            if (levelOne != null) {
+                json.addProperty("amount_at_amplifier_1", levelOne.amount());
+            }
+            output.add(json);
+        }
+        return output;
+    }
+
+    private static String modifierKey(Holder<?> attribute, AttributeModifier modifier) {
+        return attribute.unwrapKey().map(key -> key.location().toString()).orElse("unregistered") + "#" + modifier.id();
+    }
+
+    private static String rarityName(int weight) {
+        if (weight >= 10) return "common";
+        if (weight >= 5) return "uncommon";
+        if (weight >= 2) return "rare";
+        return "very_rare";
+    }
+
+    private static JsonArray holderIds(Iterable<? extends Holder<?>> holders) {
+        List<String> ids = new ArrayList<>();
+        for (Holder<?> holder : holders) {
+            holder.unwrapKey().ifPresent(key -> ids.add(key.location().toString()));
+        }
+        ids.sort(String::compareTo);
+        JsonArray output = new JsonArray();
+        ids.forEach(output::add);
+        return output;
+    }
+
+    private record EffectModifier(Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute, AttributeModifier modifier) {
     }
 
     static boolean keyTranslationMatchesNamespaces(String translationKey, Iterable<String> namespaces) {

@@ -24,7 +24,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -306,7 +306,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
             json.addProperty("resource_location_unavailable", true);
         }
         try {
-            json.addProperty("unique_id", helper.getUniqueId(ingredient, UidContext.Recipe));
+            json.addProperty("unique_id", String.valueOf(helper.getUid(ingredient, UidContext.Recipe)));
         } catch (Throwable throwable) {
             json.addProperty("unique_id_unavailable", true);
         }
@@ -323,7 +323,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
     }
 
     private static void addLocalizedComponent(ExportContext context, JsonObject target, String field, Component component) {
-        target.addProperty(field + "_component", Component.Serializer.toJson(component));
+        target.addProperty(field + "_component", Component.Serializer.toJson(component, context.minecraft().level.registryAccess()));
         target.add(field + "_names", context.componentNames(component));
         if (component.getContents() instanceof TranslatableContents translatable) {
             target.addProperty(field + "_translation_key", translatable.getKey());
@@ -402,14 +402,14 @@ public final class JeiRecipeGuiStage implements ExportStage {
         } catch (Throwable throwable) {
             context.report().error(ID, type.getUid() + ":recipe_id", throwable);
         }
-        if (recipe instanceof Recipe<?> vanillaRecipe) {
-            return vanillaRecipe.getId();
+        if (recipe instanceof RecipeHolder<?> holder) {
+            return holder.id();
         }
         return null;
     }
 
     private static String recipeIdSource(Object recipe, ResourceLocation registeredId) {
-        if (recipe instanceof Recipe<?> vanillaRecipe && vanillaRecipe.getId().equals(registeredId)) {
+        if (recipe instanceof RecipeHolder<?> holder && holder.id().equals(registeredId)) {
             return "minecraft_recipe";
         }
         return "jei_category";
@@ -417,7 +417,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
 
     private static ResourceLocation generatedRecipeId(RecipeType<?> type, int index) {
         ResourceLocation categoryId = type.getUid();
-        return new ResourceLocation(
+        return ResourceLocation.fromNamespaceAndPath(
             categoryId.getNamespace(),
             categoryId.getPath() + "/__generated/" + String.format("recipe_%06d", index)
         );

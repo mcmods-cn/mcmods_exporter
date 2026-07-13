@@ -4,7 +4,6 @@ import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexSorting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -12,6 +11,7 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,7 +29,7 @@ public final class OffscreenRenderer {
         float largestDimension = Math.max(entity.getBbWidth(), entity.getBbHeight());
         int scale = Math.max(1, Math.min(70, Math.round(68.0F / Math.max(0.1F, largestDimension))));
         renderGui(size, size, 100, 100, output, graphics ->
-            InventoryScreen.renderEntityInInventoryFollowsMouse(graphics, 50, 91, scale, 65.0F, -20.0F, entity)
+            InventoryScreen.renderEntityInInventoryFollowsMouse(graphics, 0, 0, 100, 100, scale, 65.0F, -20.0F, 0.0F, entity)
         );
     }
 
@@ -45,9 +45,9 @@ public final class OffscreenRenderer {
         Minecraft minecraft = Minecraft.getInstance();
         RenderTarget mainTarget = minecraft.getMainRenderTarget();
         TextureTarget target = new TextureTarget(pixelWidth, pixelHeight, true, Minecraft.ON_OSX);
-        PoseStack modelView = RenderSystem.getModelViewStack();
+        Matrix4fStack modelView = RenderSystem.getModelViewStack();
         RenderSystem.backupProjectionMatrix();
-        modelView.pushPose();
+        modelView.pushMatrix();
         try {
             target.setClearColor(0.0F, 0.0F, 0.0F, 0.0F);
             target.clear(Minecraft.ON_OSX);
@@ -56,7 +56,7 @@ public final class OffscreenRenderer {
                 new Matrix4f().setOrtho(0.0F, logicalWidth, logicalHeight, 0.0F, 1000.0F, 21000.0F),
                 VertexSorting.ORTHOGRAPHIC_Z
             );
-            modelView.setIdentity();
+            modelView.identity();
             modelView.translate(0.0F, 0.0F, -11000.0F);
             RenderSystem.applyModelViewMatrix();
             RenderSystem.enableBlend();
@@ -72,7 +72,7 @@ public final class OffscreenRenderer {
                 image.writeToFile(output);
             }
         } finally {
-            modelView.popPose();
+            modelView.popMatrix();
             RenderSystem.applyModelViewMatrix();
             RenderSystem.restoreProjectionMatrix();
             target.destroyBuffers();

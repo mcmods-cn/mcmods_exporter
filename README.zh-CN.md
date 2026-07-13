@@ -2,7 +2,7 @@
 
 这是一个为百科网站批量建档准备数据的客户端 Mod。它在游戏内把运行时对象整理为稳定、精简的数据结构，并把当前生效资源和真实客户端渲染结果打包成 ZIP，避免上传后再反编译 Mod、猜测资源覆盖关系或重复做格式转换。
 
-当前首发目标：Minecraft 1.20.1、Java 17、Fabric 与 Forge。Fabric 需要 Fabric API，两端都需要 Architectury API 和 JEI 15.20+。JEI 是强制客户端依赖，用于导出真实配方类别布局、非物品 Ingredient 和类别级 Recipe Catalyst。
+当前构建目标：Minecraft 1.21.1、Java 21、Fabric 与 NeoForge。Fabric 需要 Fabric API，两端都需要 Architectury API 13.0.8+ 和 JEI 19.21+。JEI 是强制客户端依赖，用于导出真实配方类别布局、非物品 Ingredient 和类别级 Recipe Catalyst。
 
 ## 已实现的内容
 
@@ -26,7 +26,7 @@
 
 ## 安装和手动导出
 
-1. 安装与 Minecraft 1.20.1 对应的导出器、JEI 15.20+、Architectury API；Fabric 还需 Fabric API。
+1. 安装 Minecraft 1.21.1 对应的导出器、JEI 19.21+、Architectury API 13.0.8+；Fabric 还需 Fabric API。
 2. 把需要采集的 Mod、资源包、数据包和 i18n 自动汉化更新 Mod 正常装入客户端。
 3. 进入一个单人世界或服务器，等待配方、进度与标签同步完成。
 4. 执行命令：
@@ -70,7 +70,7 @@
 - `tickBudgetMs`：每个客户端 tick 的软时间预算，范围 1–100 ms。
 - `exit`：仅自动模式生效，ZIP 成功生成后关闭客户端；打包失败时保留客户端与暂存目录，便于排查。
 
-若要做到完全无人值守，可再使用 Minecraft 1.20.1 的游戏参数：
+若要做到完全无人值守，可再使用 Minecraft 1.21.1 的游戏参数：
 
 ```text
 --quickPlaySingleplayer ExportWorld
@@ -165,14 +165,14 @@ OBJ 是实体在 idle 姿态下的基础 `EntityModel` 静态快照，含顶点�
 ## 构建
 
 ```powershell
-$env:JAVA_HOME='C:\path\to\jdk-17'
+$env:JAVA_HOME='C:\path\to\jdk-21'
 ./gradlew.bat clean build
 ```
 
 产物：
 
-- `fabric/build/libs/mcmods_exporter-0.7.0.jar`
-- `forge/build/libs/mcmods_exporter-0.7.0.jar`
+- `fabric/build/libs/mcmods_exporter-0.8.0.jar`
+- `neoforge/build/libs/mcmods_exporter-0.8.0.jar`
 
 ## 后续版本适配
 
@@ -183,7 +183,7 @@ $env:JAVA_HOME='C:\path\to\jdk-17'
 - `stage/RecipeDataStage.java`、`AdvancementStage.java`：新版 RecipeHolder/AdvancementHolder；
 - `stage/WorldgenDataStage.java`：动态注册表、服务端数据资源栈和结构 NBT API；
 - `stage/RegistryDataStage.java`：数据驱动附魔和新版组件系统；
-- Fabric/Forge 子模块的事件和元数据。
+- Fabric/NeoForge 子模块的事件和元数据。
 
 导出 Schema 采用独立版本号，不跟随 Minecraft 版本；网站导入器无需因为 Minecraft 升级而同步重写。详细清单见 [docs/version-porting.md](docs/version-porting.md)。
 

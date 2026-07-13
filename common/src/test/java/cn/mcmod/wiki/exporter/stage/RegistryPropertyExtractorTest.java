@@ -2,6 +2,7 @@ package cn.mcmod.wiki.exporter.stage;
 
 import com.google.gson.JsonObject;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -49,9 +50,9 @@ class RegistryPropertyExtractorTest {
     @Test
     void appliesAttributeOperationsInMinecraftOrder() {
         List<AttributeModifier> modifiers = List.of(
-            new AttributeModifier("addition", 2.0D, AttributeModifier.Operation.ADDITION),
-            new AttributeModifier("base", 0.5D, AttributeModifier.Operation.MULTIPLY_BASE),
-            new AttributeModifier("total", 0.25D, AttributeModifier.Operation.MULTIPLY_TOTAL)
+            new AttributeModifier(ResourceLocation.fromNamespaceAndPath("test", "addition"), 2.0D, AttributeModifier.Operation.ADD_VALUE),
+            new AttributeModifier(ResourceLocation.fromNamespaceAndPath("test", "base"), 0.5D, AttributeModifier.Operation.ADD_MULTIPLIED_BASE),
+            new AttributeModifier(ResourceLocation.fromNamespaceAndPath("test", "total"), 0.25D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL)
         );
 
         assertEquals(11.875D, RegistryPropertyExtractor.applyModifiers(5.0D, modifiers));

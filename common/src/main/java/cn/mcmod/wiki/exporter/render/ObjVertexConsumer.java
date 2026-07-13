@@ -19,56 +19,54 @@ public final class ObjVertexConsumer implements VertexConsumer {
     private float nx;
     private float ny;
     private float nz;
+    private boolean pending;
 
     @Override
-    public VertexConsumer vertex(double x, double y, double z) {
+    public VertexConsumer addVertex(float x, float y, float z) {
+        commitPending();
         this.x = x;
         this.y = y;
         this.z = z;
+        this.pending = true;
         return this;
     }
 
     @Override
-    public VertexConsumer color(int red, int green, int blue, int alpha) {
+    public VertexConsumer setColor(int red, int green, int blue, int alpha) {
         return this;
     }
 
     @Override
-    public VertexConsumer uv(float u, float v) {
+    public VertexConsumer setUv(float u, float v) {
         this.u = u;
         this.v = 1.0F - v;
         return this;
     }
 
     @Override
-    public VertexConsumer overlayCoords(int u, int v) {
+    public VertexConsumer setUv1(int u, int v) {
         return this;
     }
 
     @Override
-    public VertexConsumer uv2(int u, int v) {
+    public VertexConsumer setUv2(int u, int v) {
         return this;
     }
 
     @Override
-    public VertexConsumer normal(float x, float y, float z) {
+    public VertexConsumer setNormal(float x, float y, float z) {
         this.nx = x;
         this.ny = y;
         this.nz = z;
+        commitPending();
         return this;
     }
 
-    @Override
-    public void endVertex() {
-        vertices.add(new Vertex(x, y, z, u, v, nx, ny, nz));
-    }
-
-    @Override
-    public void defaultColor(int red, int green, int blue, int alpha) {
-    }
-
-    @Override
-    public void unsetDefaultColor() {
+    private void commitPending() {
+        if (pending) {
+            vertices.add(new Vertex(x, y, z, u, v, nx, ny, nz));
+            pending = false;
+        }
     }
 
     public int vertexCount() {
@@ -80,6 +78,7 @@ public final class ObjVertexConsumer implements VertexConsumer {
     }
 
     public void write(Path output, String objectName) throws Exception {
+        commitPending();
         Files.createDirectories(output.getParent());
         try (BufferedWriter writer = Files.newBufferedWriter(output, StandardCharsets.UTF_8)) {
             writer.write("# mcmods_exporter static base model snapshot\n");
