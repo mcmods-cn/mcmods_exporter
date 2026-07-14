@@ -105,8 +105,10 @@ tags/tags.json
 ingredients/ingredients.json
 ingredients/<ingredient type>/<size>/<namespace>/<id>--<hash>.png
 recipes/recipes.json
-recipes/jei/layouts/<category namespace>/<category>.json
-recipes/jei/backgrounds/<category namespace>/<category>.png
+recipes/jei/categories.json
+recipes/jei/backgrounds/<category namespace>/<category>/<template_id>.png
+recipes/jei/templates/<category namespace>/<category>.json
+recipes/jei/recipes/<category namespace>/<category>.json
 advancements/advancements.json
 advancements/localized/<locale>.json
 worldgen/registries.json
@@ -154,13 +156,13 @@ OBJ 是实体在 idle 姿态下的基础 `EntityModel` 静态快照，含顶点�
 
 `jei_recipe_gui` 阶段通过强制依赖的 JEI 公共 API 获取全部 RecipeType、隐藏配方和类别 drawable。这里严格区分两个 ID：
 
-- `recipe_type_id`：合成方式/类别 ID，例如某台机器的合成类别；它唯一对应 `recipes/jei/backgrounds/...png`；
+- `recipe_type_id`：合成方式/类别 ID，例如某台机器的合成类别；它可以对应多个模板，每个 `template_id` 独占一张背景 PNG；
 - `recipe_id`：某一条具体配方 ID；优先读取 JEI 类别注册名，其次读取原版 Recipe ID，仍不存在时生成本次导出内唯一 ID，因此每个布局都有该字段；
 - `recipe_id_source` 和 `recipe_id_canonical`：区分原版 ID、JEI 类别权威 ID和只适合本次包内关联的合成 ID。
 
 `recipes/jei/categories.json` 会按 `recipe_type_id` 导出 JEI 正式注册的 `catalysts`，即使用该类别的工作台、熔炉或模组机器方块；一个类别可以对应多个机器。没有注册 Catalyst 时输出空数组，不根据标题或背景猜测。
 
-类别背景取该 RecipeType 的第一条可导出配方创建 JEI layout，再给全部槽位设置空显示覆盖后渲染。因此背景保留空槽位、机器 GUI、箭头、能量条等类别视觉，但不包含任何输入或输出物品。每个 `recipe_type_id` 只有一个布局集合 JSON；其中 `layouts[]` 保存各配方的 `layout_key`、`rect`、`visual_rect`、角色、数量、Tag、预处理机器参数与全部轮换候选材料。布局不重复写入每个物品的完整多语言名称，网站通过注册表和 Ingredient 目录按 ID 解析名称与图标。网页显示同一个类别背景，再按坐标叠加 `icons/items`、`icons/blocks` 或其他 Ingredient 图标。
+每个模板背景取第一次产生该 `template_id` 的配方创建 JEI layout，再给全部槽位设置空显示覆盖后单独渲染，因此不包含输入或输出物品。不同模板即使图片相同也使用不同 PNG。模板只保存完整可容纳槽位的稳定 `slot_id`、角色、`rect` 与 `visual_rect`，具体配方只保存 `template_id` 及 `slot_id → alternatives`；未使用槽位以 `minecraft:air` 明确占位但不计入输入。工作台木棍、木门等配方共享完整 3×3 模板，机械动力合成器等动态容量类别则生成多个模板和对应背景。完整格式见 [`docs/jei-template-export-v1.md`](docs/jei-template-export-v1.md)。
 
 ## 构建
 
@@ -171,8 +173,8 @@ $env:JAVA_HOME='C:\path\to\jdk-17'
 
 产物：
 
-- `fabric/build/libs/mcmods_exporter-0.7.0.jar`
-- `forge/build/libs/mcmods_exporter-0.7.0.jar`
+- `fabric/build/libs/mcmods_exporter-0.8.0.jar`
+- `forge/build/libs/mcmods_exporter-0.8.0.jar`
 
 ## 后续版本适配
 

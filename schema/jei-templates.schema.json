@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-jei-template-collection-v1.json",
+  "title": "MC百科 JEI 通用槽位模板集合",
+  "type": "object",
+  "required": ["schema_version", "recipe_type_id", "coordinate_space", "image_scale", "canvas", "content", "template_count", "templates"],
+  "properties": {
+    "schema_version": { "const": "mcmods-jei-template-collection/v1" },
+    "recipe_type_id": { "type": "string" },
+    "coordinate_space": { "const": "logical_pixels" },
+    "image_scale": { "type": "integer", "minimum": 1 },
+    "canvas": { "$ref": "#/$defs/rect" },
+    "image_pixels": { "$ref": "#/$defs/rect" },
+    "content": { "$ref": "#/$defs/rect" },
+    "template_count": { "type": "integer", "minimum": 0 },
+    "templates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/template" }
+    }
+  },
+  "$defs": {
+    "template": {
+      "type": "object",
+      "required": ["schema_version", "template_id", "background", "background_contains_ingredients", "slot_count", "slots"],
+      "properties": {
+        "schema_version": { "const": "mcmods-jei-layout-template/v1" },
+        "template_id": { "type": "string", "pattern": "^template_[0-9a-f]{16}$" },
+        "background": { "type": "string" },
+        "background_contains_ingredients": { "const": false },
+        "slot_count": { "type": "integer", "minimum": 0 },
+        "slots": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/slot" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "slot": {
+      "type": "object",
+      "required": ["slot_id", "role", "coordinates_available"],
+      "properties": {
+        "slot_id": { "type": "string", "pattern": "^[a-z_]+_[0-9]+$" },
+        "role": { "enum": ["input", "output", "catalyst", "render_only"] },
+        "name": { "type": "string" },
+        "coordinates_available": { "type": "boolean" },
+        "rect": { "$ref": "#/$defs/rect" },
+        "visual_rect": { "$ref": "#/$defs/rect" }
+      },
+      "additionalProperties": true
+    },
+    "rect": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" },
+        "width": { "type": "integer", "minimum": 0 },
+        "height": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

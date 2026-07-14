@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-jei-recipe-collection-v1.json",
+  "title": "MC百科 JEI 配方槽位绑定集合",
+  "type": "object",
+  "required": ["schema_version", "recipe_type_id", "template_collection", "count", "recipes"],
+  "properties": {
+    "schema_version": { "const": "mcmods-jei-recipe-collection/v1" },
+    "recipe_type_id": { "type": "string" },
+    "template_collection": { "type": "string" },
+    "count": { "type": "integer", "minimum": 0 },
+    "recipes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/recipe" }
+    }
+  },
+  "$defs": {
+    "recipe": {
+      "type": "object",
+      "required": ["schema_version", "recipe_type_id", "recipe_id", "recipe_id_source", "recipe_id_canonical", "recipe_key", "template_id", "render_locale", "parameter_count", "parameters", "binding_count", "bindings"],
+      "properties": {
+        "schema_version": { "const": "mcmods-jei-recipe-bindings/v1" },
+        "recipe_type_id": { "type": "string" },
+        "recipe_id": { "type": "string" },
+        "recipe_id_source": { "enum": ["minecraft_recipe", "jei_category", "generated_index"] },
+        "recipe_id_canonical": { "type": "boolean" },
+        "recipe_key": { "type": "string" },
+        "template_id": { "type": "string", "pattern": "^template_[0-9a-f]{16}$" },
+        "render_locale": { "type": "string" },
+        "layout_kind": { "enum": ["shaped", "shapeless", "not_applicable", "unknown"] },
+        "ordered": { "type": ["boolean", "null"] },
+        "layout_classification_source": { "enum": ["recipe_class", "serializer", "recipe_type", "unavailable"] },
+        "parameter_count": { "type": "integer", "minimum": 0 },
+        "parameters": { "type": "object" },
+        "binding_count": { "type": "integer", "minimum": 0 },
+        "bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/binding" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "binding": {
+      "type": "object",
+      "required": ["slot_id", "ingredient_present", "clickable", "alternatives"],
+      "properties": {
+        "slot_id": { "type": "string", "pattern": "^[a-z_]+_[0-9]+$" },
+        "ingredient_present": { "type": "boolean" },
+        "clickable": { "type": "boolean" },
+        "placeholder_item": { "const": "minecraft:air" },
+        "item_tag_equivalent": { "type": "string" },
+        "alternatives": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ingredient" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "ingredient": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string" },
+        "resource_location": { "type": "string" },
+        "resource_location_unavailable": { "type": "boolean" },
+        "unique_id": { "type": "string" },
+        "unique_id_unavailable": { "type": "boolean" },
+        "amount": { "type": "integer", "minimum": 0 },
+        "item": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 },
+        "nbt_snbt": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,18 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://www.mcmod.cn/schemas/mcmods-jei-categories-v4.json",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-jei-categories-v5.json",
   "title": "MC百科 JEI 配方类别索引",
   "type": "object",
   "required": ["schema_version", "category_count", "recipe_count", "categories", "recipes"],
   "properties": {
-    "schema_version": { "const": "mcmods-jei-categories/v4" },
+    "schema_version": { "const": "mcmods-jei-categories/v5" },
     "category_count": { "type": "integer", "minimum": 0 },
     "recipe_count": { "type": "integer", "minimum": 0 },
     "categories": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["recipe_type_id", "width", "height", "recipe_count", "background", "layout_collection", "background_contains_ingredients", "image_scale", "canvas", "catalyst_count", "catalysts"],
+        "required": ["recipe_type_id", "width", "height", "recipe_count", "exported_recipe_count", "template_count", "background_count", "template_collection", "recipe_collection", "image_scale", "canvas", "catalyst_count", "catalysts"],
         "properties": {
           "recipe_type_id": { "type": "string" },
           "title_component": { "type": "string" },
@@ -21,9 +21,11 @@
           "width": { "type": "integer", "minimum": 0 },
           "height": { "type": "integer", "minimum": 0 },
           "recipe_count": { "type": "integer", "minimum": 0 },
-          "background": { "type": "string" },
-          "layout_collection": { "type": "string" },
-          "background_contains_ingredients": { "const": false },
+          "exported_recipe_count": { "type": "integer", "minimum": 0 },
+          "template_count": { "type": "integer", "minimum": 0 },
+          "background_count": { "type": "integer", "minimum": 0 },
+          "template_collection": { "type": "string" },
+          "recipe_collection": { "type": "string" },
           "image_scale": { "type": "integer", "minimum": 1 },
           "canvas": { "$ref": "#/$defs/rect" },
           "catalyst_count": { "type": "integer", "minimum": 0 },
@@ -39,7 +41,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["recipe_type_id", "recipe_id", "recipe_id_source", "recipe_id_canonical", "layout_collection", "layout_key", "background"],
+        "required": ["recipe_type_id", "recipe_id", "recipe_id_source", "recipe_id_canonical", "recipe_key", "template_collection", "recipe_collection", "layout_available", "background_available"],
         "properties": {
           "recipe_type_id": { "type": "string" },
           "recipe_id": { "type": "string" },
@@ -48,9 +50,13 @@
           "layout_kind": { "enum": ["shaped", "shapeless", "not_applicable", "unknown"] },
           "ordered": { "type": ["boolean", "null"] },
           "layout_classification_source": { "enum": ["recipe_class", "serializer", "recipe_type", "unavailable"] },
-          "layout_collection": { "type": "string" },
-          "layout_key": { "type": "string" },
-          "background": { "type": "string" }
+          "recipe_key": { "type": "string" },
+          "template_id": { "type": "string", "pattern": "^template_[0-9a-f]{16}$" },
+          "template_collection": { "type": "string" },
+          "recipe_collection": { "type": "string" },
+          "background": { "type": "string" },
+          "layout_available": { "type": "boolean" },
+          "background_available": { "type": "boolean" }
         },
         "additionalProperties": true
       }
