@@ -44,6 +44,8 @@
 
 `ingredients` 中每个元素是一格输入；`alternatives` 是 tag 或复合 Ingredient 展开后的可选 ItemStack。`nbt_snbt` 仅在存在 NBT 时出现。导出器在游戏中完成展开和清洗，网站不应再依赖原始配方 JSON。
 
+基础配方与 JEI 配方索引/布局统一输出 `layout_kind`、`ordered` 和 `layout_classification_source`。`layout_kind=shaped` 表示有序工作台配方，`shapeless` 表示无序工作台配方，`not_applicable` 表示熔炉或模组机器等不适用“有序/无序”语义的配方，`unknown` 表示该对象属于工作台配方但无法可靠判断，或 JEI 没有提供 Minecraft `Recipe` 对象。只有 `shaped`/`shapeless` 的 `ordered` 分别为 `true`/`false`，其余情况显式输出 `null`；`layout_classification_source` 说明判断来自配方类、serializer、配方类型或数据不可用。有序配方继续额外输出 `width`、`height`。网站必须保存未知值，不得根据 Java 类名、JEI 槽位坐标或 serializer 名称片段猜测。
+
 JEI GUI 尺寸由类别决定，默认按逻辑尺寸 4 倍输出，以减少网站放大显示时的模糊；`recipes/jei/categories.json` 同时记录逻辑宽高和 `image_scale`。JEI 是强制客户端依赖；若某个低版本 JEI 缺少布局 API，只将对应能力标记为不可用，不生成猜测式或烘焙物品的 GUI 图片。
 
 JEI 使用“合成方式背景”和“具体配方数据”分离的结构：

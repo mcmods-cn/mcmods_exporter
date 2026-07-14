@@ -58,6 +58,7 @@ public final class RecipeDataStage extends OnceStage {
         if (serializer != null) {
             json.addProperty("serializer", serializer.toString());
         }
+        RecipeLayoutNormalizer.write(json, recipe);
         json.addProperty("group", recipe.getGroup());
         json.addProperty("special", recipe.isSpecial());
         json.addProperty("incomplete", recipe.isIncomplete());

@@ -45,6 +45,9 @@
           "recipe_id": { "type": "string" },
           "recipe_id_source": { "enum": ["minecraft_recipe", "jei_category", "generated_index"] },
           "recipe_id_canonical": { "type": "boolean" },
+          "layout_kind": { "enum": ["shaped", "shapeless", "not_applicable", "unknown"] },
+          "ordered": { "type": ["boolean", "null"] },
+          "layout_classification_source": { "enum": ["recipe_class", "serializer", "recipe_type", "unavailable"] },
           "layout_collection": { "type": "string" },
           "layout_key": { "type": "string" },
           "background": { "type": "string" }
