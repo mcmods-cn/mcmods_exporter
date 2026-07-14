@@ -48,28 +48,29 @@
 
 JEI GUI 尺寸由类别决定，默认按逻辑尺寸 4 倍输出，以减少网站放大显示时的模糊；`recipes/jei/categories.json` 同时记录逻辑宽高和 `image_scale`。JEI 是强制客户端依赖；若某个低版本 JEI 缺少布局 API，只将对应能力标记为不可用，不生成猜测式或烘焙物品的 GUI 图片。
 
-JEI 使用“合成方式背景”和“具体配方数据”分离的结构：
+JEI 使用“合成方式背景、通用槽位模板、具体配方绑定”三层分离结构；完整规范和前端流程见 [`jei-template-export-v1.md`](jei-template-export-v1.md)：
 
-- `recipe_type_id` 是合成方式 ID，每个 ID 只对应一张 `recipes/jei/backgrounds/...png`；背景中的 JEI 槽位为空，不烘焙物品；
-- `recipe_id` 是具体配方 ID；布局不再每条配方生成一个小文件，而是按 `recipe_type_id` 聚合到一个 `recipes/jei/layouts/<namespace>/<type>.json`；
+- `recipe_type_id` 是合成方式 ID，可以对应多个 `template_id`；每个模板严格对应一张独立的 `recipes/jei/backgrounds/<namespace>/<type>/<template_id>.png`，背景不烘焙物品；
+- 每个 `recipe_type_id` 生成一个 `recipes/jei/templates/<namespace>/<type>.json` 通用模板集合和一个 `recipes/jei/recipes/<namespace>/<type>.json` 配方绑定集合；
+- `recipe_id` 是具体配方 ID；具体配方使用 `template_id` 引用模板，并通过 `bindings[].slot_id` 绑定物品，不再重复保存坐标；
 - `recipe_id_source` 说明 ID 来源：`minecraft_recipe` 是原版 `Recipe` ID，`jei_category` 是 JEI 类别通过 `getRegistryName` 提供的权威 ID，`generated_index` 表示第三方类别没有注册 ID；
 - 每个布局都保证存在 `recipe_id`。只有 `recipe_id_canonical=true` 时才能把它当作跨次导出稳定主键；`generated_index` 只用于本次导出内关联，网站应另用布局内容指纹做去重；
-- `canvas`、`content` 和所有槽位矩形使用 `logical_pixels`；PNG 的实际像素倍率由 `image_scale` 指定；
-- `slots[].role` 是 `input`、`output`、`catalyst` 或 `render_only`；
+- `canvas`、`content` 和模板中的所有槽位矩形使用 `logical_pixels`；PNG 的实际像素倍率由 `image_scale` 指定；
+- `templates[].slots[].role` 是 `input`、`output`、`catalyst` 或 `render_only`；
 - `rect` 是可点击材料区域，`visual_rect` 包含槽位自定义背景；
-- `alternatives` 包含轮换展示的所有 JEI Ingredient，而不只是截图瞬间显示的一个物品；
+- `bindings[].alternatives` 包含轮换展示的所有 JEI Ingredient，而不只是截图瞬间显示的一个物品；
 - `background_contains_ingredients=false` 可供导入端校验背景没有烘焙物品。
-- `layout_collection` 指向类别布局集合，`layout_key` 在集合内唯一定位一条配方；集合根为 `mcmods-jei-layout-collection/v1`，内部 `layouts[]` 为 `mcmods-jei-layout/v4`；
+- `template_id` 是完整可容纳槽位的几何指纹；实际使用物品或空缺位置改变会复用模板，只有可用槽位的坐标、角色、尺寸、名称或数量改变时才会在同一模板文件内新增变体；空槽绑定显式使用 `placeholder_item=minecraft:air`，但不计入输入；
 - `parameters` 是在严格白名单内从配方对象预处理出的能量、时间、温度、压力、几率等标量。没有公开参数时是空对象，网站不得从标题或类名推断。
 - 物品候选只保存配方自身需要的稳定身份、数量和 NBT，不重复嵌入完整翻译表；导入端应通过注册表或 `ingredients/ingredients.json` 解析名称和图标。
 
-导入端应在写入版本时一次计算语义指纹、精简布局、输入/输出/催化剂关联、槽位 Tag 和版本统计快照。跨模组物品来源会随其他模组的活跃版本变化，不应固化在导出包中，应由网站批量解析并缓存。
+导出器已经完成布局去重、稳定槽位编号和 Ingredient 绑定，导入端不得重新按坐标猜测或精简布局。网站只需按 `recipe_type_id + template_id + slot_id` 建立关系，并在写入版本时计算业务语义指纹、输入/输出/催化剂关联、槽位 Tag 和版本统计快照。跨模组物品来源会随其他模组的活跃版本变化，不应固化在导出包中，应由网站批量解析并缓存。
 
 `recipes/jei/categories.json` 中每个类别还包含类别级 `catalysts`。它来自 JEI 为该 `RecipeType` 正式注册的 Recipe Catalyst，表示可打开、执行或关联这个合成方式的工作站，例如工作台、熔炉或模组机器方块。每项使用与配方槽相同的规范 Ingredient 结构，包含 `type`、`resource_location`、`unique_id`，物品型 Catalyst 还包含 `item`、NBT、多语言名称和数量。`catalyst_count` 是去重后的数量；同一合成方式可以对应多个机器。
 
 类别级 `catalysts` 与布局中的 `slots[].role=catalyst` 含义不同：前者是整个 `recipe_type_id` 的工作站，后者只是某条配方画布中的催化剂材料槽。若第三方模组没有向 JEI 注册 Recipe Catalyst，则类别输出空数组，导出器不会根据类别名称或背景猜测机器。
 
-网站把类别背景的 CSS 尺寸设为 `canvas.width × canvas.height`，再按 `slots[].rect` 叠加物品或其他 Ingredient 图片与数量文字。多个具体配方共享同一个 `recipe_type_id` 背景，仅叠加数据不同。
+网站把模板背景的 CSS 尺寸设为 `canvas.width × canvas.height`，再用配方 `template_id` 找到对应背景和模板，通过 `bindings[].slot_id` 取得 `slots[].rect` 并叠加物品或其他 Ingredient 图标与数量文字。固定容量类别的配方共享模板；动态容量类别按模板分别使用背景。
 
 ## 流体与非物品 Ingredient
 
