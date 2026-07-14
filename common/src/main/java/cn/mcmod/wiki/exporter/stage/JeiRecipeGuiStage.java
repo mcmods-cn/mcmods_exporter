@@ -103,6 +103,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
                 JsonObject recipeJson = new JsonObject();
                 recipeJson.addProperty("recipe_type_id", type.getUid().toString());
                 addRecipeIdentity(recipeJson, exportEntry);
+                RecipeLayoutNormalizer.write(recipeJson, recipe);
                 recipeJson.addProperty("layout_collection", relative(context, layoutCollectionPath(context, type.getUid())));
                 recipeJson.addProperty("layout_key", layoutKey(exportEntry));
                 recipeJson.addProperty("background", relative(context, backgroundPath(context, type.getUid())));
@@ -185,6 +186,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
         metadata.addProperty("schema_version", "mcmods-jei-layout/v4");
         metadata.addProperty("recipe_type_id", entry.type.getUid().toString());
         addRecipeIdentity(metadata, entry);
+        RecipeLayoutNormalizer.write(metadata, entry.recipe);
         metadata.addProperty("layout_key", layoutKey(entry));
         metadata.addProperty("render_locale", context.minecraft().getLanguageManager().getSelected());
         metadata.addProperty("background", relative(context, backgroundPath(context, entry.type.getUid())));

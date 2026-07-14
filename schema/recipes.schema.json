@@ -15,6 +15,11 @@
           "id": { "type": "string" },
           "type": { "type": "string" },
           "serializer": { "type": "string" },
+          "layout_kind": { "enum": ["shaped", "shapeless", "not_applicable", "unknown"] },
+          "ordered": { "type": ["boolean", "null"] },
+          "layout_classification_source": { "enum": ["recipe_class", "serializer", "recipe_type", "unavailable"] },
+          "width": { "type": "integer", "minimum": 1 },
+          "height": { "type": "integer", "minimum": 1 },
           "ingredients": {
             "type": "array",
             "items": {
