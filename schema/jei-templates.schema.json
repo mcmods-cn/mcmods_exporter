@@ -41,6 +41,7 @@
       "properties": {
         "slot_id": { "type": "string", "pattern": "^[a-z_]+_[0-9]+$" },
         "role": { "enum": ["input", "output", "byproduct", "catalyst", "render_only"] },
+        "jei_role": { "enum": ["input", "output", "catalyst", "render_only"] },
         "name": { "type": "string" },
         "output_index": { "type": "integer", "minimum": 0 },
         "coordinates_available": { "type": "boolean" },

@@ -50,6 +50,7 @@
       "required": ["slot_id", "ingredient_present", "clickable", "alternatives"],
       "properties": {
         "slot_id": { "type": "string", "pattern": "^[a-z_]+_[0-9]+$" },
+        "semantic_role": { "enum": ["input", "output", "byproduct", "catalyst", "render_only"] },
         "ingredient_present": { "type": "boolean" },
         "clickable": { "type": "boolean" },
         "placeholder_item": { "const": "minecraft:air" },
