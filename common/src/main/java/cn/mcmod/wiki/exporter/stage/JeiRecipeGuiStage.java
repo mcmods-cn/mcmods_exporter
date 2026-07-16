@@ -275,6 +275,10 @@ public final class JeiRecipeGuiStage implements ExportStage {
             templates.put(split.templateId(), template);
             context.report().addCount(ID, "layout_templates", 1);
         } else {
+            mergeTemplateSemantics(
+                templates.get(split.templateId()).getAsJsonArray("slots"),
+                split.templateSlots()
+            );
             context.report().addCount(ID, "layout_template_reuses", 1);
         }
 
@@ -344,7 +348,9 @@ public final class JeiRecipeGuiStage implements ExportStage {
         for (IRecipeSlotView slot : layout.getRecipeSlotsView().getSlotViews()) {
             JsonObject json = new JsonObject();
             json.addProperty("index", slotIndex++);
-            json.addProperty("role", slot.getRole().name().toLowerCase(Locale.ROOT));
+            String jeiRole = slot.getRole().name().toLowerCase(Locale.ROOT);
+            json.addProperty("role", jeiRole);
+            json.addProperty("jei_role", jeiRole);
             slot.getSlotName().ifPresent(name -> json.addProperty("name", name));
 
             JsonArray alternatives = new JsonArray();
@@ -675,6 +681,23 @@ public final class JeiRecipeGuiStage implements ExportStage {
             });
         summary.add("excluded_by_recipe_type", categories);
         return summary;
+    }
+
+    private static void mergeTemplateSemantics(JsonArray targetSlots, JsonArray incomingSlots) {
+        Map<String, JsonObject> targetById = new HashMap<>();
+        targetSlots.forEach(element -> {
+            JsonObject slot = element.getAsJsonObject();
+            targetById.put(slot.get("slot_id").getAsString(), slot);
+        });
+        incomingSlots.forEach(element -> {
+            JsonObject incoming = element.getAsJsonObject();
+            JsonObject target = targetById.get(incoming.get("slot_id").getAsString());
+            if (target != null
+                && "byproduct".equals(incoming.get("role").getAsString())
+                && !"byproduct".equals(target.get("role").getAsString())) {
+                target.addProperty("role", "byproduct");
+            }
+        });
     }
 
     @Override

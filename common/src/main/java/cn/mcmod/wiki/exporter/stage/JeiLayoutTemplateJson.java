@@ -30,12 +30,14 @@ final class JeiLayoutTemplateJson {
         JsonArray bindings = new JsonArray();
         for (JsonObject source : ordered) {
             String role = source.get("role").getAsString();
-            int roleIndex = roleIndexes.merge(role, 1, Integer::sum) - 1;
-            String slotId = role + "_" + roleIndex;
+            String jeiRole = identityRole(source);
+            int roleIndex = roleIndexes.merge(jeiRole, 1, Integer::sum) - 1;
+            String slotId = jeiRole + "_" + roleIndex;
 
             JsonObject templateSlot = new JsonObject();
             templateSlot.addProperty("slot_id", slotId);
             templateSlot.addProperty("role", role);
+            templateSlot.addProperty("jei_role", jeiRole);
             copy(source, templateSlot, "name");
             copy(source, templateSlot, "output_index");
             boolean coordinatesAvailable = source.has("rect");
@@ -48,6 +50,7 @@ final class JeiLayoutTemplateJson {
             boolean ingredientPresent = alternatives != null && !alternatives.isEmpty();
             JsonObject binding = new JsonObject();
             binding.addProperty("slot_id", slotId);
+            binding.addProperty("semantic_role", role);
             binding.addProperty("ingredient_present", ingredientPresent);
             binding.addProperty("clickable", ingredientPresent && coordinatesAvailable);
             binding.add("alternatives", alternatives == null ? new JsonArray() : alternatives.deepCopy());
@@ -73,7 +76,7 @@ final class JeiLayoutTemplateJson {
     }
 
     private static String sortKey(JsonObject slot) {
-        String role = string(slot, "role");
+        String role = identityRole(slot);
         JsonObject rect = object(slot, "rect");
         JsonObject visualRect = object(slot, "visual_rect");
         return role + '|'
@@ -90,7 +93,14 @@ final class JeiLayoutTemplateJson {
     private static String templateId(JsonArray templateSlots) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(templateSlots.toString().getBytes(StandardCharsets.UTF_8));
+            JsonArray identitySlots = new JsonArray();
+            for (JsonElement element : templateSlots) {
+                JsonObject identity = element.getAsJsonObject().deepCopy();
+                identity.addProperty("role", identityRole(identity));
+                identity.remove("jei_role");
+                identitySlots.add(identity);
+            }
+            byte[] hash = digest.digest(identitySlots.toString().getBytes(StandardCharsets.UTF_8));
             StringBuilder value = new StringBuilder("template_");
             for (int index = 0; index < 8; index++) {
                 value.append(String.format("%02x", hash[index]));
@@ -115,6 +125,11 @@ final class JeiLayoutTemplateJson {
 
     private static String string(JsonObject source, String key) {
         return source != null && source.has(key) ? source.get(key).getAsString() : "";
+    }
+
+    private static String identityRole(JsonObject slot) {
+        String jeiRole = string(slot, "jei_role");
+        return jeiRole.isEmpty() ? string(slot, "role") : jeiRole;
     }
 
     private static int integer(JsonObject source, String key) {

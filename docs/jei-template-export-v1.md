@@ -133,7 +133,7 @@ JEI 合成类别 ID，例如 `minecraft:crafting`。它表示“使用哪一种�
 }
 ```
 
-`slot_id` 按角色和屏幕位置稳定编号，例如 `input_0`、`input_1`、`output_0`。网站不得重新按照数组下标或材料数量生成槽位 ID。
+`slot_id` 按 JEI 原始角色和屏幕位置稳定编号，例如 `input_0`、`input_1`、`output_0`。`jei_role` 保存这个用于身份与模板指纹的原始角色；`role` 是导出器加工后的业务语义，因此一个 `slot_id=output_1` 的槽位可以被标记为 `role=byproduct`。网站不得重新按照数组下标、材料数量或加工后的角色生成槽位 ID。
 
 槽位角色可能为：
 
@@ -213,7 +213,9 @@ JEI 合成类别 ID，例如 `minecraft:crafting`。它表示“使用哪一种�
 - `chance_text`、`chance_texts`、`chance_translation_key`：JEI 原始显示文字及可用的多语言信息；
 - `chance_render_x/y`：仅分类直接绘制概率时提供，供网站按原位置重绘。
 
-导出器不会依赖 Create、Mekanism 等模组的私有配方类来猜概率。JEI 没有展示概率时输出 `chance_available=false`。多个必得输出仍为 `output`；只有明确证据成立时才改为 `byproduct`，依据保存在 `role_source`。
+导出器不会依赖 Create、Mekanism 等模组的私有配方类来猜概率。JEI 没有展示概率时输出 `chance_available=false`。多个必得输出仍为 `output`；只有明确证据成立时才改为 `byproduct`，依据保存在 `role_source`，该条配方识别到的角色保存在 binding 的 `semantic_role`。
+
+`byproduct` 不参与模板指纹。相同 JEI 原始槽位几何始终得到相同 `template_id`；如果共享模板的任意配方证明某个固定输出槽是副产品槽，模板中的该槽位会统一升级为 `role=byproduct`。因此概率变化不会制造重复模板，网站也能把该物理槽位作为副产品槽管理。
 
 ## 7. 固定容量与动态容量
 

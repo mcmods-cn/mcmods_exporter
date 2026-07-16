@@ -70,6 +70,22 @@ class JeiLayoutTemplateJsonTest {
         assertTrue(emptyBinding.getAsJsonArray("alternatives").isEmpty());
     }
 
+    @Test
+    void byproductEvidenceDoesNotCreateAnotherGeometryTemplate() {
+        JsonObject regularOutput = slot(0, "output", 90, 20, "example:result");
+        regularOutput.addProperty("jei_role", "output");
+        JsonObject byproductOutput = slot(0, "byproduct", 90, 20, "example:result");
+        byproductOutput.addProperty("jei_role", "output");
+
+        JeiLayoutTemplateJson.Split regular = JeiLayoutTemplateJson.split(array(regularOutput));
+        JeiLayoutTemplateJson.Split byproduct = JeiLayoutTemplateJson.split(array(byproductOutput));
+
+        assertEquals(regular.templateId(), byproduct.templateId());
+        assertEquals("output_0", byproduct.templateSlots().get(0).getAsJsonObject().get("slot_id").getAsString());
+        assertEquals("byproduct", byproduct.templateSlots().get(0).getAsJsonObject().get("role").getAsString());
+        assertEquals("byproduct", byproduct.bindings().get(0).getAsJsonObject().get("semantic_role").getAsString());
+    }
+
     private static JsonArray craftingGrid(int usedInputs) {
         JsonArray slots = new JsonArray();
         for (int index = 0; index < 9; index++) {
@@ -105,5 +121,11 @@ class JeiLayoutTemplateJsonTest {
         rect.addProperty("width", width);
         rect.addProperty("height", height);
         return rect;
+    }
+
+    private static JsonArray array(JsonObject value) {
+        JsonArray array = new JsonArray();
+        array.add(value);
+        return array;
     }
 }
