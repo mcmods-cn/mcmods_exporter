@@ -55,10 +55,13 @@ JEI 使用“合成方式背景、通用槽位模板、具体配方绑定”三�
 - `recipe_id` 是具体配方 ID；具体配方使用 `template_id` 引用模板，并通过 `bindings[].slot_id` 绑定物品，不再重复保存坐标；
 - `recipe_id_source` 说明 ID 来源：`minecraft_recipe` 是原版 `Recipe` ID，`jei_category` 是 JEI 类别通过 `getRegistryName` 提供的权威 ID，`generated_index` 表示第三方类别没有注册 ID；
 - 每个布局都保证存在 `recipe_id`。只有 `recipe_id_canonical=true` 时才能把它当作跨次导出稳定主键；`generated_index` 只用于本次导出内关联，网站应另用布局内容指纹做去重；
+- 普通配方和 JEI 绑定都输出 `source_mod_id`、`source_mod_version`、`source_mod_id_source`。权威配方以 `recipe_id` 命名空间作为来源；只有没有权威 ID 的 JEI 动态条目才回退到类别命名空间；
+- 指定 Mod 导出时只保留其权威 `recipe_id` 命名空间下的配方。随后按 `(recipe_id, underlying_recipe_type_id)` 去掉已有原生类别的跨类别兼容投影，避免兼容机器复制工作台全部配方；排除统计在 `categories.json.filter_summary`；
 - `canvas`、`content` 和模板中的所有槽位矩形使用 `logical_pixels`；PNG 的实际像素倍率由 `image_scale` 指定；
 - `templates[].slots[].role` 是 `input`、`output`、`catalyst` 或 `render_only`；
 - `rect` 是可点击材料区域，`visual_rect` 包含槽位自定义背景；
 - `bindings[].alternatives` 包含轮换展示的所有 JEI Ingredient，而不只是截图瞬间显示的一个物品；
+- 概率从 JEI 最终 tooltip 或类别直接绘制的百分比统一提取到绑定的 `chance*` 字段，并从共享背景中剥离；不依赖特定 Mod 的私有配方 API。非主输出只有在名称/tooltip 明示副产品或取得小于 100% 的概率时才标为 `byproduct`；
 - `background_contains_ingredients=false` 可供导入端校验背景没有烘焙物品。
 - `template_id` 是完整可容纳槽位的几何指纹；实际使用物品或空缺位置改变会复用模板，只有可用槽位的坐标、角色、尺寸、名称或数量改变时才会在同一模板文件内新增变体；空槽绑定显式使用 `placeholder_item=minecraft:air`，但不计入输入；
 - `parameters` 是在严格白名单内从配方对象预处理出的能量、时间、温度、压力、几率等标量。没有公开参数时是空对象，网站不得从标题或类名推断。

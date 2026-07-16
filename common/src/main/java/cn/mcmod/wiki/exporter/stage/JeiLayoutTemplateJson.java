@@ -37,6 +37,7 @@ final class JeiLayoutTemplateJson {
             templateSlot.addProperty("slot_id", slotId);
             templateSlot.addProperty("role", role);
             copy(source, templateSlot, "name");
+            copy(source, templateSlot, "output_index");
             boolean coordinatesAvailable = source.has("rect");
             templateSlot.addProperty("coordinates_available", coordinatesAvailable);
             copy(source, templateSlot, "rect");
@@ -54,6 +55,17 @@ final class JeiLayoutTemplateJson {
                 binding.addProperty("placeholder_item", "minecraft:air");
             }
             copy(source, binding, "item_tag_equivalent");
+            copy(source, binding, "role_source");
+            copy(source, binding, "chance_available");
+            copy(source, binding, "chance");
+            copy(source, binding, "chance_percent");
+            copy(source, binding, "chance_comparator");
+            copy(source, binding, "chance_source");
+            copy(source, binding, "chance_text");
+            copy(source, binding, "chance_texts");
+            copy(source, binding, "chance_translation_key");
+            copy(source, binding, "chance_render_x");
+            copy(source, binding, "chance_render_y");
             bindings.add(binding);
         }
 

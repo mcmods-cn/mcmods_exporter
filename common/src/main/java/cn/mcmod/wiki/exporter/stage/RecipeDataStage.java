@@ -40,7 +40,7 @@ public final class RecipeDataStage extends OnceStage {
             }
         }
         JsonObject root = new JsonObject();
-        root.addProperty("schema_version", "mcmods-recipes/v1");
+        root.addProperty("schema_version", "mcmods-recipes/v2");
         root.addProperty("count", data.size());
         root.add("recipes", data);
         context.writeJson("recipes/recipes.json", root);
@@ -50,6 +50,7 @@ public final class RecipeDataStage extends OnceStage {
     private static JsonObject recipeJson(ExportContext context, Recipe<?> recipe) {
         JsonObject json = new JsonObject();
         json.addProperty("id", recipe.getId().toString());
+        RecipeSourceMetadata.add(json, recipe.getId(), "recipe_id_namespace");
         ResourceLocation type = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
         ResourceLocation serializer = BuiltInRegistries.RECIPE_SERIALIZER.getKey(recipe.getSerializer());
         json.addProperty("type", type == null ? recipe.getType().toString() : type.toString());

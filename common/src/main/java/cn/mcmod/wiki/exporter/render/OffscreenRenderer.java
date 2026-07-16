@@ -1,5 +1,6 @@
 package cn.mcmod.wiki.exporter.render;
 
+import cn.mcmod.wiki.exporter.util.ProbabilityText;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.NativeImage;
@@ -15,7 +16,9 @@ import org.joml.Matrix4f;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public final class OffscreenRenderer {
     private OffscreenRenderer() {
@@ -41,6 +44,72 @@ public final class OffscreenRenderer {
         Path output,
         Consumer<GuiGraphics> renderer
     ) throws Exception {
+        renderGuiInternal(
+            pixelWidth,
+            pixelHeight,
+            logicalWidth,
+            logicalHeight,
+            output,
+            graphics -> graphics,
+            renderer
+        );
+    }
+
+    /**
+     * Runs a JEI layout once and records probability labels drawn by the category.
+     * The labels themselves are suppressed so this same path can also produce a
+     * recipe-independent template background.
+     */
+    public static List<ProbabilityText.Draw> captureProbabilityText(
+        int logicalWidth,
+        int logicalHeight,
+        Consumer<GuiGraphics> renderer
+    ) throws Exception {
+        return renderGuiInternal(
+            Math.max(1, logicalWidth),
+            Math.max(1, logicalHeight),
+            logicalWidth,
+            logicalHeight,
+            null,
+            graphics -> new ProbabilityCapturingGuiGraphics(
+                Minecraft.getInstance(),
+                Minecraft.getInstance().renderBuffers().bufferSource()
+            ),
+            renderer
+        );
+    }
+
+    public static void renderGuiSuppressingProbabilityText(
+        int pixelWidth,
+        int pixelHeight,
+        int logicalWidth,
+        int logicalHeight,
+        Path output,
+        Consumer<GuiGraphics> renderer
+    ) throws Exception {
+        renderGuiInternal(
+            pixelWidth,
+            pixelHeight,
+            logicalWidth,
+            logicalHeight,
+            output,
+            graphics -> new ProbabilityCapturingGuiGraphics(
+                Minecraft.getInstance(),
+                Minecraft.getInstance().renderBuffers().bufferSource()
+            ),
+            renderer
+        );
+    }
+
+    private static List<ProbabilityText.Draw> renderGuiInternal(
+        int pixelWidth,
+        int pixelHeight,
+        int logicalWidth,
+        int logicalHeight,
+        Path output,
+        Function<GuiGraphics, GuiGraphics> graphicsFactory,
+        Consumer<GuiGraphics> renderer
+    ) throws Exception {
         RenderSystem.assertOnRenderThread();
         Minecraft minecraft = Minecraft.getInstance();
         RenderTarget mainTarget = minecraft.getMainRenderTarget();
@@ -63,14 +132,22 @@ public final class OffscreenRenderer {
             RenderSystem.defaultBlendFunc();
             RenderSystem.enableDepthTest();
 
-            GuiGraphics graphics = new GuiGraphics(minecraft, minecraft.renderBuffers().bufferSource());
+            GuiGraphics graphics = graphicsFactory.apply(
+                new GuiGraphics(minecraft, minecraft.renderBuffers().bufferSource())
+            );
             renderer.accept(graphics);
             graphics.flush();
 
-            Files.createDirectories(output.getParent());
-            try (NativeImage image = captureWithAlpha(target)) {
-                image.writeToFile(output);
+            if (output != null) {
+                Files.createDirectories(output.getParent());
+                try (NativeImage image = captureWithAlpha(target)) {
+                    image.writeToFile(output);
+                }
             }
+            if (graphics instanceof ProbabilityCapturingGuiGraphics capturing) {
+                return List.copyOf(capturing.probabilityDraws());
+            }
+            return List.of();
         } finally {
             modelView.popPose();
             RenderSystem.applyModelViewMatrix();

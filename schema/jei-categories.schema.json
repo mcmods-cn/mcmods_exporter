@@ -1,13 +1,32 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://www.mcmod.cn/schemas/mcmods-jei-categories-v5.json",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-jei-categories-v6.json",
   "title": "MC百科 JEI 配方类别索引",
   "type": "object",
-  "required": ["schema_version", "category_count", "recipe_count", "categories", "recipes"],
+  "required": ["schema_version", "category_count", "recipe_count", "filter_summary", "categories", "recipes"],
   "properties": {
-    "schema_version": { "const": "mcmods-jei-categories/v5" },
+    "schema_version": { "const": "mcmods-jei-categories/v6" },
     "category_count": { "type": "integer", "minimum": 0 },
     "recipe_count": { "type": "integer", "minimum": 0 },
+    "filter_summary": {
+      "type": "object",
+      "required": ["policy", "discovered_recipe_presentations", "exported_recipe_presentations", "excluded_recipe_presentations", "excluded_by_reason", "excluded_by_recipe_type"],
+      "properties": {
+        "policy": { "const": "source_recipe_namespace_with_native_projection_deduplication" },
+        "discovered_recipe_presentations": { "type": "integer", "minimum": 0 },
+        "exported_recipe_presentations": { "type": "integer", "minimum": 0 },
+        "excluded_recipe_presentations": { "type": "integer", "minimum": 0 },
+        "excluded_by_reason": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+        "excluded_by_recipe_type": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": { "type": "integer", "minimum": 0 }
+          }
+        }
+      },
+      "additionalProperties": true
+    },
     "categories": {
       "type": "array",
       "items": {
@@ -41,12 +60,17 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["recipe_type_id", "recipe_id", "recipe_id_source", "recipe_id_canonical", "recipe_key", "template_collection", "recipe_collection", "layout_available", "background_available"],
+        "required": ["recipe_type_id", "recipe_id", "recipe_id_source", "recipe_id_canonical", "source_mod_id", "source_mod_version", "source_mod_id_source", "origin_kind", "recipe_key", "template_collection", "recipe_collection", "layout_available", "background_available"],
         "properties": {
           "recipe_type_id": { "type": "string" },
           "recipe_id": { "type": "string" },
           "recipe_id_source": { "enum": ["minecraft_recipe", "jei_category", "generated_index"] },
           "recipe_id_canonical": { "type": "boolean" },
+          "source_mod_id": { "type": "string" },
+          "source_mod_version": { "type": "string" },
+          "source_mod_id_source": { "enum": ["recipe_id_namespace", "recipe_type_namespace"] },
+          "origin_kind": { "enum": ["registered_recipe", "jei_generated_recipe"] },
+          "underlying_recipe_type_id": { "type": "string" },
           "layout_kind": { "enum": ["shaped", "shapeless", "not_applicable", "unknown"] },
           "ordered": { "type": ["boolean", "null"] },
           "layout_classification_source": { "enum": ["recipe_class", "serializer", "recipe_type", "unavailable"] },

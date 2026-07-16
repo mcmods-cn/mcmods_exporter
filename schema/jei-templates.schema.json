@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://www.mcmod.cn/schemas/mcmods-jei-template-collection-v1.json",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-jei-template-collection-v2.json",
   "title": "MC百科 JEI 通用槽位模板集合",
   "type": "object",
   "required": ["schema_version", "recipe_type_id", "coordinate_space", "image_scale", "canvas", "content", "template_count", "templates"],
   "properties": {
-    "schema_version": { "const": "mcmods-jei-template-collection/v1" },
+    "schema_version": { "const": "mcmods-jei-template-collection/v2" },
     "recipe_type_id": { "type": "string" },
     "coordinate_space": { "const": "logical_pixels" },
     "image_scale": { "type": "integer", "minimum": 1 },
@@ -23,7 +23,7 @@
       "type": "object",
       "required": ["schema_version", "template_id", "background", "background_contains_ingredients", "slot_count", "slots"],
       "properties": {
-        "schema_version": { "const": "mcmods-jei-layout-template/v1" },
+        "schema_version": { "const": "mcmods-jei-layout-template/v2" },
         "template_id": { "type": "string", "pattern": "^template_[0-9a-f]{16}$" },
         "background": { "type": "string" },
         "background_contains_ingredients": { "const": false },
@@ -40,8 +40,9 @@
       "required": ["slot_id", "role", "coordinates_available"],
       "properties": {
         "slot_id": { "type": "string", "pattern": "^[a-z_]+_[0-9]+$" },
-        "role": { "enum": ["input", "output", "catalyst", "render_only"] },
+        "role": { "enum": ["input", "output", "byproduct", "catalyst", "render_only"] },
         "name": { "type": "string" },
+        "output_index": { "type": "integer", "minimum": 0 },
         "coordinates_available": { "type": "boolean" },
         "rect": { "$ref": "#/$defs/rect" },
         "visual_rect": { "$ref": "#/$defs/rect" }

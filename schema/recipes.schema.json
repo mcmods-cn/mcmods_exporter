@@ -1,18 +1,21 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://www.mcmod.cn/schemas/mcmods-recipes-v1.json",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-recipes-v2.json",
   "type": "object",
   "required": ["schema_version", "count", "recipes"],
   "properties": {
-    "schema_version": { "const": "mcmods-recipes/v1" },
+    "schema_version": { "const": "mcmods-recipes/v2" },
     "count": { "type": "integer", "minimum": 0 },
     "recipes": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "type", "ingredients", "result"],
+        "required": ["id", "source_mod_id", "source_mod_version", "source_mod_id_source", "type", "ingredients", "result"],
         "properties": {
           "id": { "type": "string" },
+          "source_mod_id": { "type": "string" },
+          "source_mod_version": { "type": "string" },
+          "source_mod_id_source": { "const": "recipe_id_namespace" },
           "type": { "type": "string" },
           "serializer": { "type": "string" },
           "layout_kind": { "enum": ["shaped", "shapeless", "not_applicable", "unknown"] },
