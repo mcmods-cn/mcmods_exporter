@@ -44,7 +44,7 @@ final class JeiSlotSemantics {
         }
 
         int primaryIndex = primaryOutputIndex(outputs);
-        applyDrawnProbabilities(outputs, primaryIndex, drawnProbabilities);
+        applyDrawnProbabilities(outputs, drawnProbabilities);
         for (int index = 0; index < outputs.size(); index++) {
             JsonObject output = outputs.get(index);
             if (!output.has("chance_available")) {
@@ -96,7 +96,6 @@ final class JeiSlotSemantics {
 
     private static void applyDrawnProbabilities(
         List<JsonObject> outputs,
-        int primaryIndex,
         List<ProbabilityText.Draw> drawnProbabilities
     ) {
         for (ProbabilityText.Draw draw : drawnProbabilities) {
@@ -109,12 +108,9 @@ final class JeiSlotSemantics {
             if (candidates.isEmpty()) {
                 return;
             }
-            if (candidates.size() > 1) {
-                candidates.remove(Integer.valueOf(primaryIndex));
-            }
             int selected = candidates.stream()
                 .min(Comparator.comparingDouble(index -> distance(outputs.get(index), draw.x(), draw.y())))
-                .orElse(primaryIndex);
+                .orElse(0);
             if (distance(outputs.get(selected), draw.x(), draw.y()) <= 64.0D) {
                 JsonObject slot = outputs.get(selected);
                 applyChance(slot, draw.match(), "jei_category_drawn_text");
