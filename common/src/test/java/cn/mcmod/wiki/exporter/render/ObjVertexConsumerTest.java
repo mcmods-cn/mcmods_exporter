@@ -32,9 +32,8 @@ class ObjVertexConsumerTest {
         float u,
         float v
     ) {
-        consumer.vertex(x, y, z)
-            .uv(u, v)
-            .normal(0.0F, 1.0F, 0.0F)
-            .endVertex();
+        consumer.addVertex((float) x, (float) y, (float) z)
+            .setUv(u, v)
+            .setNormal(0.0F, 1.0F, 0.0F);
     }
 }

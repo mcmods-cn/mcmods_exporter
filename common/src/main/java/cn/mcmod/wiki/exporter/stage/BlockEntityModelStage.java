@@ -296,7 +296,7 @@ public final class BlockEntityModelStage implements ExportStage {
         if (!path.endsWith(".png")) {
             path += ".png";
         }
-        return new ResourceLocation(texture.getNamespace(), path);
+        return ResourceLocation.fromNamespaceAndPath(texture.getNamespace(), path);
     }
 
     private static JsonObject baseEntry(Entry entry, BlockEntity blockEntity) {
