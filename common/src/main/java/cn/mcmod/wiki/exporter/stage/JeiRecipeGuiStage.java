@@ -660,7 +660,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
         Map<String, Map<String, Integer>> excludedByCategory
     ) {
         JsonObject summary = new JsonObject();
-        summary.addProperty("policy", "source_recipe_namespace_with_native_projection_deduplication");
+        summary.addProperty("policy", "source_recipe_namespace_with_recipe_id_deduplication");
         summary.addProperty("discovered_recipe_presentations", discovered);
         summary.addProperty("exported_recipe_presentations", exported);
         summary.addProperty("excluded_recipe_presentations", discovered - exported);
