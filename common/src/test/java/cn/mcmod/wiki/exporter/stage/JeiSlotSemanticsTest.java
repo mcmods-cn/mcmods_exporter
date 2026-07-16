@@ -48,7 +48,7 @@ class JeiSlotSemanticsTest {
         slots.add(output(1, 105, 20, null));
         ProbabilityText.Match match = ProbabilityText.parse("10%").orElseThrow();
 
-        JeiSlotSemantics.enrich(slots, List.of(new ProbabilityText.Draw(match, 92, 38)));
+        JeiSlotSemantics.enrich(slots, List.of(new ProbabilityText.Draw(match, 112, 38)));
 
         assertEquals("byproduct", slots.get(1).getAsJsonObject().get("role").getAsString());
         assertEquals(0.1D, slots.get(1).getAsJsonObject().get("chance").getAsDouble());
