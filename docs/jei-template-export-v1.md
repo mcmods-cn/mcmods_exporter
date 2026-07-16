@@ -61,9 +61,9 @@ JEI 合成类别 ID，例如 `minecraft:crafting`。它表示“使用哪一种�
 
 导出指定 Mod 时，拥有权威 `recipe_id` 的 JEI 条目必须以该 ID 的命名空间为准。类别命名空间相同但配方 ID 属于其他 Mod 的条目不会导出。没有权威 ID 的 JEI 动态条目才使用 `recipe_type_id` 命名空间判断来源。
 
-完成来源过滤后，导出器以 `(recipe_id, underlying_recipe_type_id)` 检测 JEI 的跨类别重复投影：同一配方同时出现在其原生类别和兼容机器类别时，仅保留 `recipe_type_id == underlying_recipe_type_id` 的原生展示。例如 Create 把工作台配方投影进 `create:automatic_shaped` 时，该副本会被排除；真正的 `create:mechanical_crafting` 配方仍保留。
+完成来源过滤后，导出器仅以权威 `recipe_id` 检测 JEI 的跨类别重复展示。同一 ID 出现在多个合成方式时只保留一个展示，选择顺序为：Minecraft 原版合成方式、配方所属 Mod 的原生合成方式、其他原生合成方式、配方所属 Mod 的兼容合成方式，最后才按发现顺序兜底。这个判断不再要求不同展示返回相同的 `underlying_recipe_type_id`。例如 `create:crafting/materials/experience_block` 同时出现在 `minecraft:crafting` 与 `create:automatic_shaped` 时，只保留 `minecraft:crafting`；真正拥有不同配方 ID 的 `create:mechanical_crafting` 配方不受影响。
 
-`categories.json.filter_summary` 保存发现数、导出数，以及 `foreign_recipe_namespace`、`duplicate_category_projection` 两种排除原因的汇总。网站应把它作为导入审计信息保存，不要把被排除条目重新补回。
+`categories.json.filter_summary` 保存发现数、导出数，以及 `foreign_recipe_namespace`、`duplicate_recipe_id` 两种排除原因的汇总。网站应把它作为导入审计信息保存，不要把被排除条目重新补回。
 
 ## 4. 类别索引
 

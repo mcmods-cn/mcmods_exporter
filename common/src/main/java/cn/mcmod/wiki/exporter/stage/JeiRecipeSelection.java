@@ -1,7 +1,7 @@
 package cn.mcmod.wiki.exporter.stage;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -9,10 +9,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-/** Selects target-owned JEI recipes and removes duplicate cross-category projections. */
+/** Selects target-owned JEI recipes and keeps one preferred presentation per canonical recipe ID. */
 final class JeiRecipeSelection {
     static final String FOREIGN_RECIPE_NAMESPACE = "foreign_recipe_namespace";
-    static final String DUPLICATE_CATEGORY_PROJECTION = "duplicate_category_projection";
+    static final String DUPLICATE_RECIPE_ID = "duplicate_recipe_id";
 
     private JeiRecipeSelection() {
     }
@@ -31,28 +31,26 @@ final class JeiRecipeSelection {
             }
         }
 
-        Map<ProjectionKey, List<Candidate>> groups = new HashMap<>();
+        Map<String, List<Candidate>> groups = new LinkedHashMap<>();
         for (Candidate candidate : candidates) {
             if (exclusions.containsKey(candidate.ordinal())
-                || !candidate.canonicalRecipeId()
-                || candidate.underlyingRecipeTypeId() == null) {
+                || !candidate.canonicalRecipeId()) {
                 continue;
             }
-            groups.computeIfAbsent(
-                new ProjectionKey(candidate.recipeId(), candidate.underlyingRecipeTypeId()),
-                ignored -> new ArrayList<>()
-            ).add(candidate);
+            groups.computeIfAbsent(candidate.recipeId(), ignored -> new ArrayList<>()).add(candidate);
         }
         for (List<Candidate> group : groups.values()) {
-            boolean hasNativePresentation = group.stream().anyMatch(candidate ->
-                Objects.equals(candidate.presentationRecipeTypeId(), candidate.underlyingRecipeTypeId())
-            );
-            if (!hasNativePresentation) {
+            if (group.size() < 2) {
                 continue;
             }
+            Candidate preferred = group.stream()
+                .min(Comparator
+                    .comparingInt(JeiRecipeSelection::presentationPriority)
+                    .thenComparingInt(Candidate::ordinal))
+                .orElseThrow();
             for (Candidate candidate : group) {
-                if (!Objects.equals(candidate.presentationRecipeTypeId(), candidate.underlyingRecipeTypeId())) {
-                    exclusions.put(candidate.ordinal(), DUPLICATE_CATEGORY_PROJECTION);
+                if (candidate.ordinal() != preferred.ordinal()) {
+                    exclusions.put(candidate.ordinal(), DUPLICATE_RECIPE_ID);
                 }
             }
         }
@@ -64,6 +62,29 @@ final class JeiRecipeSelection {
             }
         }
         return new Result(Set.copyOf(included), Map.copyOf(exclusions));
+    }
+
+    private static int presentationPriority(Candidate candidate) {
+        String presentationNamespace = namespace(candidate.presentationRecipeTypeId());
+        boolean vanillaPresentation = "minecraft".equals(presentationNamespace);
+        boolean ownerPresentation = namespace(candidate.recipeId()).equals(presentationNamespace);
+        boolean nativePresentation = Objects.equals(
+            candidate.presentationRecipeTypeId(),
+            candidate.underlyingRecipeTypeId()
+        );
+        if (vanillaPresentation) {
+            return 0;
+        }
+        if (ownerPresentation && nativePresentation) {
+            return 1;
+        }
+        if (nativePresentation) {
+            return 2;
+        }
+        if (ownerPresentation) {
+            return 3;
+        }
+        return 4;
     }
 
     private static String namespace(String id) {
@@ -81,8 +102,5 @@ final class JeiRecipeSelection {
     }
 
     record Result(Set<Integer> includedOrdinals, Map<Integer, String> exclusions) {
-    }
-
-    private record ProjectionKey(String recipeId, String underlyingRecipeTypeId) {
     }
 }
