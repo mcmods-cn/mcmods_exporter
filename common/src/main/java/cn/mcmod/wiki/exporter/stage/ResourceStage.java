@@ -188,10 +188,6 @@ public final class ResourceStage extends OnceStage {
                     }
                 } catch (Throwable throwable) {
                     context.report().error(ID, entry.getKey().location() + ":block_entity_texture", throwable);
-                } finally {
-                    if (blockEntity != null) {
-                        blockEntity.setRemoved();
-                    }
                 }
             });
     }
