@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-block-entity-models-v1.json",
+  "oneOf": [
+    { "$ref": "#/$defs/index" },
+    { "$ref": "#/$defs/mesh" }
+  ],
+  "$defs": {
+    "index": {
+      "type": "object",
+      "required": ["schema_version", "coordinate_space", "uv_representation", "count", "block_entities"],
+      "properties": {
+        "schema_version": { "const": "mcmods-block-entity-models/v1" },
+        "coordinate_space": { "const": "block_units" },
+        "uv_representation": { "const": "explicit_quad_vertices" },
+        "count": { "type": "integer", "minimum": 0 },
+        "block_entities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/blockEntity" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "blockEntity": {
+      "type": "object",
+      "required": ["block_id", "model_source", "variant_count", "model_available", "variants"],
+      "properties": {
+        "block_id": { "type": "string" },
+        "block_entity_type_id": { "type": "string" },
+        "model_source": { "enum": ["minecraft_chest_layer", "runtime_block_entity_renderer", "renderer_unavailable"] },
+        "variant_count": { "type": "integer", "minimum": 0 },
+        "model_available": { "type": "boolean" },
+        "variants": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/variant" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "variant": {
+      "type": "object",
+      "required": ["variant_id", "obj", "mesh", "vertex_count", "quad_count", "uv_space", "uv_complete", "texture_count", "textures"],
+      "properties": {
+        "variant_id": { "type": "string" },
+        "obj": { "type": "string" },
+        "mesh": { "type": "string" },
+        "vertex_count": { "type": "integer", "minimum": 0 },
+        "quad_count": { "type": "integer", "minimum": 0 },
+        "uv_space": { "enum": ["source_texture_normalized", "render_target_normalized"] },
+        "uv_complete": { "type": "boolean" },
+        "texture_count": { "type": "integer", "minimum": 0 },
+        "textures": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/texture" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "texture": {
+      "type": "object",
+      "required": ["appearance", "texture_id", "resource_id", "path", "source", "uv_transform_required", "width", "height"],
+      "properties": {
+        "appearance": { "type": "string" },
+        "texture_id": { "type": "string" },
+        "resource_id": { "type": "string" },
+        "path": { "type": "string" },
+        "source": { "enum": ["minecraft_chest_material", "renderer_material", "renderer_resource_location"] },
+        "uv_transform_required": { "type": "boolean" },
+        "atlas_id": { "type": "string" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": true
+    },
+    "mesh": {
+      "type": "object",
+      "required": ["schema_version", "coordinate_space", "uv_space", "uv_origin", "vertex_count", "quad_count", "trailing_vertex_count", "faces"],
+      "properties": {
+        "schema_version": { "const": "mcmods-uv-quad-mesh/v1" },
+        "coordinate_space": { "const": "block_units" },
+        "uv_space": { "enum": ["source_texture_normalized", "render_target_normalized"] },
+        "uv_origin": { "const": "bottom_left" },
+        "vertex_count": { "type": "integer", "minimum": 0 },
+        "quad_count": { "type": "integer", "minimum": 0 },
+        "trailing_vertex_count": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "faces": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/face" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "face": {
+      "type": "object",
+      "required": ["index", "direction", "vertices", "uv_bounds"],
+      "properties": {
+        "index": { "type": "integer", "minimum": 0 },
+        "direction": { "enum": ["up", "down", "north", "south", "east", "west"] },
+        "vertices": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "required": ["position", "uv", "normal"],
+            "properties": {
+              "position": { "$ref": "#/$defs/vec3" },
+              "uv": { "$ref": "#/$defs/vec2" },
+              "normal": { "$ref": "#/$defs/vec3" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "uv_bounds": {
+          "type": "object",
+          "required": ["u_min", "v_min", "u_max", "v_max"],
+          "properties": {
+            "u_min": { "type": "number" },
+            "v_min": { "type": "number" },
+            "u_max": { "type": "number" },
+            "v_max": { "type": "number" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": true
+    },
+    "vec2": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "type": "number" }
+    },
+    "vec3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "number" }
+    }
+  }
+}

@@ -10,6 +10,7 @@
 | --- | --- |
 | 物品、工具、装备、方块 | 注册 ID、多语言名称、堆叠/耐久/类型/等级/速度/攻击/装备/食物/附魔兼容属性、方块硬度/抗爆/挖掘要求，以及 32/128/256 PNG |
 | 方块模型贴图 | 从注册物品/方块出发递归导出生效 blockstate、父/子模型、composite、OBJ/MTL 和实际引用贴图；不复制未引用整目录 |
+| 方块实体模型 | 箱子、末影箱及其他 BlockEntityRenderer 的静态 OBJ、逐四边形六面 UV JSON、原始实体贴图；箱子包含单箱和双箱左右变体 |
 | 进度/成就网 | 从单人服务器完整列表（远程服回退客户端同步列表）导出根节点、父子关系、显示坐标、条件、要求组、奖励、图标，并按每种已发现语言输出标题和描述 |
 | 标签 | 每个运行时注册表的 tag ID 及游戏已经解析完成的最终成员列表 |
 | 状态效果 | 效果 ID、分类、颜色、即时/有益属性、多语言名称，以及效果自身的 32/128/256 透明 PNG；不导出药水瓶和药箭 |
@@ -65,7 +66,7 @@
 - `output`：相对路径以游戏目录为基准，也可用绝对路径。
 - `languages`：额外要求输出的语言；导出器还会自动发现目标 Mod 当前资源栈内的全部 `lang/*.json`，`en_us` 总会作为回退语言加入。
 - `profile`：`data`、`images` 或 `all`。
-- `modules`：逗号分隔的模块 ID；留空或 `all` 表示启用当前 profile 允许的全部模块。可选值为 `compatibility`、`registries`、`associations`、`trades`、`tags`、`recipes`、`advancements`、`worldgen`、`resources`、`entity_models`、`item_icons`、`block_icons`、`effect_icons`、`jei`、`entity_renders`。语言模块始终启用，保证名称引用可解析。
+- `modules`：逗号分隔的模块 ID；留空或 `all` 表示启用当前 profile 允许的全部模块。可选值为 `compatibility`、`registries`、`associations`、`trades`、`tags`、`recipes`、`advancements`、`worldgen`、`resources`、`block_entity_models`、`entity_models`、`item_icons`、`block_icons`、`effect_icons`、`jei`、`entity_renders`。语言模块始终启用，保证名称引用可解析。
 - `sizes`：会保留用户增加的尺寸，同时始终包含需求规定的 32、128、256。
 - `tickBudgetMs`：每个客户端 tick 的软时间预算，范围 1–100 ms。
 - `exit`：仅自动模式生效，ZIP 成功生成后关闭客户端；打包失败时保留客户端与暂存目录，便于排查。
@@ -134,6 +135,9 @@ icons/mob_effects/<size>/<namespace>/<id>.png
 entities/renders/<size>/<namespace>/<id>.png
 entities/models/<namespace>/<id>.obj
 entities/models/<namespace>/<id>.json
+block_entities/index.json
+block_entities/models/<namespace>/<block id>/<variant>.obj
+block_entities/models/<namespace>/<block id>/<variant>.mesh.json
 assets/<namespace>/blockstates/...
 assets/<namespace>/models/...
 assets/<namespace>/textures/...

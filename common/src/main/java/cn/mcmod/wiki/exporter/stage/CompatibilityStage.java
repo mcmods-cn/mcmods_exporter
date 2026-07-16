@@ -24,6 +24,7 @@ public final class CompatibilityStage extends OnceStage {
         capabilities.add(capability("worldgen", context.minecraft().getSingleplayerServer() == null ? "degraded" : "available", "server_data_or_installed_mod_fallback"));
         capabilities.add(capability("advancements", context.minecraft().getConnection() == null && context.minecraft().getSingleplayerServer() == null ? "unavailable" : "available", "client_sync_or_integrated_server"));
         capabilities.add(capability("entity_runtime_properties", context.minecraft().level == null ? "unavailable" : "available", "temporary_default_entity"));
+        capabilities.add(capability("block_entity_uv_models", "available", "runtime_renderer_and_model_layers"));
         capabilities.add(capability("biome_entity_spawns", context.minecraft().level == null ? "unavailable" : "available", "runtime_biome_registry"));
         capabilities.add(capability("jei_layouts", jeiRuntimeAvailable() ? "available" : "unavailable", "required_jei_runtime"));
 
