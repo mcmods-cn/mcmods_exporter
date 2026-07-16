@@ -3,6 +3,7 @@ package cn.mcmod.wiki.exporter.task;
 import cn.mcmod.wiki.exporter.config.ExportConfig;
 import cn.mcmod.wiki.exporter.stage.AdvancementStage;
 import cn.mcmod.wiki.exporter.stage.BlockIconStage;
+import cn.mcmod.wiki.exporter.stage.BlockEntityModelStage;
 import cn.mcmod.wiki.exporter.stage.CompatibilityStage;
 import cn.mcmod.wiki.exporter.stage.ContentAssociationStage;
 import cn.mcmod.wiki.exporter.stage.EntityModelStage;
@@ -40,6 +41,7 @@ public final class ExportPipeline {
         module("advancements", config -> config.profile().includesData(), ignored -> List.of(new AdvancementStage())),
         module("worldgen", config -> config.profile().includesData(), ignored -> List.of(new WorldgenDataStage())),
         module("resources", config -> config.profile().includesData(), ignored -> List.of(new ResourceStage())),
+        module("block_entity_models", config -> config.profile().includesData(), ignored -> List.of(new BlockEntityModelStage())),
         module("entity_models", config -> config.profile().includesData(), ignored -> List.of(new EntityModelStage())),
         module("item_icons", config -> config.profile().includesImages(), ignored -> List.of(new ItemIconStage())),
         module("block_icons", config -> config.profile().includesImages(), ignored -> List.of(new BlockIconStage())),

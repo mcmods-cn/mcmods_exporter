@@ -12,6 +12,8 @@ import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -67,6 +69,7 @@ public final class ResourceStage extends OnceStage {
                 "registered_item"
             ));
         enqueueDefaultEntityTextures(context, pending, queued);
+        enqueueBlockEntityTextures(context, pending, queued);
 
         while (!pending.isEmpty()) {
             PendingResource next = pending.removeFirst();
@@ -151,6 +154,43 @@ public final class ResourceStage extends OnceStage {
                 } finally {
                     if (entity != null) {
                         entity.discard();
+                    }
+                }
+            });
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static void enqueueBlockEntityTextures(
+        ExportContext context,
+        Deque<PendingResource> pending,
+        Set<String> queued
+    ) {
+        BuiltInRegistries.BLOCK.entrySet().stream()
+            .filter(entry -> context.matches(entry.getKey().location()))
+            .filter(entry -> entry.getValue() instanceof EntityBlock)
+            .sorted(Comparator.comparing(entry -> entry.getKey().location().toString()))
+            .forEach(entry -> {
+                EntityBlock block = (EntityBlock) entry.getValue();
+                BlockEntity blockEntity = null;
+                try {
+                    blockEntity = block.newBlockEntity(net.minecraft.core.BlockPos.ZERO, entry.getValue().defaultBlockState());
+                    if (blockEntity == null) {
+                        return;
+                    }
+                    net.minecraft.client.renderer.blockentity.BlockEntityRenderer renderer =
+                        context.minecraft().getBlockEntityRenderDispatcher().getRenderer(blockEntity);
+                    for (BlockEntityTextureResolver.TextureReference reference :
+                        BlockEntityTextureResolver.resolve(blockEntity, renderer)) {
+                        ResourceLocation file = textureFile(reference.texture());
+                        if (context.minecraft().getResourceManager().getResource(file).isPresent()) {
+                            enqueue(pending, queued, file, "block_entity_texture");
+                        }
+                    }
+                } catch (Throwable throwable) {
+                    context.report().error(ID, entry.getKey().location() + ":block_entity_texture", throwable);
+                } finally {
+                    if (blockEntity != null) {
+                        blockEntity.setRemoved();
                     }
                 }
             });

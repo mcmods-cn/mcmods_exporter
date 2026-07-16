@@ -97,6 +97,19 @@ Mekanism 对应 Minecraft 版本提供的四类化学品全部保留，但必须
 
 `registries/mob_effects.json` 的 `effect_attribute_modifiers` 已包含效果对属性的运算类型及 0/1 级数值。`registries/villager_trades.json` 是代码注册交易的确定性运行时样本：原始 `ItemListing` 不公开随机范围，因此 `complete=false`，网站可展示样本但不得把它当成全部随机结果。
 
+## 方块实体模型与六面 UV
+
+箱子、末影箱等方块不使用普通 `blockstates → models/block → textures` 模型链，而由 `BlockEntityRenderer` 在运行时绘制。它们的模型和贴图入口位于 `block_entities/index.json`，Schema 为 `mcmods-block-entity-models/v1`：
+
+- 每个目标方块记录 `block_id`、`block_entity_type_id` 和全部模型变体；
+- 箱子导出 `single`、`left`、`right` 三个变体，末影箱导出 `single`；单箱和双箱不会错误共用一套 UV；
+- 每个变体同时提供 OBJ 和 `*.mesh.json`。OBJ 的 `vt` 可直接用于常规 3D 渲染；mesh JSON 把每个四边形的四个位置、UV、法线、六面方向和 `uv_bounds` 展开，网站无需再解析 Minecraft `ModelPart`；
+- `uv_space=source_texture_normalized` 表示 UV 已对应导出的原始 PNG，`uv_origin=bottom_left`；箱子材质即使在游戏中经过 chest atlas，也不需要网站再次做图集换算；
+- 贴图保存到 `assets/<namespace>/textures/entity/**`，索引中保留 `texture_id`、文件路径、宽高、外观变体和 atlas 来源。箱子的默认、圣诞、普通/陷阱、单箱/左右双箱材质分别记录；
+- 其他 Mod 方块实体会尝试从实际运行时渲染器捕获网格和材质。若它使用材质图集，`uv_space=render_target_normalized` 且 `uv_transform_required=true`，导入端应保留该状态，不能假装它已经是原始贴图 UV。
+
+方块实体的六面 UV 与 `icons/blocks/**` 的百科缩略图用途不同：缩略图只用于列表展示，不能反推模型或贴图坐标。数据库应保存规范化面数据和材质引用，PNG/OBJ 作为对象存储文件保存。
+
 ## 维度、自然生成、结构与战利品表
 
 `worldgen/registries.json` 是运行时动态注册表快照，覆盖 `dimension`、`dimension_type` 与全部 `worldgen/*` 注册表。网站常用的数据已经按用途拆分：
@@ -117,7 +130,7 @@ Mekanism 对应 Minecraft 版本提供的四类化学品全部保留，但必须
 
 ## 资源整理
 
-`resources/index.json` 使用 `registered_content_dependency_closure`：从已注册方块、物品和实体默认纹理出发，递归追踪 blockstate、父模型、模型贴图、Forge/NeoForge/Fabric composite 子模型、OBJ、MTL 与贴图元数据。引用到原版或依赖 Mod 的必要父模型会以 `selected_namespace=false` 保留；目标命名空间中没有被注册内容引用的测试贴图、废弃模型不会导出。来源包、实现类、异常堆栈、重复原始语言文件等网站不需要的内容不会进入最终包。
+`resources/index.json` 使用 `registered_content_dependency_closure`：从已注册方块、物品、实体默认纹理和方块实体运行时材质出发，递归追踪 blockstate、父模型、模型贴图、Forge/NeoForge/Fabric composite 子模型、OBJ、MTL 与贴图元数据。引用到原版或依赖 Mod 的必要父模型、实体贴图会以 `selected_namespace=false` 保留；目标命名空间中没有被注册内容引用的测试贴图、废弃模型不会导出。来源包、实现类、异常堆栈、重复原始语言文件等网站不需要的内容不会进入最终包。
 
 `compatibility/capabilities.json` 明确记录当前包中各功能是 `available`、`degraded` 还是 `unavailable`。网站必须按能力状态导入，不能把低版本没有某 API 导致的缺失误判成“该 Mod 没有此内容”。
 
