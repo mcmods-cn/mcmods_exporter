@@ -1,4 +1,4 @@
-# JEI 通用模板导出格式 v1
+# JEI 通用模板导出格式 v2
 
 本文档描述 `mcmods_exporter 0.8.0` 的 JEI 配方 GUI 导出方式。该格式把配方类别、空白 GUI、槽位几何和具体配方材料拆开，使网站能够用同一模板渲染多条配方，并让 GUI 上的物品保持可点击。
 
@@ -54,10 +54,20 @@ JEI 合成类别 ID，例如 `minecraft:crafting`。它表示“使用哪一种�
 - `recipe_key` 在一次导出中唯一，用于处理 JEI 返回重复 `recipe_id` 的情况。
 - `recipe_id_source` 表示 ID 来自 `minecraft_recipe`、`jei_category` 或 `generated_index`。
 - `recipe_id_canonical` 表示该 ID 是否适合作为跨导出包的稳定业务 ID。
+- `source_mod_id` 取自权威 `recipe_id` 的命名空间，`source_mod_version` 取自当前已加载的 Mod；仅当 JEI 没有权威配方 ID 时才退回 `recipe_type_id` 命名空间，并在 `source_mod_id_source` 中说明。
+- `underlying_recipe_type_id` 是 Minecraft `Recipe#getType()` 的注册 ID；它与 JEI 展示用的 `recipe_type_id` 不一定相同。
 
-## 3. 类别索引
+## 3. 导出过滤规则
 
-`recipes/jei/categories.json` 使用 `mcmods-jei-categories/v5`。顶层包含：
+导出指定 Mod 时，拥有权威 `recipe_id` 的 JEI 条目必须以该 ID 的命名空间为准。类别命名空间相同但配方 ID 属于其他 Mod 的条目不会导出。没有权威 ID 的 JEI 动态条目才使用 `recipe_type_id` 命名空间判断来源。
+
+完成来源过滤后，导出器以 `(recipe_id, underlying_recipe_type_id)` 检测 JEI 的跨类别重复投影：同一配方同时出现在其原生类别和兼容机器类别时，仅保留 `recipe_type_id == underlying_recipe_type_id` 的原生展示。例如 Create 把工作台配方投影进 `create:automatic_shaped` 时，该副本会被排除；真正的 `create:mechanical_crafting` 配方仍保留。
+
+`categories.json.filter_summary` 保存发现数、导出数，以及 `foreign_recipe_namespace`、`duplicate_category_projection` 两种排除原因的汇总。网站应把它作为导入审计信息保存，不要把被排除条目重新补回。
+
+## 4. 类别索引
+
+`recipes/jei/categories.json` 使用 `mcmods-jei-categories/v6`。顶层包含：
 
 - `categories[]`：每种合成方式的标题、尺寸、Catalyst、模板数和导出配方数。
 - `recipes[]`：配方快速索引，包含配方身份、规范化的有序/无序信息、模板与背景引用。
@@ -80,13 +90,13 @@ JEI 合成类别 ID，例如 `minecraft:crafting`。它表示“使用哪一种�
 
 `catalysts` 来自 JEI 正式注册的 Recipe Catalyst，用于表示打开或执行这种合成方式所需的工作台、机器或其他入口。不得通过类别标题或背景图片猜测 Catalyst。
 
-## 4. 模板集合
+## 5. 模板集合
 
-每个 `recipe_type_id` 有一个模板集合文件，Schema 为 `mcmods-jei-template-collection/v1`：
+每个 `recipe_type_id` 有一个模板集合文件，Schema 为 `mcmods-jei-template-collection/v2`：
 
 ```json
 {
-  "schema_version": "mcmods-jei-template-collection/v1",
+  "schema_version": "mcmods-jei-template-collection/v2",
   "recipe_type_id": "minecraft:crafting",
   "coordinate_space": "logical_pixels",
   "image_scale": 4,
@@ -106,7 +116,7 @@ JEI 合成类别 ID，例如 `minecraft:crafting`。它表示“使用哪一种�
 
 ```json
 {
-  "schema_version": "mcmods-jei-layout-template/v1",
+  "schema_version": "mcmods-jei-layout-template/v2",
   "template_id": "template_0123456789abcdef",
   "background": "recipes/jei/backgrounds/minecraft/crafting/template_0123456789abcdef.png",
   "background_contains_ingredients": false,
@@ -129,18 +139,19 @@ JEI 合成类别 ID，例如 `minecraft:crafting`。它表示“使用哪一种�
 
 - `input`：输入材料；
 - `output`：输出材料；
+- `byproduct`：有 JEI 槽位名称、tooltip 或小于 100% 的非主输出概率作为证据的副产品；
 - `catalyst`：配方内部催化剂槽位，与类别级 Recipe Catalyst 不同；
 - `render_only`：只用于展示的数据。
 
 `rect` 是交互点击区域，`visual_rect` 是图标实际绘制区域。网页定位图标优先使用 `visual_rect`，建立点击热区时使用 `rect`。`coordinates_available=false` 时不得猜测坐标。
 
-## 5. 配方绑定集合
+## 6. 配方绑定集合
 
-每个 `recipe_type_id` 有一个绑定集合文件，Schema 为 `mcmods-jei-recipe-collection/v1`：
+每个 `recipe_type_id` 有一个绑定集合文件，Schema 为 `mcmods-jei-recipe-collection/v2`：
 
 ```json
 {
-  "schema_version": "mcmods-jei-recipe-collection/v1",
+  "schema_version": "mcmods-jei-recipe-collection/v2",
   "recipe_type_id": "minecraft:crafting",
   "template_collection": "recipes/jei/templates/minecraft/crafting.json",
   "count": 1200,
@@ -152,11 +163,15 @@ JEI 合成类别 ID，例如 `minecraft:crafting`。它表示“使用哪一种�
 
 ```json
 {
-  "schema_version": "mcmods-jei-recipe-bindings/v1",
+  "schema_version": "mcmods-jei-recipe-bindings/v2",
   "recipe_type_id": "minecraft:crafting",
   "recipe_id": "minecraft:stick",
   "recipe_id_source": "minecraft_recipe",
   "recipe_id_canonical": true,
+  "source_mod_id": "minecraft",
+  "source_mod_version": "1.21.1",
+  "source_mod_id_source": "recipe_id_namespace",
+  "origin_kind": "registered_recipe",
   "recipe_key": "minecraft:stick#000001",
   "template_id": "template_0123456789abcdef",
   "render_locale": "zh_cn",
@@ -188,7 +203,19 @@ JEI 合成类别 ID，例如 `minecraft:crafting`。它表示“使用哪一种�
 
 `alternatives` 保存同一槽位可轮换展示的全部 Ingredient。网站可以按时间轮换，也可以展开成材料列表。可识别为物品 Tag 时，绑定还可能带有 `item_tag_equivalent`。
 
-## 6. 固定容量与动态容量
+概率是具体配方数据，不参与模板指纹。导出器只从 JEI 最终展示层读取：优先解析槽位最终 tooltip；若模组把百分比直接画在类别 GUI 上，则捕获 JEI 分类绘制的百分比文字并按坐标关联到最近的输出槽。对应字段为：
+
+- `chance_available`：是否取得可靠概率；
+- `chance`：0 到 1 的规范化值；
+- `chance_percent`：0 到 100 的百分值；
+- `chance_comparator`：`exact`、`less_than` 等比较语义；
+- `chance_source`：`jei_slot_tooltip` 或 `jei_category_drawn_text`；
+- `chance_text`、`chance_texts`、`chance_translation_key`：JEI 原始显示文字及可用的多语言信息；
+- `chance_render_x/y`：仅分类直接绘制概率时提供，供网站按原位置重绘。
+
+导出器不会依赖 Create、Mekanism 等模组的私有配方类来猜概率。JEI 没有展示概率时输出 `chance_available=false`。多个必得输出仍为 `output`；只有明确证据成立时才改为 `byproduct`，依据保存在 `role_source`。
+
+## 7. 固定容量与动态容量
 
 模板是否复用只看完整槽位结构，不看本配方实际用了几个槽位：
 
@@ -196,7 +223,7 @@ JEI 合成类别 ID，例如 `minecraft:crafting`。它表示“使用哪一种�
 - 机械动力 Mechanical Crafter 等动态布局可能因配方形状或机器容量产生不同的槽位坐标和数量，因此同一个 `recipe_type_id` 可以对应多个 `template_id`。
 - 材料、数量、NBT 或 Tag 变化只改变 `bindings`，不会改变模板。
 
-## 7. 空白背景规则
+## 8. 空白背景规则
 
 导出器先让 JEI 创建真实配方布局，再把每个槽位的显示内容覆盖为空，最后以 4 倍分辨率绘制背景。因此背景保留：
 
@@ -206,7 +233,9 @@ JEI 合成类别 ID，例如 `minecraft:crafting`。它表示“使用哪一种�
 
 但不包含输入、输出或催化材料图标。`background_contains_ingredients` 固定为 `false`。
 
-## 8. 网站导入与渲染流程
+JEI 分类直接绘制的百分比属于具体配方，也会从通用背景中剥离，改由绑定字段交给网站绘制。因此共享模板不会把第一条配方的概率错误烘焙进所有配方。
+
+## 9. 网站导入与渲染流程
 
 建议导入顺序：
 
