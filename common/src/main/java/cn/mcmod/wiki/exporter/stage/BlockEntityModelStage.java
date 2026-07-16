@@ -87,7 +87,7 @@ public final class BlockEntityModelStage implements ExportStage {
                 BlockEntityTextureResolver.resolve(blockEntity, renderer);
             JsonObject json = baseEntry(entry, blockEntity);
             JsonArray variants = new JsonArray();
-            if (blockEntity instanceof EnderChestBlockEntity) {
+            if (blockEntity instanceof EnderChestBlockEntity && renderer instanceof ChestRenderer<?>) {
                 variants.add(captureLayerVariant(
                     context,
                     entry.id,
@@ -96,7 +96,7 @@ public final class BlockEntityModelStage implements ExportStage {
                     textures
                 ));
                 json.addProperty("model_source", "minecraft_chest_layer");
-            } else if (blockEntity instanceof ChestBlockEntity) {
+            } else if (blockEntity instanceof ChestBlockEntity && renderer instanceof ChestRenderer<?>) {
                 variants.add(captureLayerVariant(
                     context,
                     entry.id,
@@ -173,7 +173,9 @@ public final class BlockEntityModelStage implements ExportStage {
             variantId,
             consumer,
             "source_texture_normalized",
-            textures.stream().filter(texture -> texture.modelVariant().equals(variantId)).toList(),
+            textures.stream().filter(texture ->
+                texture.modelVariant().equals(variantId) || texture.modelVariant().equals("default")
+            ).toList(),
             true
         );
     }
