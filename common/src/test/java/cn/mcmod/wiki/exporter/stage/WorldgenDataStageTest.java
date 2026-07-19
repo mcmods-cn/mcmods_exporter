@@ -69,6 +69,72 @@ class WorldgenDataStageTest {
     }
 
     @Test
+    void normalizesPlacedAndConfiguredOreIntoOneCatalogEntry() {
+        JsonObject placed = JsonParser.parseString("""
+            {
+              "feature": "example:tin_ore",
+              "placement": [
+                {"type": "minecraft:count", "count": 12},
+                {
+                  "type": "minecraft:height_range",
+                  "height": {
+                    "type": "minecraft:uniform",
+                    "min_inclusive": {"absolute": -32},
+                    "max_inclusive": {"absolute": 64}
+                  }
+                },
+                {"type": "minecraft:biome"}
+              ]
+            }
+            """).getAsJsonObject();
+        JsonObject configured = JsonParser.parseString("""
+            {
+              "type": "minecraft:ore",
+              "config": {
+                "size": 9,
+                "discard_chance_on_air_exposure": 0.25,
+                "targets": [
+                  {
+                    "target": {
+                      "predicate_type": "minecraft:tag_match",
+                      "tag": "minecraft:stone_ore_replaceables"
+                    },
+                    "state": {"Name": "example:tin_ore"}
+                  },
+                  {
+                    "target": {
+                      "predicate_type": "minecraft:tag_match",
+                      "tag": "minecraft:deepslate_ore_replaceables"
+                    },
+                    "state": {"Name": "example:deepslate_tin_ore"}
+                  }
+                ]
+              }
+            }
+            """).getAsJsonObject();
+
+        JsonObject summary = WorldgenDataStage.summarizePlacedFeature(placed, configured);
+
+        assertEquals("minecraft:ore", summary.get("feature_type").getAsString());
+        assertEquals("ore", summary.get("category").getAsString());
+        assertEquals("example:tin_ore", summary.get("configured_feature_id").getAsString());
+        assertEquals(2, summary.getAsJsonArray("outputs").size());
+        assertEquals("example:deepslate_tin_ore", summary.getAsJsonArray("outputs")
+            .get(0).getAsJsonObject().get("block_id").getAsString());
+        assertEquals("#minecraft:stone_ore_replaceables", summary.getAsJsonArray("targets")
+            .get(1).getAsString());
+        assertEquals(9, summary.get("size").getAsInt());
+        assertEquals(0.25, summary.get("discard_chance_on_air_exposure").getAsDouble());
+
+        JsonObject placement = summary.getAsJsonObject("placement");
+        assertEquals(12, placement.get("count").getAsInt());
+        assertEquals("uniform", placement.get("distribution").getAsString());
+        assertEquals(-32, placement.get("min_y").getAsInt());
+        assertEquals(64, placement.get("max_y").getAsInt());
+        assertEquals(true, placement.get("biome_filter").getAsBoolean());
+    }
+
+    @Test
     void classifiesBlockChestAndEntityLootTables() {
         assertEquals("block", WorldgenDataStage.lootTableCategory(new ResourceLocation("example", "blocks/machine")));
         assertEquals("chest", WorldgenDataStage.lootTableCategory(new ResourceLocation("example", "chests/lab")));
