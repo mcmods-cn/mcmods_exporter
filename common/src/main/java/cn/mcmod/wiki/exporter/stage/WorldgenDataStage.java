@@ -13,11 +13,6 @@ import dev.architectury.platform.Platform;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtIo;
-import net.minecraft.nbt.NbtAccounter;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.RegistryDataLoader;
 import net.minecraft.resources.RegistryOps;
@@ -29,7 +24,6 @@ import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.MobSpawnSettings;
 
-import java.io.DataInputStream;
 import java.io.InputStream;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
@@ -62,8 +56,16 @@ public final class WorldgenDataStage extends OnceStage {
         "forge/biome_modifier",
         "forge/structure_modifier",
         "neoforge/biome_modifier",
-        "neoforge/structure_modifier",
-        "structures"
+        "neoforge/structure_modifier"
+    );
+    private static final Set<String> INTERNAL_STRUCTURE_WORLDGEN_KINDS = Set.of(
+        "worldgen/template_pool",
+        "worldgen/processor_list"
+    );
+    private static final Set<String> NESTED_STRUCTURE_REGISTRIES = Set.of(
+        "minecraft:worldgen/structure_set",
+        "minecraft:worldgen/template_pool",
+        "minecraft:worldgen/processor_list"
     );
     private static final Map<String, String> EXTENSION_WORLDGEN_REGISTRIES = Map.of(
         "forge:biome_modifier", "worldgen_extension/forge/biome_modifier",
@@ -84,11 +86,16 @@ public final class WorldgenDataStage extends OnceStage {
         Map<String, DataFile> files = new TreeMap<>();
         String resourceSource;
 
+        int omittedStructureTemplates;
         if (context.minecraft().getSingleplayerServer() != null) {
-            copyEffectiveResources(context, context.minecraft().getSingleplayerServer().getResourceManager(), files);
+            omittedStructureTemplates = copyEffectiveResources(
+                context,
+                context.minecraft().getSingleplayerServer().getResourceManager(),
+                files
+            );
             resourceSource = "integrated_server_resource_stack";
         } else {
-            copyInstalledModResources(context, files);
+            omittedStructureTemplates = copyInstalledModResources(context, files);
             resourceSource = "installed_mod_fallback";
         }
 
@@ -98,7 +105,7 @@ public final class WorldgenDataStage extends OnceStage {
         writeBiomes(context, registries, runtimeDefinitions, files);
         writeEntitySpawns(context);
         writeNaturalGeneration(context, registries, runtimeDefinitions, files);
-        writeStructures(context, registries, runtimeDefinitions, files);
+        writeStructures(context, registries, runtimeDefinitions, files, omittedStructureTemplates);
         writeLootTables(context, files);
 
         context.report().addCount(ID, "runtime_registries", registries.size());
@@ -108,7 +115,7 @@ public final class WorldgenDataStage extends OnceStage {
             runtimeDefinitions.values().stream().mapToInt(Map::size).sum()
         );
         context.report().addCount(ID, "data_files", files.size());
-        context.report().addCount(ID, "structure_templates", countKind(files, "structure_template"));
+        context.report().addCount(ID, "omitted_structure_templates", omittedStructureTemplates);
         context.report().addCount(ID, "loot_tables", countKind(files, "loot_table"));
     }
 
@@ -133,6 +140,10 @@ public final class WorldgenDataStage extends OnceStage {
     }
 
     private static boolean isWorldRegistry(String registryId) {
+        if (registryId.equals("minecraft:worldgen/template_pool")
+            || registryId.equals("minecraft:worldgen/processor_list")) {
+            return false;
+        }
         return registryId.equals("minecraft:dimension")
             || registryId.equals("minecraft:dimension_type")
             || registryId.startsWith("minecraft:worldgen/")
@@ -203,7 +214,7 @@ public final class WorldgenDataStage extends OnceStage {
         }
     }
 
-    private static void copyEffectiveResources(
+    private static int copyEffectiveResources(
         ExportContext context,
         ResourceManager manager,
         Map<String, DataFile> files
@@ -211,7 +222,7 @@ public final class WorldgenDataStage extends OnceStage {
         for (String prefix : DATA_PREFIXES) {
             Map<ResourceLocation, Resource> resources = manager.listResources(
                 prefix,
-                id -> classify(id.getPath()) != null
+                id -> shouldCopyDataResource(id.getPath())
             );
             resources.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey(Comparator.comparing(ResourceLocation::toString)))
@@ -219,6 +230,10 @@ public final class WorldgenDataStage extends OnceStage {
                 .forEach(entry -> copyResource(context, entry.getKey(), entry.getValue(), files));
         }
         copyReferencedLootTables(context, manager, files);
+        return (int) manager.listResources("structures", id -> isStructureTemplatePath(id.getPath()))
+            .entrySet().stream()
+            .filter(entry -> context.matches(entry.getKey()) || resourceOwnedByTarget(context, entry.getValue()))
+            .count();
     }
 
     private static void copyResource(
@@ -243,7 +258,8 @@ public final class WorldgenDataStage extends OnceStage {
         }
     }
 
-    private static void copyInstalledModResources(ExportContext context, Map<String, DataFile> files) {
+    private static int copyInstalledModResources(ExportContext context, Map<String, DataFile> files) {
+        Set<String> omittedStructureTemplates = new TreeSet<>();
         List<Mod> mods = new ArrayList<>(Platform.getMods());
         mods.sort(Comparator.comparing(Mod::getModId));
         for (Mod mod : mods) {
@@ -263,8 +279,14 @@ public final class WorldgenDataStage extends OnceStage {
                             String namespace = relative.getName(0).toString();
                             String resourcePath = relative.subpath(1, relative.getNameCount()).toString().replace('\\', '/');
                             ResourceLocation resourceId = ResourceLocation.fromNamespaceAndPath(namespace, resourcePath);
+                            if (isStructureTemplatePath(resourcePath)) {
+                                if (selectedOwner || context.matches(resourceId)) {
+                                    omittedStructureTemplates.add(resourceId.toString());
+                                }
+                                return;
+                            }
                             if ((!selectedOwner && !context.matches(resourceId))
-                                || classify(resourcePath) == null
+                                || !shouldCopyDataResource(resourcePath)
                                 || files.containsKey(resourceId.toString())) {
                                 return;
                             }
@@ -284,6 +306,7 @@ public final class WorldgenDataStage extends OnceStage {
                 }
             }
         }
+        return omittedStructureTemplates.size();
     }
 
     private static boolean resourceOwnedByTarget(ExportContext context, Resource resource) {
@@ -352,9 +375,7 @@ public final class WorldgenDataStage extends OnceStage {
         Set<ResourceLocation> references = new TreeSet<>(Comparator.comparing(ResourceLocation::toString));
         for (DataFile file : files.values()) {
             try {
-                if (file.kind().equals("structure_template")) {
-                    collectStructureLootTables(readStructureNbt(file.target()), references);
-                } else if (file.kind().equals("loot_table")) {
+                if (file.kind().equals("loot_table")) {
                     JsonElement definition = readJson(context, file);
                     if (definition != null) {
                         collectReferencedLootTables(definition, references);
@@ -392,9 +413,6 @@ public final class WorldgenDataStage extends OnceStage {
         if (path.startsWith("item_modifiers/") && path.endsWith(".json")) {
             return classification("loot_item_modifier", path, "item_modifiers/", ".json");
         }
-        if (path.startsWith("structures/") && path.endsWith(".nbt")) {
-            return classification("structure_template", path, "structures/", ".nbt");
-        }
         for (Map.Entry<String, String> extension : EXTENSION_WORLDGEN_REGISTRIES.entrySet()) {
             String prefix = extension.getKey().replace(':', '/') + "/";
             if (path.startsWith(prefix) && path.endsWith(".json")) {
@@ -411,6 +429,15 @@ public final class WorldgenDataStage extends OnceStage {
         return null;
     }
 
+    private static boolean shouldCopyDataResource(String path) {
+        Classification classification = classify(path);
+        return classification != null && !INTERNAL_STRUCTURE_WORLDGEN_KINDS.contains(classification.kind());
+    }
+
+    private static boolean isStructureTemplatePath(String path) {
+        return path.startsWith("structures/") && path.endsWith(".nbt");
+    }
+
     private static Classification classification(String kind, String path, String prefix, String extension) {
         String objectPath = path.substring(prefix.length(), path.length() - extension.length());
         return objectPath.isBlank() ? null : new Classification(kind, objectPath);
@@ -423,6 +450,9 @@ public final class WorldgenDataStage extends OnceStage {
         JsonArray registryData = new JsonArray();
         int entryCount = 0;
         for (Map.Entry<String, Set<ResourceLocation>> entry : registries.entrySet()) {
+            if (NESTED_STRUCTURE_REGISTRIES.contains(entry.getKey())) {
+                continue;
+            }
             JsonObject registry = new JsonObject();
             registry.addProperty("registry", entry.getKey());
             JsonArray values = new JsonArray();
@@ -588,7 +618,9 @@ public final class WorldgenDataStage extends OnceStage {
         registries.keySet().forEach(registryId -> {
             if (registryId.startsWith("minecraft:worldgen/")) {
                 String category = registryId.substring("minecraft:worldgen/".length());
-                if (!category.equals("biome") && !category.equals("structure")) {
+                if (!category.equals("biome")
+                    && !category.equals("structure")
+                    && !isNestedStructureCategory(category)) {
                     registryKinds.put(registryId, "worldgen/" + category);
                 }
             } else if (EXTENSION_WORLDGEN_REGISTRIES.containsKey(registryId)) {
@@ -596,7 +628,10 @@ public final class WorldgenDataStage extends OnceStage {
             }
         });
         files.values().stream().map(DataFile::kind).forEach(kind -> {
-            if (kind.startsWith("worldgen/") && !kind.equals("worldgen/biome") && !kind.equals("worldgen/structure")) {
+            if (kind.startsWith("worldgen/")
+                && !kind.equals("worldgen/biome")
+                && !kind.equals("worldgen/structure")
+                && !isNestedStructureCategory(kind.substring("worldgen/".length()))) {
                 registryKinds.putIfAbsent("minecraft:" + kind, kind);
             } else if (kind.startsWith("worldgen_extension/")) {
                 String registryPath = kind.substring("worldgen_extension/".length());
@@ -638,72 +673,192 @@ public final class WorldgenDataStage extends OnceStage {
         context.report().addCount(ID, "natural_generation_entries", entryCount);
     }
 
+    private static boolean isNestedStructureCategory(String category) {
+        return category.equals("structure_set")
+            || category.equals("template_pool")
+            || category.equals("processor_list");
+    }
+
     private static void writeStructures(
         ExportContext context,
         Map<String, Set<ResourceLocation>> registries,
         Map<String, Map<String, JsonElement>> runtimeDefinitions,
-        Map<String, DataFile> files
+        Map<String, DataFile> files,
+        int omittedStructureTemplates
     ) throws Exception {
-        Map<String, StructureEntry> structures = new TreeMap<>();
-        Set<ResourceLocation> registered = registries.get("minecraft:worldgen/structure");
-        if (registered != null) {
-            registered.forEach(id -> structures.computeIfAbsent(id.toString(), ignored -> new StructureEntry(id)).runtime = true);
-        }
-        Map<String, JsonElement> encodedStructures = runtimeDefinitions.get("minecraft:worldgen/structure");
-        if (encodedStructures != null) {
-            encodedStructures.forEach((id, definition) -> {
-                ResourceLocation resourceId = ResourceLocation.parse(id);
-                structures.computeIfAbsent(id, ignored -> new StructureEntry(resourceId)).runtimeDefinition = definition;
-            });
-        }
-        for (DataFile file : files.values()) {
-            if (!file.kind().equals("worldgen/structure") && !file.kind().equals("structure_template")) {
-                continue;
-            }
-            StructureEntry entry = structures.computeIfAbsent(
-                file.objectId().toString(),
-                ignored -> new StructureEntry(file.objectId())
-            );
-            if (file.kind().equals("worldgen/structure")) {
-                entry.definition = file;
-            } else {
-                entry.template = file;
-            }
-        }
+        Map<String, IndexedObject> structures = indexedObjects(
+            registries.get("minecraft:worldgen/structure"),
+            runtimeDefinitions.get("minecraft:worldgen/structure"),
+            files,
+            "worldgen/structure"
+        );
+        Map<String, JsonArray> structureSetReferences = structureSetReferences(
+            context,
+            registries,
+            runtimeDefinitions,
+            files
+        );
 
         JsonArray data = new JsonArray();
         int definitionCount = 0;
-        int templateCount = 0;
-        for (StructureEntry entry : structures.values()) {
+        int structureSetReferenceCount = 0;
+        for (IndexedObject entry : structures.values()) {
             JsonObject json = baseId(entry.id);
+            json.addProperty("structure_id", entry.id.toString());
+            json.addProperty("catalog_kind", "top_level_structure");
             json.addProperty("runtime_registered", entry.runtime);
-            if (entry.runtimeDefinition != null) {
-                json.add("runtime_definition", entry.runtimeDefinition);
+            json.addProperty("internal_templates_exported", false);
+            JsonElement definition = effectiveDefinition(context, entry);
+            if (entry.file != null) {
+                json.addProperty("definition_path", exportPath(context, entry.file.target()));
             }
-            if (entry.definition != null) {
-                addJsonDefinition(context, json, "definition", entry.definition);
+            if (definition != null) {
+                json.addProperty(
+                    "definition_source",
+                    entry.runtimeDefinition != null ? "runtime_registry" : "effective_data_resource"
+                );
+                json.add("definition", definition);
+                JsonObject summary = summarizeStructureDefinition(definition);
+                summary.entrySet().forEach(field -> json.add(field.getKey(), field.getValue()));
                 definitionCount++;
             }
-            if (entry.template != null) {
-                json.addProperty("template_path", exportPath(context, entry.template.target()));
-                json.addProperty("template_size_bytes", entry.template.size());
-                try {
-                    json.add("template_summary", summarizeStructureNbt(entry.template.target()));
-                } catch (Exception exception) {
-                    context.report().error(ID, "structure_nbt:" + entry.id, exception);
-                }
-                templateCount++;
+            JsonArray references = structureSetReferences.getOrDefault(entry.id.toString(), new JsonArray());
+            JsonArray structureSetIds = new JsonArray();
+            Set<String> distinctStructureSetIds = new TreeSet<>();
+            for (JsonElement reference : references) {
+                distinctStructureSetIds.add(
+                    reference.getAsJsonObject().get("structure_set_id").getAsString()
+                );
             }
+            distinctStructureSetIds.forEach(structureSetIds::add);
+            json.add("structure_set_ids", structureSetIds);
+            json.add("structure_set_references", references);
+            structureSetReferenceCount += references.size();
             data.add(json);
         }
         JsonObject root = new JsonObject();
-        root.addProperty("schema_version", "mcmods-structures/v1");
+        root.addProperty("schema_version", "mcmods-structures/v2");
+        root.addProperty("export_mode", "catalog_only");
         root.addProperty("count", data.size());
         root.addProperty("definition_count", definitionCount);
-        root.addProperty("template_count", templateCount);
+        root.addProperty("structure_set_reference_count", structureSetReferenceCount);
+        root.addProperty("internal_templates_exported", false);
+        root.addProperty("omitted_internal_template_count", omittedStructureTemplates);
         root.add("structures", data);
         context.writeJson("worldgen/structures.json", root);
         context.report().addCount(ID, "structure_definitions", definitionCount);
+        context.report().addCount(ID, "structure_set_references", structureSetReferenceCount);
+    }
+
+    private static Map<String, JsonArray> structureSetReferences(
+        ExportContext context,
+        Map<String, Set<ResourceLocation>> registries,
+        Map<String, Map<String, JsonElement>> runtimeDefinitions,
+        Map<String, DataFile> files
+    ) {
+        Map<String, JsonArray> references = new TreeMap<>();
+        Map<String, IndexedObject> structureSets = indexedObjects(
+            registries.get("minecraft:worldgen/structure_set"),
+            runtimeDefinitions.get("minecraft:worldgen/structure_set"),
+            files,
+            "worldgen/structure_set"
+        );
+        for (IndexedObject structureSet : structureSets.values()) {
+            JsonElement definition = effectiveDefinition(context, structureSet);
+            if (definition != null) {
+                addStructureSetReferences(references, structureSet.id, definition);
+            }
+        }
+        return references;
+    }
+
+    static void addStructureSetReferences(
+        Map<String, JsonArray> target,
+        ResourceLocation structureSetId,
+        JsonElement definition
+    ) {
+        if (!definition.isJsonObject()) {
+            return;
+        }
+        JsonObject object = definition.getAsJsonObject();
+        if (!object.has("structures") || !object.get("structures").isJsonArray()) {
+            return;
+        }
+        JsonElement placement = object.get("placement");
+        for (JsonElement element : object.getAsJsonArray("structures")) {
+            if (!element.isJsonObject()) {
+                continue;
+            }
+            JsonObject weighted = element.getAsJsonObject();
+            String structureId = resourceIdString(weighted.get("structure"));
+            if (structureId == null) {
+                continue;
+            }
+            JsonObject reference = new JsonObject();
+            reference.addProperty("structure_set_id", structureSetId.toString());
+            if (weighted.has("weight") && weighted.get("weight").isJsonPrimitive()) {
+                reference.add("weight", weighted.get("weight"));
+            }
+            if (placement != null && placement.isJsonObject()) {
+                reference.add("placement", placement);
+                JsonObject placementObject = placement.getAsJsonObject();
+                if (placementObject.has("type") && placementObject.get("type").isJsonPrimitive()) {
+                    reference.add("placement_type", placementObject.get("type"));
+                }
+            }
+            target.computeIfAbsent(structureId, ignored -> new JsonArray()).add(reference);
+        }
+    }
+
+    private static String resourceIdString(JsonElement element) {
+        if (element == null) {
+            return null;
+        }
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+            return element.getAsString();
+        }
+        if (element.isJsonObject()) {
+            JsonObject object = element.getAsJsonObject();
+            if (object.has("id") && object.get("id").isJsonPrimitive()) {
+                return object.get("id").getAsString();
+            }
+        }
+        return null;
+    }
+
+    static JsonObject summarizeStructureDefinition(JsonElement definition) {
+        JsonObject summary = new JsonObject();
+        if (!definition.isJsonObject()) {
+            return summary;
+        }
+        JsonObject object = definition.getAsJsonObject();
+        copyField(object, summary, "type", "structure_type");
+        copyField(object, summary, "biomes", "biomes");
+        copyField(object, summary, "step", "generation_step");
+        copyField(object, summary, "terrain_adaptation", "terrain_adaptation");
+        copyField(object, summary, "spawn_overrides", "spawn_overrides");
+        copyField(object, summary, "start_pool", "start_pool");
+        copyField(object, summary, "start_jigsaw_name", "start_jigsaw_name");
+        copyField(object, summary, "size", "jigsaw_size");
+        copyField(object, summary, "start_height", "start_height");
+        copyField(object, summary, "max_distance_from_center", "max_distance_from_center");
+        copyField(object, summary, "use_expansion_hack", "use_expansion_hack");
+        copyField(object, summary, "project_start_to_heightmap", "project_start_to_heightmap");
+        copyField(object, summary, "liquid_settings", "liquid_settings");
+        return summary;
+    }
+
+    private static void copyField(JsonObject source, JsonObject target, String sourceName, String targetName) {
+        if (source.has(sourceName)) {
+            target.add(targetName, source.get(sourceName));
+        }
+    }
+
+    private static JsonElement effectiveDefinition(ExportContext context, IndexedObject entry) {
+        if (entry.runtimeDefinition != null) {
+            return entry.runtimeDefinition;
+        }
+        return entry.file == null ? null : readJson(context, entry.file);
     }
 
     private static void writeLootTables(ExportContext context, Map<String, DataFile> files) throws Exception {
@@ -889,99 +1044,6 @@ public final class WorldgenDataStage extends OnceStage {
         }
     }
 
-    static JsonObject summarizeStructureNbt(Path path) throws Exception {
-        CompoundTag root = readStructureNbt(path);
-        JsonObject summary = new JsonObject();
-        if (root.contains("DataVersion", Tag.TAG_ANY_NUMERIC)) {
-            summary.addProperty("data_version", root.getInt("DataVersion"));
-        }
-        if (root.contains("author", Tag.TAG_STRING)) {
-            summary.addProperty("author", root.getString("author"));
-        }
-        ListTag size = root.getList("size", Tag.TAG_INT);
-        if (size.size() >= 3) {
-            JsonArray dimensions = new JsonArray();
-            dimensions.add(size.getInt(0));
-            dimensions.add(size.getInt(1));
-            dimensions.add(size.getInt(2));
-            summary.add("size", dimensions);
-            summary.addProperty("volume", (long) size.getInt(0) * size.getInt(1) * size.getInt(2));
-        }
-        ListTag blocks = root.getList("blocks", Tag.TAG_COMPOUND);
-        ListTag entities = root.getList("entities", Tag.TAG_COMPOUND);
-        summary.addProperty("block_count", blocks.size());
-        summary.addProperty("entity_count", entities.size());
-
-        Set<ResourceLocation> lootTables = new TreeSet<>(Comparator.comparing(ResourceLocation::toString));
-        collectStructureLootTables(root, lootTables);
-        JsonArray referencedLootTables = new JsonArray();
-        lootTables.forEach(id -> referencedLootTables.add(id.toString()));
-        summary.add("referenced_loot_tables", referencedLootTables);
-
-        TreeSet<String> blockIds = new TreeSet<>();
-        int paletteVariants = 0;
-        int paletteSize = 0;
-        ListTag palette = root.getList("palette", Tag.TAG_COMPOUND);
-        if (!palette.isEmpty()) {
-            paletteVariants = 1;
-            paletteSize = palette.size();
-            collectPaletteNames(palette, blockIds);
-        }
-        ListTag palettes = root.getList("palettes", Tag.TAG_LIST);
-        if (!palettes.isEmpty()) {
-            paletteVariants = palettes.size();
-            for (int index = 0; index < palettes.size(); index++) {
-                ListTag variant = palettes.getList(index);
-                paletteSize = Math.max(paletteSize, variant.size());
-                collectPaletteNames(variant, blockIds);
-            }
-        }
-        summary.addProperty("palette_variant_count", paletteVariants);
-        summary.addProperty("palette_size", paletteSize);
-        JsonArray usedBlocks = new JsonArray();
-        blockIds.forEach(usedBlocks::add);
-        summary.add("used_blocks", usedBlocks);
-        return summary;
-    }
-
-    private static CompoundTag readStructureNbt(Path path) throws Exception {
-        CompoundTag root;
-        try (InputStream input = Files.newInputStream(path)) {
-            root = NbtIo.readCompressed(input, NbtAccounter.unlimitedHeap());
-        } catch (Exception compressedFailure) {
-            try (DataInputStream input = new DataInputStream(Files.newInputStream(path))) {
-                root = NbtIo.read(input);
-            }
-        }
-        return root;
-    }
-
-    private static void collectStructureLootTables(CompoundTag structure, Set<ResourceLocation> target) {
-        ListTag blocks = structure.getList("blocks", Tag.TAG_COMPOUND);
-        for (int index = 0; index < blocks.size(); index++) {
-            CompoundTag block = blocks.getCompound(index);
-            if (!block.contains("nbt", Tag.TAG_COMPOUND)) {
-                continue;
-            }
-            CompoundTag nbt = block.getCompound("nbt");
-            if (nbt.contains("LootTable", Tag.TAG_STRING)) {
-                try {
-                    target.add(ResourceLocation.parse(nbt.getString("LootTable")));
-                } catch (RuntimeException ignored) {
-                }
-            }
-        }
-    }
-
-    private static void collectPaletteNames(ListTag palette, Set<String> target) {
-        for (int index = 0; index < palette.size(); index++) {
-            CompoundTag state = palette.getCompound(index);
-            if (state.contains("Name", Tag.TAG_STRING)) {
-                target.add(state.getString("Name"));
-            }
-        }
-    }
-
     private static void addLootSummary(
         JsonObject target,
         JsonObject definition,
@@ -1147,18 +1209,6 @@ public final class WorldgenDataStage extends OnceStage {
         private DataFile file;
 
         private IndexedObject(ResourceLocation id) {
-            this.id = id;
-        }
-    }
-
-    private static final class StructureEntry {
-        private final ResourceLocation id;
-        private boolean runtime;
-        private JsonElement runtimeDefinition;
-        private DataFile definition;
-        private DataFile template;
-
-        private StructureEntry(ResourceLocation id) {
             this.id = id;
         }
     }
