@@ -145,13 +145,67 @@
     },
     "structures": {
       "type": "object",
-      "required": ["schema_version", "count", "definition_count", "template_count", "structures"],
+      "required": ["schema_version", "export_mode", "count", "definition_count", "structure_set_reference_count", "internal_templates_exported", "omitted_internal_template_count", "structures"],
       "properties": {
-        "schema_version": { "const": "mcmods-structures/v1" },
+        "schema_version": { "const": "mcmods-structures/v2" },
+        "export_mode": { "const": "catalog_only" },
         "count": { "type": "integer", "minimum": 0 },
         "definition_count": { "type": "integer", "minimum": 0 },
-        "template_count": { "type": "integer", "minimum": 0 },
-        "structures": { "type": "array" }
+        "structure_set_reference_count": { "type": "integer", "minimum": 0 },
+        "internal_templates_exported": { "const": false },
+        "omitted_internal_template_count": { "type": "integer", "minimum": 0 },
+        "structures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "namespace", "path", "structure_id", "catalog_kind", "runtime_registered", "internal_templates_exported", "structure_set_ids", "structure_set_references"],
+            "properties": {
+              "id": { "$ref": "#/$defs/id" },
+              "namespace": { "type": "string" },
+              "path": { "type": "string" },
+              "structure_id": { "$ref": "#/$defs/id" },
+              "catalog_kind": { "const": "top_level_structure" },
+              "runtime_registered": { "type": "boolean" },
+              "internal_templates_exported": { "const": false },
+              "definition_source": { "enum": ["runtime_registry", "effective_data_resource"] },
+              "definition_path": { "type": "string" },
+              "definition": true,
+              "structure_type": { "$ref": "#/$defs/id" },
+              "biomes": true,
+              "generation_step": { "type": "string" },
+              "terrain_adaptation": { "type": "string" },
+              "spawn_overrides": { "type": "object" },
+              "start_pool": true,
+              "start_jigsaw_name": true,
+              "jigsaw_size": { "type": "integer", "minimum": 0 },
+              "start_height": true,
+              "max_distance_from_center": { "type": "integer", "minimum": 0 },
+              "use_expansion_hack": { "type": "boolean" },
+              "project_start_to_heightmap": { "type": "string" },
+              "liquid_settings": { "type": "string" },
+              "structure_set_ids": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/id" },
+                "uniqueItems": true
+              },
+              "structure_set_references": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["structure_set_id"],
+                  "properties": {
+                    "structure_set_id": { "$ref": "#/$defs/id" },
+                    "weight": { "type": "integer", "minimum": 1 },
+                    "placement_type": { "$ref": "#/$defs/id" },
+                    "placement": { "type": "object" }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        }
       },
       "additionalProperties": true
     },

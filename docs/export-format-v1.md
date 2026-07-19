@@ -7,7 +7,7 @@
 - 所有注册对象使用完整的 `namespace:path`。
 - JSON 内始终使用 `/`；磁盘路径保留 ID 的子目录结构。
 - PNG 路径由类别、尺寸、命名空间和 ID 路径直接组成，不需要转义冒号。
-- 客户端资源只保留网页直接使用的生效 blockstate、模型与贴图。配方、进度、Tag 和语言只保留已经解析、合并、规范化后的 JSON；世界生成、战利品表和结构数据则同时保留规范化索引与生效原始 JSON/NBT，因为它们本身就是网站需要发布和下载的数据。
+- 客户端资源只保留网页直接使用的生效 blockstate、模型与贴图。配方、进度、Tag 和语言只保留已经解析、合并、规范化后的 JSON；世界生成与战利品表保留规范化索引和必要的生效原始 JSON，结构从 `mcmods-structures/v2` 起只保留顶层注册结构，不再复制内部 NBT 零件。
 
 ## 多语言
 
@@ -112,13 +112,13 @@ Mekanism 1.20.1 的四套 ChemicalStack 全部保留，但必须分开入库：`
 
 ## 维度、自然生成、结构与战利品表
 
-`worldgen/registries.json` 是运行时动态注册表快照，覆盖 `dimension`、`dimension_type` 与全部 `worldgen/*` 注册表。网站常用的数据已经按用途拆分：
+`worldgen/registries.json` 是面向网站的运行时动态注册表快照，覆盖 `dimension`、`dimension_type` 与公开的 `worldgen/*` 注册表；结构集、模板池和处理器列表会在导出器内归并或过滤，不再作为独立百科类别。网站常用的数据已经按用途拆分：
 
 - `dimensions.json`：维度和维度类型，维度带多语言名称；
 - `biomes.json`：生物群系定义与多语言名称；
 - `entity_spawns.json`：目标群系完整刷怪表，以及外部群系中与目标实体有关的刷怪行；
-- `natural_generation.json`：配置/放置地物、结构集、模板池、处理器列表、噪声、密度函数、世界预设，以及 Forge/NeoForge 的生物群系与结构 Modifier 等按注册表类别整理的数据；
-- `structures.json`：结构注册定义和同 ID 的结构模板摘要；原始压缩模板位于 `data/<namespace>/structures/*.nbt`；
+- `natural_generation.json`：配置/放置地物、噪声、密度函数、世界预设，以及 Forge/NeoForge 的生物群系与结构 Modifier 等按注册表类别整理的数据；结构集、模板池和处理器列表不再生成独立条目；
+- `structures.json`：`mcmods-structures/v2` 顶层结构大类目录。每项对应一个 `worldgen/structure` 注册 ID，并包含已规范化的群系、生成阶段、地形适配、起始结构池和结构集放置参数；
 - `loot_tables.json`：完整战利品表、谓词与物品修饰器定义；每张表带 `category=block/chest/entity/fishing/...`，其中原版 `gameplay/fishing/**` 会规范化为 `fishing`，根节点包含 `counts_by_category`。`possible_item_ids`/`possible_item_tags` 已递归合并嵌套表的静态候选产物，但条件、动态表与函数可能改变结果，因此固定标记 `possible_items_complete=false`；
 - `data_files.json`：全部原始服务端数据文件的逻辑 ID、ZIP 路径、类型和大小。
 
@@ -126,7 +126,7 @@ Mekanism 1.20.1 的四套 ChemicalStack 全部保留，但必须分开入库：`
 
 单人世界中的标准动态注册对象还会通过 Minecraft 自身 Codec 重新编码为 `runtime_definition`。它反映注册完成后的实际对象，可保留 Fabric 等加载器通过代码注入到生物群系的自然生成配置；`definition` 则是当前资源栈中的生效原始数据文件。网站应优先展示 `runtime_definition`，并把 `definition`/原文件作为来源与下载数据。远程服务器不会提供完整动态注册对象，因此不能保证存在该字段。
 
-结构摘要包含 DataVersion、三轴尺寸、体积、结构方块数、实体数、调色板变体数、使用到的方块 ID，以及结构方块实体 NBT 中引用的 `referenced_loot_tables`。单人世界会递归复制这些宝箱表及其引用的其他表，即使它们位于 `minecraft` 等非目标命名空间，也会以 `inclusion_reason=external_namespace` 明确标记。Mod 自己打包在 `data/minecraft` 下的覆盖资源按来源 Mod 识别，不会再因命名空间不同而漏掉。方块坐标和完整实体 NBT 仍保留在原始 `.nbt`，避免 JSON 重复膨胀。
+村庄房屋、道路、远古城市房间等 `data/<namespace>/structures/*.nbt` 属于拼图结构内部实现，不再复制进 ZIP，也不会成为百科结构条目。`structures.json` 根节点通过 `omitted_internal_template_count` 记录跳过数量；结构集被转换成各结构的 `structure_set_ids` 和 `structure_set_references`。完整约定见 [`worldgen-structure-export-v2.md`](worldgen-structure-export-v2.md)。Mod 自己打包在 `data/minecraft` 下的覆盖资源仍按来源 Mod 识别，不会因命名空间不同而漏掉顶层结构定义。
 
 ## 资源整理
 
