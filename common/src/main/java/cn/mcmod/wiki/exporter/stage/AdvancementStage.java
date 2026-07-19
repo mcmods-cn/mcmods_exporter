@@ -18,6 +18,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 public final class AdvancementStage extends OnceStage {
     public static final String ID = "advancements";
@@ -50,15 +52,43 @@ public final class AdvancementStage extends OnceStage {
 
         JsonArray data = new JsonArray();
         JsonArray roots = new JsonArray();
-        List<AdvancementHolder> exported = new ArrayList<>();
+        List<AdvancementHolder> candidates = new ArrayList<>();
+        int filteredRecipeUnlocks = 0;
+        int filteredWithoutDisplay = 0;
         for (AdvancementHolder holder : advancements) {
             if (!context.matches(holder.id())) {
                 continue;
             }
+            String exclusionReason = advancementExclusionReason(
+                holder.id().toString(),
+                holder.value().display().isPresent()
+            );
+            if ("recipe_unlock".equals(exclusionReason)) {
+                filteredRecipeUnlocks++;
+                continue;
+            }
+            if ("no_display".equals(exclusionReason)) {
+                filteredWithoutDisplay++;
+                continue;
+            }
+            candidates.add(holder);
+        }
+        Set<String> candidateIds = new TreeSet<>();
+        candidates.forEach(holder -> candidateIds.add(holder.id().toString()));
+
+        List<AdvancementHolder> exported = new ArrayList<>();
+        for (AdvancementHolder holder : candidates) {
             try {
-                data.add(toJson(context, holder, children.getOrDefault(holder.id().toString(), List.of())));
+                String parentId = holder.value().parent().map(Object::toString).orElse(null);
+                if (parentId != null && !candidateIds.contains(parentId)) {
+                    parentId = null;
+                }
+                List<String> childIds = children.getOrDefault(holder.id().toString(), List.of()).stream()
+                    .filter(candidateIds::contains)
+                    .toList();
+                data.add(toJson(context, holder, parentId, childIds));
                 exported.add(holder);
-                if (holder.value().parent().isEmpty()) {
+                if (parentId == null) {
                     roots.add(holder.id().toString());
                 }
             } catch (Throwable throwable) {
@@ -67,9 +97,13 @@ public final class AdvancementStage extends OnceStage {
         }
 
         JsonObject output = new JsonObject();
-        output.addProperty("schema_version", "mcmods-advancements/v1");
+        output.addProperty("schema_version", "mcmods-advancements/v2");
         output.addProperty("source", server == null ? "client_sync" : "integrated_server");
+        output.addProperty("filter_mode", "displayed_non_recipe_advancements");
         output.addProperty("count", data.size());
+        output.addProperty("filtered_recipe_unlock_count", filteredRecipeUnlocks);
+        output.addProperty("filtered_no_display_count", filteredWithoutDisplay);
+        output.addProperty("filtered_count", filteredRecipeUnlocks + filteredWithoutDisplay);
         output.addProperty("language_count", context.languages().size());
         output.add("roots", roots);
         output.add("advancements", data);
@@ -97,6 +131,8 @@ public final class AdvancementStage extends OnceStage {
         }
         context.report().addCount(ID, "advancements", data.size());
         context.report().addCount(ID, "roots", roots.size());
+        context.report().addCount(ID, "filtered_recipe_unlocks", filteredRecipeUnlocks);
+        context.report().addCount(ID, "filtered_no_display", filteredWithoutDisplay);
         context.report().addCount(ID, "localized_files", context.languages().size());
     }
 
@@ -111,11 +147,27 @@ public final class AdvancementStage extends OnceStage {
         return children;
     }
 
-    private static JsonObject toJson(ExportContext context, AdvancementHolder holder, List<String> childIds) {
+    static String advancementExclusionReason(String advancementId, boolean hasDisplay) {
+        int separator = advancementId.indexOf(':');
+        String path = separator >= 0 ? advancementId.substring(separator + 1) : advancementId;
+        if (path.equals("recipes") || path.startsWith("recipes/")) {
+            return "recipe_unlock";
+        }
+        return hasDisplay ? null : "no_display";
+    }
+
+    private static JsonObject toJson(
+        ExportContext context,
+        AdvancementHolder holder,
+        String parentId,
+        List<String> childIds
+    ) {
         Advancement advancement = holder.value();
         JsonObject json = new JsonObject();
         json.addProperty("id", holder.id().toString());
-        advancement.parent().ifPresent(parent -> json.addProperty("parent", parent.toString()));
+        if (parentId != null) {
+            json.addProperty("parent", parentId);
+        }
         JsonArray children = new JsonArray();
         childIds.forEach(children::add);
         json.add("children", children);
