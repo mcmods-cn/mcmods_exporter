@@ -117,7 +117,7 @@ Mekanism 对应 Minecraft 版本提供的四类化学品全部保留，但必须
 - `dimensions.json`：维度和维度类型，维度带多语言名称；
 - `biomes.json`：生物群系定义与多语言名称；
 - `entity_spawns.json`：目标群系完整刷怪表，以及外部群系中与目标实体有关的刷怪行；
-- `natural_generation.json`：配置/放置地物、噪声、密度函数、世界预设，以及 Forge/NeoForge 的生物群系与结构 Modifier 等按注册表类别整理的数据；结构集、模板池和处理器列表不再生成独立条目；
+- `natural_generation.json`：`mcmods-natural-generation/v2` 面向百科的规范化自然生成目录。以放置地物为主键，将配置地物、生成结果、替换目标、放置参数、生成阶段、运行时群系引用和 Forge/NeoForge Biome Modifier 合并成一条记录；洞穴/峡谷等配置雕刻器作为 `configured_carver` 条目。噪声、密度函数和世界预设等技术注册表不会成为公开目录条目；
 - `structures.json`：`mcmods-structures/v2` 顶层结构大类目录。每项对应一个 `worldgen/structure` 注册 ID，并包含已规范化的群系、生成阶段、地形适配、起始结构池和结构集放置参数；
 - `loot_tables.json`：完整战利品表、谓词与物品修饰器定义；每张表带 `category=block/chest/entity/fishing/...`，其中原版 `gameplay/fishing/**` 会规范化为 `fishing`，根节点包含 `counts_by_category`。`possible_item_ids`/`possible_item_tags` 已递归合并嵌套表的静态候选产物，但条件、动态表与函数可能改变结果，因此固定标记 `possible_items_complete=false`；
 - `data_files.json`：全部原始服务端数据文件的逻辑 ID、ZIP 路径、类型和大小。
@@ -125,6 +125,8 @@ Mekanism 对应 Minecraft 版本提供的四类化学品全部保留，但必须
 单人世界使用集成服务器的当前生效资源栈，因此数据包覆盖也会反映在导出结果中。连接远程服务器时，Minecraft 不会把完整服务端数据包下发给客户端，导出器只能回退扫描已安装 Mod 自带的 `data/`；此时 `data_files.json` 的 `resource_source=installed_mod_fallback` 且 `remote_server_data_complete=false`，网站不得把它误认为远程服务器完整数据快照。
 
 单人世界中的标准动态注册对象还会通过 Minecraft 自身 Codec 重新编码为 `runtime_definition`。它反映注册完成后的实际对象，可保留 Fabric 等加载器通过代码注入到生物群系的自然生成配置；`definition` 则是当前资源栈中的生效原始数据文件。网站应优先展示 `runtime_definition`，并把 `definition`/原文件作为来源与下载数据。远程服务器不会提供完整动态注册对象，因此不能保证存在该字段。
+
+`natural_generation.json` 不再要求网站解析上述原始定义。网站应以 `generation_id` 作为唯一键，直接读取 `category`、`feature_type`、`outputs`、`targets`、`placement`、`generation_steps`、`resolved_biome_ids` 和 `dimension_ids`。无法完全解析的自定义地物保留为 `normalization_status=partial`，不会被静默丢弃。完整约定见 [`worldgen-natural-generation-v2.md`](worldgen-natural-generation-v2.md)。
 
 村庄房屋、道路、远古城市房间等 `data/<namespace>/structures/*.nbt` 属于拼图结构内部实现，不再复制进 ZIP，也不会成为百科结构条目。`structures.json` 根节点通过 `omitted_internal_template_count` 记录跳过数量；结构集被转换成各结构的 `structure_set_ids` 和 `structure_set_references`。完整约定见 [`worldgen-structure-export-v2.md`](worldgen-structure-export-v2.md)。Mod 自己打包在 `data/minecraft` 下的覆盖资源仍按来源 Mod 识别，不会因命名空间不同而漏掉顶层结构定义。
 
