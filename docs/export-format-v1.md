@@ -13,7 +13,7 @@
 
 `translation_key` 是稳定键，`names` 是目标 Mod 当前资源栈内全部已发现语言的解析快照。启动参数指定的语言与自动发现语言取并集；缺少某翻译键时不写空字符串。`translations/languages.json` 是本次实际语言索引，网站可用 `translations/<locale>.json` 补全其他组件中的翻译键。物品的默认普通提示文本已经按语言写入 `registries/items.json` 的 `tooltips.<locale>[]`，网站不应再次启动 Minecraft 生成 Tooltip。
 
-进度/成就除 `advancements.json` 内的 `title_names`、`description_names` 外，还按语言拆分为 `advancements/localized/<locale>.json`，方便网站直接按 locale 导入。
+进度/成就使用 `mcmods-advancements/v2`。导出器会排除 `*/recipes/**` 配方书解锁进度和没有 `DisplayInfo` 的内部逻辑进度；`hidden=true` 但拥有标题、描述与图标的真正隐藏成就仍会保留。过滤后若父节点不存在，条目会提升为导出树根，`children` 也只引用实际导出的条目。除 `advancements.json` 内的 `title_names`、`description_names` 外，还按语言拆分为 `advancements/localized/<locale>.json`，方便网站直接按 locale 导入。根节点通过 `filtered_recipe_unlock_count` 与 `filtered_no_display_count` 记录过滤数量。
 
 ## 物品、工具与方块属性
 
