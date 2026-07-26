@@ -135,6 +135,75 @@ class WorldgenDataStageTest {
     }
 
     @Test
+    void normalizesLootPoolsAndNestedEntriesForWebsiteRendering() {
+        JsonObject definition = JsonParser.parseString("""
+            {
+              "type": "minecraft:chest",
+              "pools": [
+                {
+                  "rolls": 2,
+                  "bonus_rolls": 0,
+                  "conditions": [
+                    {"condition": "minecraft:random_chance", "chance": 0.75}
+                  ],
+                  "entries": [
+                    {
+                      "type": "minecraft:item",
+                      "name": "minecraft:diamond",
+                      "weight": 2,
+                      "functions": [
+                        {"function": "minecraft:set_count", "count": 3}
+                      ]
+                    },
+                    {
+                      "type": "minecraft:alternatives",
+                      "children": [
+                        {"type": "minecraft:tag", "name": "minecraft:planks"},
+                        {"type": "minecraft:loot_table", "value": "example:nested"}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+            """).getAsJsonObject();
+        JsonObject nested = JsonParser.parseString("""
+            {
+              "pools": [
+                {
+                  "rolls": 1,
+                  "entries": [
+                    {"type": "minecraft:item", "name": "minecraft:gold_ingot"}
+                  ]
+                }
+              ]
+            }
+            """).getAsJsonObject();
+
+        JsonArray pools = WorldgenDataStage.normalizeLootPools(
+            definition,
+            Map.of("example:nested", nested)
+        );
+
+        assertEquals(1, pools.size());
+        JsonObject pool = pools.get(0).getAsJsonObject();
+        assertEquals(0, pool.get("pool_index").getAsInt());
+        assertEquals(2, pool.get("rolls").getAsInt());
+        assertEquals("minecraft:random_chance", pool.getAsJsonArray("condition_types").get(0).getAsString());
+        assertEquals(2, pool.get("entry_count").getAsInt());
+        assertEquals("minecraft:diamond", pool.getAsJsonArray("entries").get(0)
+            .getAsJsonObject().get("item_id").getAsString());
+        JsonObject alternatives = pool.getAsJsonArray("entries").get(1).getAsJsonObject();
+        assertEquals("alternatives", alternatives.get("entry_kind").getAsString());
+        assertEquals(2, alternatives.get("child_count").getAsInt());
+        assertEquals("example:nested", alternatives.getAsJsonArray("children").get(1)
+            .getAsJsonObject().get("loot_table_id").getAsString());
+        assertEquals("minecraft:diamond", pool.getAsJsonArray("possible_item_ids").get(0).getAsString());
+        assertEquals("minecraft:gold_ingot", pool.getAsJsonArray("possible_item_ids").get(1).getAsString());
+        assertEquals("minecraft:planks", pool.getAsJsonArray("possible_item_tags").get(0).getAsString());
+    }
+
+    @Test
     void classifiesBlockChestAndEntityLootTables() {
         assertEquals("block", WorldgenDataStage.lootTableCategory(new ResourceLocation("example", "blocks/machine")));
         assertEquals("chest", WorldgenDataStage.lootTableCategory(new ResourceLocation("example", "chests/lab")));

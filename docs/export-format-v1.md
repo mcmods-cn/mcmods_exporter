@@ -119,7 +119,7 @@ Mekanism 1.20.1 的四套 ChemicalStack 全部保留，但必须分开入库：`
 - `entity_spawns.json`：目标群系完整刷怪表，以及外部群系中与目标实体有关的刷怪行；
 - `natural_generation.json`：`mcmods-natural-generation/v2` 面向百科的规范化自然生成目录。以放置地物为主键，将配置地物、生成结果、替换目标、放置参数、生成阶段、运行时群系引用和 Forge/NeoForge Biome Modifier 合并成一条记录；洞穴/峡谷等配置雕刻器作为 `configured_carver` 条目。噪声、密度函数和世界预设等技术注册表不会成为公开目录条目；
 - `structures.json`：`mcmods-structures/v2` 顶层结构大类目录。每项对应一个 `worldgen/structure` 注册 ID，并包含已规范化的群系、生成阶段、地形适配、起始结构池和结构集放置参数；
-- `loot_tables.json`：完整战利品表、谓词与物品修饰器定义；每张表带 `category=block/chest/entity/fishing/...`，其中原版 `gameplay/fishing/**` 会规范化为 `fishing`，根节点包含 `counts_by_category`。`possible_item_ids`/`possible_item_tags` 已递归合并嵌套表的静态候选产物，但条件、动态表与函数可能改变结果，因此固定标记 `possible_items_complete=false`；
+- `loot_tables.json`：`mcmods-loot-tables/v2` 完整战利品表、谓词与物品修饰器定义。每张表同时保留生效 `definition`，并输出网站可直接渲染的规范化 `pools[]`、递归 `entries[]`、rolls、条件、函数、权重和静态候选产物；根节点通过 `definition_count`、`definition_missing_count` 与 `normalized_pool_count` 明确审计完整性。每张表带 `category=block/chest/entity/fishing/...`，原版 `gameplay/fishing/**` 会规范化为 `fishing`。`possible_item_ids`/`possible_item_tags` 已递归合并嵌套表的静态候选产物，但条件、动态表与函数可能改变结果，因此固定标记 `possible_items_complete=false`。1.21+ 的 `loot_table`、`predicate`、`item_modifier` 单数数据目录由版本适配层处理；
 - `data_files.json`：全部原始服务端数据文件的逻辑 ID、ZIP 路径、类型和大小。
 
 单人世界使用集成服务器的当前生效资源栈，因此数据包覆盖也会反映在导出结果中。连接远程服务器时，Minecraft 不会把完整服务端数据包下发给客户端，导出器只能回退扫描已安装 Mod 自带的 `data/`；此时 `data_files.json` 的 `resource_source=installed_mod_fallback` 且 `remote_server_data_complete=false`，网站不得把它误认为远程服务器完整数据快照。

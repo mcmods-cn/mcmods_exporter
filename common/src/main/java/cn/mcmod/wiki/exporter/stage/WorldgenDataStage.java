@@ -1922,6 +1922,8 @@ public final class WorldgenDataStage extends OnceStage {
         JsonArray data = new JsonArray();
         Map<String, Integer> categoryCounts = new TreeMap<>();
         int dependencyCount = 0;
+        int definitionCount = 0;
+        int normalizedPoolCount = 0;
         Map<String, IndexedObject> tables = indexedObjects(runtimeTables, null, files, "loot_table");
         Map<String, JsonObject> tableDefinitions = new TreeMap<>();
         for (IndexedObject entry : tables.values()) {
@@ -1945,16 +1947,23 @@ public final class WorldgenDataStage extends OnceStage {
             json.addProperty("selected_namespace", selectedNamespace);
             json.addProperty("inclusion_reason", selectedNamespace ? "target_namespace" : "external_namespace");
             json.addProperty("runtime_loaded", entry.runtime);
+            boolean definitionAvailable = false;
             if (entry.file != null) {
                 JsonElement definition = tableDefinitions.get(entry.id.toString());
                 json.addProperty("data_path", exportPath(context, entry.file.target()));
                 if (definition != null) {
+                    definitionAvailable = true;
                     json.add("definition", definition);
                     if (definition.isJsonObject()) {
                         addLootSummary(json, definition.getAsJsonObject(), tableDefinitions);
+                        definitionCount++;
+                        if (json.has("pools") && json.get("pools").isJsonArray()) {
+                            normalizedPoolCount += json.getAsJsonArray("pools").size();
+                        }
                     }
                 }
             }
+            json.addProperty("definition_available", definitionAvailable);
             data.add(json);
         }
         JsonArray predicates = objectEntries(
@@ -1968,8 +1977,12 @@ public final class WorldgenDataStage extends OnceStage {
             null
         );
         JsonObject root = new JsonObject();
-        root.addProperty("schema_version", "mcmods-loot-tables/v1");
+        root.addProperty("schema_version", "mcmods-loot-tables/v2");
+        root.addProperty("pools_format", "mcmods-normalized-loot-pools/v1");
         root.addProperty("count", data.size());
+        root.addProperty("definition_count", definitionCount);
+        root.addProperty("definition_missing_count", data.size() - definitionCount);
+        root.addProperty("normalized_pool_count", normalizedPoolCount);
         root.addProperty("dependency_count", dependencyCount);
         root.addProperty("predicate_count", predicates.size());
         root.addProperty("item_modifier_count", itemModifiers.size());
@@ -1980,6 +1993,8 @@ public final class WorldgenDataStage extends OnceStage {
         root.add("predicates", predicates);
         root.add("item_modifiers", itemModifiers);
         context.writeJson("worldgen/loot_tables.json", root);
+        context.report().addCount(ID, "loot_table_definitions", definitionCount);
+        context.report().addCount(ID, "normalized_loot_pools", normalizedPoolCount);
         context.report().addCount(ID, "loot_predicates", predicates.size());
         context.report().addCount(ID, "loot_item_modifiers", itemModifiers.size());
     }
@@ -2098,9 +2113,17 @@ public final class WorldgenDataStage extends OnceStage {
         if (definition.has("random_sequence") && definition.get("random_sequence").isJsonPrimitive()) {
             target.addProperty("random_sequence", definition.get("random_sequence").getAsString());
         }
+        if (definition.has("functions") && definition.get("functions").isJsonArray()) {
+            target.add("functions", definition.get("functions").deepCopy());
+            target.add(
+                "function_types",
+                typedElementIds(definition.getAsJsonArray("functions"), "function")
+            );
+        }
         JsonArray pools = definition.has("pools") && definition.get("pools").isJsonArray()
             ? definition.getAsJsonArray("pools")
             : new JsonArray();
+        JsonArray normalizedPools = normalizeLootPools(definition, allDefinitions);
         int topLevelEntries = 0;
         TreeSet<String> referencedTables = new TreeSet<>();
         for (JsonElement poolElement : pools) {
@@ -2115,6 +2138,7 @@ public final class WorldgenDataStage extends OnceStage {
             }
         }
         target.addProperty("pool_count", pools.size());
+        target.add("pools", normalizedPools);
         target.addProperty("top_level_entry_count", topLevelEntries);
         JsonArray references = new JsonArray();
         referencedTables.forEach(references::add);
@@ -2131,6 +2155,134 @@ public final class WorldgenDataStage extends OnceStage {
         target.add("possible_item_tags", itemTags);
         target.addProperty("possible_items_complete", false);
         target.addProperty("possible_items_analysis", "static_candidates_including_nested_tables");
+    }
+
+    static JsonArray normalizeLootPools(
+        JsonObject definition,
+        Map<String, JsonObject> allDefinitions
+    ) {
+        JsonArray result = new JsonArray();
+        if (!definition.has("pools") || !definition.get("pools").isJsonArray()) {
+            return result;
+        }
+        JsonArray pools = definition.getAsJsonArray("pools");
+        for (int poolIndex = 0; poolIndex < pools.size(); poolIndex++) {
+            JsonElement poolElement = pools.get(poolIndex);
+            if (!poolElement.isJsonObject()) {
+                continue;
+            }
+            JsonObject pool = poolElement.getAsJsonObject();
+            JsonObject normalized = new JsonObject();
+            normalized.addProperty("pool_index", poolIndex);
+            copyJsonField(pool, normalized, "rolls");
+            copyJsonField(pool, normalized, "bonus_rolls");
+
+            JsonArray conditions = copiedArray(pool, "conditions");
+            JsonArray functions = copiedArray(pool, "functions");
+            JsonArray entries = normalizeLootEntries(pool.get("entries"));
+            normalized.add("conditions", conditions);
+            normalized.add("condition_types", typedElementIds(conditions, "condition"));
+            normalized.add("functions", functions);
+            normalized.add("function_types", typedElementIds(functions, "function"));
+            normalized.addProperty("entry_count", entries.size());
+            normalized.add("entries", entries);
+
+            LootCandidates candidates = new LootCandidates();
+            collectLootCandidates(pool, allDefinitions, candidates, new TreeSet<>());
+            normalized.add("possible_item_ids", stringArray(candidates.items));
+            normalized.add("possible_item_tags", stringArray(candidates.tags));
+            normalized.addProperty("possible_items_complete", false);
+            result.add(normalized);
+        }
+        return result;
+    }
+
+    private static JsonArray normalizeLootEntries(JsonElement entriesElement) {
+        JsonArray result = new JsonArray();
+        if (entriesElement == null || !entriesElement.isJsonArray()) {
+            return result;
+        }
+        JsonArray entries = entriesElement.getAsJsonArray();
+        for (int entryIndex = 0; entryIndex < entries.size(); entryIndex++) {
+            JsonElement entryElement = entries.get(entryIndex);
+            if (!entryElement.isJsonObject()) {
+                continue;
+            }
+            JsonObject entry = entryElement.getAsJsonObject();
+            JsonObject normalized = new JsonObject();
+            normalized.addProperty("entry_index", entryIndex);
+            String type = stringValue(entry.get("type"));
+            String kind = idPath(type);
+            if (type != null) {
+                normalized.addProperty("entry_type", type);
+                normalized.addProperty("entry_kind", kind);
+            } else {
+                normalized.addProperty("entry_kind", "unknown");
+            }
+
+            String reference = lootEntryReference(entry);
+            if (reference != null) {
+                normalized.addProperty("name", reference);
+                switch (kind) {
+                    case "item" -> normalized.addProperty("item_id", reference);
+                    case "tag" -> normalized.addProperty("tag_id", reference);
+                    case "loot_table" -> normalized.addProperty("loot_table_id", reference);
+                    case "dynamic" -> normalized.addProperty("dynamic_id", reference);
+                    default -> {
+                    }
+                }
+            }
+            copyJsonField(entry, normalized, "weight");
+            copyJsonField(entry, normalized, "quality");
+            copyJsonField(entry, normalized, "expand");
+
+            JsonArray conditions = copiedArray(entry, "conditions");
+            JsonArray functions = copiedArray(entry, "functions");
+            JsonArray children = normalizeLootEntries(entry.get("children"));
+            normalized.add("conditions", conditions);
+            normalized.add("condition_types", typedElementIds(conditions, "condition"));
+            normalized.add("functions", functions);
+            normalized.add("function_types", typedElementIds(functions, "function"));
+            normalized.addProperty("child_count", children.size());
+            normalized.add("children", children);
+            normalized.addProperty("normalization_status", type == null ? "partial" : "complete");
+            result.add(normalized);
+        }
+        return result;
+    }
+
+    private static JsonArray copiedArray(JsonObject source, String field) {
+        return source.has(field) && source.get(field).isJsonArray()
+            ? source.getAsJsonArray(field).deepCopy()
+            : new JsonArray();
+    }
+
+    private static JsonArray typedElementIds(JsonArray values, String typeField) {
+        TreeSet<String> types = new TreeSet<>();
+        for (JsonElement value : values) {
+            if (!value.isJsonObject()) {
+                continue;
+            }
+            String type = stringValue(value.getAsJsonObject().get(typeField));
+            if (type != null) {
+                types.add(type);
+            }
+        }
+        return stringArray(types);
+    }
+
+    private static void copyJsonField(JsonObject source, JsonObject target, String field) {
+        if (source.has(field)) {
+            target.add(field, source.get(field).deepCopy());
+        }
+    }
+
+    private static String lootEntryReference(JsonObject entry) {
+        String name = stringValue(entry.get("name"));
+        if (name != null) {
+            return name;
+        }
+        return stringValue(entry.get("value"));
     }
 
     private static void collectLootCandidates(
@@ -2155,18 +2307,17 @@ public final class WorldgenDataStage extends OnceStage {
         String type = object.has("type") && object.get("type").isJsonPrimitive()
             ? object.get("type").getAsString()
             : "";
-        String name = object.has("name") && object.get("name").isJsonPrimitive()
-            ? object.get("name").getAsString()
-            : "";
-        if ((type.equals("minecraft:item") || type.endsWith(":item")) && !name.isBlank()) {
-            target.items.add(name);
-        } else if ((type.equals("minecraft:tag") || type.endsWith(":tag")) && !name.isBlank()) {
-            target.tags.add(name);
-        } else if ((type.equals("minecraft:loot_table") || type.endsWith(":loot_table")) && !name.isBlank()) {
-            JsonObject nested = definitions.get(name);
-            if (nested != null && visiting.add(name)) {
+        String reference = lootEntryReference(object);
+        if ((type.equals("minecraft:item") || type.endsWith(":item")) && reference != null) {
+            target.items.add(reference);
+        } else if ((type.equals("minecraft:tag") || type.endsWith(":tag")) && reference != null) {
+            target.tags.add(reference);
+        } else if ((type.equals("minecraft:loot_table") || type.endsWith(":loot_table"))
+            && reference != null) {
+            JsonObject nested = definitions.get(reference);
+            if (nested != null && visiting.add(reference)) {
                 collectLootCandidates(nested, definitions, target, visiting);
-                visiting.remove(name);
+                visiting.remove(reference);
             }
         }
         object.entrySet().forEach(entry -> collectLootCandidates(entry.getValue(), definitions, target, visiting));
@@ -2181,10 +2332,10 @@ public final class WorldgenDataStage extends OnceStage {
             String type = entry.has("type") && entry.get("type").isJsonPrimitive()
                 ? entry.get("type").getAsString()
                 : "";
+            String reference = lootEntryReference(entry);
             if ((type.equals("minecraft:loot_table") || type.endsWith(":loot_table"))
-                && entry.has("name")
-                && entry.get("name").isJsonPrimitive()) {
-                target.add(entry.get("name").getAsString());
+                && reference != null) {
+                target.add(reference);
             }
             if (entry.has("children") && entry.get("children").isJsonArray()) {
                 collectReferencedLootTables(entry.getAsJsonArray("children"), target);
@@ -2206,11 +2357,11 @@ public final class WorldgenDataStage extends OnceStage {
         String type = object.has("type") && object.get("type").isJsonPrimitive()
             ? object.get("type").getAsString()
             : "";
+        String reference = lootEntryReference(object);
         if ((type.equals("minecraft:loot_table") || type.endsWith(":loot_table"))
-            && object.has("name")
-            && object.get("name").isJsonPrimitive()) {
+            && reference != null) {
             try {
-                target.add(new ResourceLocation(object.get("name").getAsString()));
+                target.add(new ResourceLocation(reference));
             } catch (RuntimeException ignored) {
             }
         }
