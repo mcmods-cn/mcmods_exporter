@@ -212,4 +212,12 @@ class WorldgenDataStageTest {
         assertEquals("fishing", WorldgenDataStage.lootTableCategory(ResourceLocation.fromNamespaceAndPath("minecraft", "gameplay/fishing/treasure")));
         assertEquals("gameplay", WorldgenDataStage.lootTableCategory(ResourceLocation.fromNamespaceAndPath("example", "gameplay/reward")));
     }
+
+    @Test
+    void classifiesMinecraft121SingularDataDirectories() {
+        assertEquals("loot_table", WorldgenDataStage.dataResourceKind("loot_table/chests/test.json"));
+        assertEquals("loot_predicate", WorldgenDataStage.dataResourceKind("predicate/test.json"));
+        assertEquals("loot_item_modifier", WorldgenDataStage.dataResourceKind("item_modifier/test.json"));
+        assertEquals(true, WorldgenDataStage.isStructureTemplatePath("structure/village/test.nbt"));
+    }
 }

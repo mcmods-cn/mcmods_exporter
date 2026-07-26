@@ -50,9 +50,9 @@ public final class WorldgenDataStage extends OnceStage {
         "dimension",
         "dimension_type",
         "worldgen",
-        "loot_tables",
-        "predicates",
-        "item_modifiers",
+        "loot_table",
+        "predicate",
+        "item_modifier",
         "forge/biome_modifier",
         "forge/structure_modifier",
         "neoforge/biome_modifier",
@@ -325,7 +325,7 @@ public final class WorldgenDataStage extends OnceStage {
                 .forEach(entry -> copyResource(context, entry.getKey(), entry.getValue(), files));
         }
         copyReferencedLootTables(context, manager, files);
-        return (int) manager.listResources("structures", id -> isStructureTemplatePath(id.getPath()))
+        return (int) manager.listResources("structure", id -> isStructureTemplatePath(id.getPath()))
             .entrySet().stream()
             .filter(entry -> context.matches(entry.getKey()) || resourceOwnedByTarget(context, entry.getValue()))
             .count();
@@ -475,7 +475,7 @@ public final class WorldgenDataStage extends OnceStage {
                 }
                 ResourceLocation resourceId = ResourceLocation.fromNamespaceAndPath(
                     reference.getNamespace(),
-                    "loot_tables/" + reference.getPath() + ".json"
+                    "loot_table/" + reference.getPath() + ".json"
                 );
                 var resource = manager.getResource(resourceId);
                 if (resource.isPresent()) {
@@ -539,14 +539,14 @@ public final class WorldgenDataStage extends OnceStage {
         if (path.startsWith("dimension/") && path.endsWith(".json")) {
             return classification("dimension", path, "dimension/", ".json");
         }
-        if (path.startsWith("loot_tables/") && path.endsWith(".json")) {
-            return classification("loot_table", path, "loot_tables/", ".json");
+        if (path.startsWith("loot_table/") && path.endsWith(".json")) {
+            return classification("loot_table", path, "loot_table/", ".json");
         }
-        if (path.startsWith("predicates/") && path.endsWith(".json")) {
-            return classification("loot_predicate", path, "predicates/", ".json");
+        if (path.startsWith("predicate/") && path.endsWith(".json")) {
+            return classification("loot_predicate", path, "predicate/", ".json");
         }
-        if (path.startsWith("item_modifiers/") && path.endsWith(".json")) {
-            return classification("loot_item_modifier", path, "item_modifiers/", ".json");
+        if (path.startsWith("item_modifier/") && path.endsWith(".json")) {
+            return classification("loot_item_modifier", path, "item_modifier/", ".json");
         }
         for (Map.Entry<String, String> extension : EXTENSION_WORLDGEN_REGISTRIES.entrySet()) {
             String prefix = extension.getKey().replace(':', '/') + "/";
@@ -569,8 +569,13 @@ public final class WorldgenDataStage extends OnceStage {
         return classification != null && !INTERNAL_STRUCTURE_WORLDGEN_KINDS.contains(classification.kind());
     }
 
-    private static boolean isStructureTemplatePath(String path) {
-        return path.startsWith("structures/") && path.endsWith(".nbt");
+    static String dataResourceKind(String path) {
+        Classification classification = classify(path);
+        return classification == null ? null : classification.kind();
+    }
+
+    static boolean isStructureTemplatePath(String path) {
+        return path.startsWith("structure/") && path.endsWith(".nbt");
     }
 
     private static Classification classification(String kind, String path, String prefix, String extension) {
