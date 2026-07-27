@@ -15,4 +15,36 @@ class RegistryDataStageTest {
         assertFalse(RegistryDataStage.keyTranslationMatchesNamespaces("key.some_create_addon.mode", List.of("create")));
         assertFalse(RegistryDataStage.keyTranslationMatchesNamespaces("key.minecraft.jump", List.of("mekanism")));
     }
+
+    @Test
+    void vanillaKeyMappingsAreIncludedWhenExportingMinecraft() {
+        assertTrue(RegistryDataStage.keyMappingMatchesSelection(
+            "key.jump",
+            "key.categories.movement",
+            List.of("minecraft"),
+            true
+        ));
+        assertFalse(RegistryDataStage.keyMappingMatchesSelection(
+            "key.mekanism.mode",
+            "key.categories.mekanism",
+            List.of("minecraft"),
+            false
+        ));
+    }
+
+    @Test
+    void modKeyMappingsRemainSelectedByTranslationNamespace() {
+        assertTrue(RegistryDataStage.keyMappingMatchesSelection(
+            "key.mekanism.mode",
+            "key.categories.mekanism",
+            List.of("mekanism"),
+            false
+        ));
+        assertFalse(RegistryDataStage.keyMappingMatchesSelection(
+            "key.mekanism.mode",
+            "key.categories.mekanism",
+            List.of("create"),
+            false
+        ));
+    }
 }

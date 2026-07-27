@@ -44,12 +44,16 @@ import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class RegistryDataStage extends OnceStage {
     public static final String ID = "registry_data";
@@ -61,14 +65,16 @@ public final class RegistryDataStage extends OnceStage {
 
     @Override
     protected void run(ExportContext context) throws Exception {
-        exportItems(context);
-        exportBlocks(context);
-        exportEntities(context);
-        exportEffects(context);
-        exportEnchantments(context);
-        exportFluids(context);
-        exportKeyMappings(context);
-        exportMods(context);
+        int failedSections = 0;
+        failedSections += runRegistrySection(context, "items", () -> exportItems(context));
+        failedSections += runRegistrySection(context, "blocks", () -> exportBlocks(context));
+        failedSections += runRegistrySection(context, "entity_types", () -> exportEntities(context));
+        failedSections += runRegistrySection(context, "mob_effects", () -> exportEffects(context));
+        failedSections += runRegistrySection(context, "enchantments", () -> exportEnchantments(context));
+        failedSections += runRegistrySection(context, "fluids", () -> exportFluids(context));
+        failedSections += runRegistrySection(context, "key_mappings", () -> exportKeyMappings(context));
+        failedSections += runRegistrySection(context, "mods", () -> exportMods(context));
+        context.report().addCount(ID, "registry_sections_failed", failedSections);
     }
 
     private static void exportItems(ExportContext context) throws Exception {
@@ -202,42 +208,46 @@ public final class RegistryDataStage extends OnceStage {
             .filter(entry -> context.matches(entry.getKey().location()))
             .forEach(entry -> {
                 ResourceLocation id = entry.getKey().location();
-                Enchantment enchantment = entry.getValue();
-                Holder.Reference<Enchantment> holder = registry.getHolderOrThrow(entry.getKey());
-                String translationKey = enchantment.description().getContents() instanceof TranslatableContents translatable
-                    ? translatable.getKey()
-                    : "enchantment." + id.getNamespace() + "." + id.getPath();
-                JsonObject json = baseNamed(context, id, translationKey);
-                json.addProperty("rarity", rarityName(enchantment.getWeight()));
-                json.addProperty("rarity_weight", enchantment.getWeight());
-                json.addProperty("min_level", enchantment.getMinLevel());
-                json.addProperty("max_level", enchantment.getMaxLevel());
-                json.addProperty("anvil_cost", enchantment.getAnvilCost());
-                json.addProperty("treasure_only", holder.is(EnchantmentTags.TREASURE));
-                json.addProperty("curse", holder.is(EnchantmentTags.CURSE));
-                json.addProperty("tradeable", holder.is(EnchantmentTags.TRADEABLE));
-                json.addProperty("discoverable", holder.is(EnchantmentTags.IN_ENCHANTING_TABLE) || holder.is(EnchantmentTags.ON_RANDOM_LOOT));
-                JsonArray slots = new JsonArray();
-                enchantment.definition().slots().forEach(slot -> slots.add(slot.getSerializedName()));
-                json.add("slots", slots);
-                enchantment.getSupportedItems().unwrapKey().ifPresent(tag -> json.addProperty("supported_items_tag", tag.location().toString()));
-                json.add("supported_items", holderIds(enchantment.getSupportedItems()));
-                enchantment.definition().primaryItems().ifPresent(primary -> {
-                    primary.unwrapKey().ifPresent(tag -> json.addProperty("primary_items_tag", tag.location().toString()));
-                    json.add("primary_items", holderIds(primary));
-                });
-                json.add("exclusive_with", holderIds(enchantment.exclusiveSet()));
-                JsonArray costs = new JsonArray();
-                for (int level = enchantment.getMinLevel(); level <= enchantment.getMaxLevel(); level++) {
-                    JsonObject cost = new JsonObject();
-                    cost.addProperty("level", level);
-                    cost.addProperty("minimum", enchantment.getMinCost(level));
-                    cost.addProperty("maximum", enchantment.getMaxCost(level));
-                    costs.add(cost);
+                try {
+                    Enchantment enchantment = entry.getValue();
+                    Holder.Reference<Enchantment> holder = registry.getHolderOrThrow(entry.getKey());
+                    String translationKey = enchantment.description().getContents() instanceof TranslatableContents translatable
+                        ? translatable.getKey()
+                        : "enchantment." + id.getNamespace() + "." + id.getPath();
+                    JsonObject json = baseNamed(context, id, translationKey);
+                    json.addProperty("rarity", rarityName(enchantment.getWeight()));
+                    json.addProperty("rarity_weight", enchantment.getWeight());
+                    json.addProperty("min_level", enchantment.getMinLevel());
+                    json.addProperty("max_level", enchantment.getMaxLevel());
+                    json.addProperty("anvil_cost", enchantment.getAnvilCost());
+                    json.addProperty("treasure_only", holder.is(EnchantmentTags.TREASURE));
+                    json.addProperty("curse", holder.is(EnchantmentTags.CURSE));
+                    json.addProperty("tradeable", holder.is(EnchantmentTags.TRADEABLE));
+                    json.addProperty("discoverable", holder.is(EnchantmentTags.IN_ENCHANTING_TABLE) || holder.is(EnchantmentTags.ON_RANDOM_LOOT));
+                    JsonArray slots = new JsonArray();
+                    enchantment.definition().slots().forEach(slot -> slots.add(slot.getSerializedName()));
+                    json.add("slots", slots);
+                    enchantment.getSupportedItems().unwrapKey().ifPresent(tag -> json.addProperty("supported_items_tag", tag.location().toString()));
+                    json.add("supported_items", holderIds(enchantment.getSupportedItems()));
+                    enchantment.definition().primaryItems().ifPresent(primary -> {
+                        primary.unwrapKey().ifPresent(tag -> json.addProperty("primary_items_tag", tag.location().toString()));
+                        json.add("primary_items", holderIds(primary));
+                    });
+                    json.add("exclusive_with", holderIds(enchantment.exclusiveSet()));
+                    JsonArray costs = new JsonArray();
+                    for (int level = enchantment.getMinLevel(); level <= enchantment.getMaxLevel(); level++) {
+                        JsonObject cost = new JsonObject();
+                        cost.addProperty("level", level);
+                        cost.addProperty("minimum", enchantment.getMinCost(level));
+                        cost.addProperty("maximum", enchantment.getMaxCost(level));
+                        costs.add(cost);
+                    }
+                    json.add("costs", costs);
+                    json.addProperty("effect_component_count", enchantment.effects().size());
+                    data.add(json);
+                } catch (Throwable throwable) {
+                    context.report().error(ID, id + ":enchantment", throwable);
                 }
-                json.add("costs", costs);
-                json.addProperty("effect_component_count", enchantment.effects().size());
-                data.add(json);
             });
         writeRegistry(context, "enchantments", data);
     }
@@ -269,15 +279,23 @@ public final class RegistryDataStage extends OnceStage {
     private static void exportKeyMappings(ExportContext context) throws Exception {
         JsonArray data = new JsonArray();
         List<KeyMapping> mappings = new ArrayList<>(List.of(context.minecraft().options.keyMappings));
+        Set<KeyMapping> vanillaMappings = vanillaKeyMappings(context.minecraft().options);
         mappings.sort(Comparator.comparing(KeyMapping::getName));
         int excluded = 0;
         for (KeyMapping mapping : mappings) {
-            if (!isRelevantKeyMapping(context, mapping.getName(), mapping.getCategory())) {
+            boolean vanilla = vanillaMappings.contains(mapping);
+            if (!isRelevantKeyMapping(context, mapping.getName(), mapping.getCategory(), vanilla)) {
                 excluded++;
                 continue;
             }
             JsonObject json = new JsonObject();
             json.addProperty("id", mapping.getName());
+            json.addProperty("source_mod_id", vanilla ? "minecraft" : matchingNamespace(
+                mapping.getName(),
+                mapping.getCategory(),
+                context.config().namespaces()
+            ));
+            json.addProperty("source_detection", vanilla ? "vanilla_options_field" : "translation_key_namespace");
             json.addProperty("translation_key", mapping.getName());
             json.add("names", context.names(mapping.getName()));
             json.addProperty("category_translation_key", mapping.getCategory());
@@ -354,7 +372,7 @@ public final class RegistryDataStage extends OnceStage {
             .sorted(Comparator.comparing(entry -> entry.getKey().location().toString()))
             .forEach(entry -> {
                 if (entry.getValue() instanceof SpawnEggItem egg) {
-                    EntityType<?> type = egg.getType(null);
+                    EntityType<?> type = egg.getType(entry.getValue().getDefaultInstance());
                     result.computeIfAbsent(type, ignored -> new ArrayList<>()).add(entry.getKey().location());
                 }
             });
@@ -514,12 +532,72 @@ public final class RegistryDataStage extends OnceStage {
         return false;
     }
 
-    private static boolean isRelevantKeyMapping(ExportContext context, String name, String category) {
+    private static boolean isRelevantKeyMapping(ExportContext context, String name, String category, boolean vanilla) {
         if (context.config().namespaces().isEmpty()) {
             return !keyTranslationMatchesNamespaces(name, List.of("mcmods_exporter"));
         }
-        return keyTranslationMatchesNamespaces(name, context.config().namespaces())
-            || keyTranslationMatchesNamespaces(category, context.config().namespaces());
+        return keyMappingMatchesSelection(name, category, context.config().namespaces(), vanilla);
+    }
+
+    static boolean keyMappingMatchesSelection(
+        String name,
+        String category,
+        Iterable<String> namespaces,
+        boolean vanilla
+    ) {
+        for (String namespace : namespaces) {
+            if (vanilla && namespace.equals("minecraft")) {
+                return true;
+            }
+        }
+        return keyTranslationMatchesNamespaces(name, namespaces)
+            || keyTranslationMatchesNamespaces(category, namespaces);
+    }
+
+    private static String matchingNamespace(String name, String category, Iterable<String> namespaces) {
+        for (String namespace : namespaces) {
+            if (keyTranslationMatchesNamespaces(name, List.of(namespace))
+                || keyTranslationMatchesNamespaces(category, List.of(namespace))) {
+                return namespace;
+            }
+        }
+        return "unknown";
+    }
+
+    private static Set<KeyMapping> vanillaKeyMappings(Object options) {
+        Set<KeyMapping> mappings = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Class<?> type = options.getClass(); type != null; type = type.getSuperclass()) {
+            for (Field field : type.getDeclaredFields()) {
+                if (!KeyMapping.class.isAssignableFrom(field.getType())) {
+                    continue;
+                }
+                try {
+                    if (field.trySetAccessible()) {
+                        Object value = field.get(options);
+                        if (value instanceof KeyMapping mapping) {
+                            mappings.add(mapping);
+                        }
+                    }
+                } catch (RuntimeException | IllegalAccessException ignored) {
+                    // A loader may restrict reflection. Namespaced mod bindings still remain exportable.
+                }
+            }
+        }
+        return mappings;
+    }
+
+    private static int runRegistrySection(
+        ExportContext context,
+        String section,
+        ThrowingRegistryExporter exporter
+    ) {
+        try {
+            exporter.run();
+            return 0;
+        } catch (Throwable throwable) {
+            context.report().error(ID, section, throwable);
+            return 1;
+        }
     }
 
     private static String firstTranslationKey(ExportContext context, ResourceLocation id) {
@@ -547,5 +625,10 @@ public final class RegistryDataStage extends OnceStage {
         root.add("entries", data);
         context.writeJson("registries/" + name + ".json", root);
         context.report().addCount(ID, name, data.size());
+    }
+
+    @FunctionalInterface
+    private interface ThrowingRegistryExporter {
+        void run() throws Exception;
     }
 }
