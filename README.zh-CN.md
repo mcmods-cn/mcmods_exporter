@@ -57,6 +57,8 @@
 -Dmcmods.export.sizes=32,128,256
 -Dmcmods.export.tickBudgetMs=12
 -Dmcmods.export.exit=true
+-Dmcmods.export.recipeTypes.exclude=create:automatic_shaped
+-Dmcmods.export.recipeTypes.templateOnly=minecraft:anvil
 ```
 
 参数说明：
@@ -65,6 +67,10 @@
 - `namespaces`：逗号分隔；留空或 `all` 表示全部。
 - `output`：相对路径以游戏目录为基准，也可用绝对路径。
 - `languages`：额外要求输出的语言；导出器还会自动发现目标 Mod 当前资源栈内的全部 `lang/*.json`，`en_us` 总会作为回退语言加入。
+- `recipeTypes.exclude`：完全排除指定的 `recipe_type_id`。
+- `recipeTypes.templateOnly`：保留类别、Catalyst、背景 GUI 与模板，但不导出具体配方；适合铁砧等动态条目很多的类别。
+
+首次运行还会生成 `config/mcmods_exporter.properties`，其中可以填写同名配置键；JVM `-D` 参数优先于配置文件。完整规则见 [`docs/recipe-type-export-policy.md`](docs/recipe-type-export-policy.md)。
 - `profile`：`data`、`images` 或 `all`。
 - `modules`：逗号分隔的模块 ID；留空或 `all` 表示启用当前 profile 允许的全部模块。可选值为 `compatibility`、`registries`、`associations`、`trades`、`tags`、`recipes`、`advancements`、`worldgen`、`resources`、`block_entity_models`、`entity_models`、`item_icons`、`block_icons`、`effect_icons`、`jei`、`entity_renders`。语言模块始终启用，保证名称引用可解析。
 - `sizes`：会保留用户增加的尺寸，同时始终包含需求规定的 32、128、256。

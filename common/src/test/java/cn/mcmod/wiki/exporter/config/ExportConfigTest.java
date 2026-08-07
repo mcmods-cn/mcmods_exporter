@@ -4,6 +4,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -20,7 +21,10 @@ class ExportConfigTest {
         "mcmods.export.sizes",
         "mcmods.export.modules",
         "mcmods.export.tickBudgetMs",
-        "mcmods.export.exit"
+        "mcmods.export.exit",
+        "mcmods.export.config",
+        "mcmods.export.recipeTypes.exclude",
+        "mcmods.export.recipeTypes.templateOnly"
     );
 
     @AfterEach
@@ -71,5 +75,38 @@ class ExportConfigTest {
         assertEquals(List.of("registries", "tags", "item_icons"), List.copyOf(config.modules()));
         assertTrue(config.moduleEnabled("registries"));
         assertFalse(config.moduleEnabled("worldgen"));
+    }
+
+    @Test
+    void loadsRecipeTypePoliciesFromFileAndLetsJvmPropertiesOverride(@TempDir Path gameDirectory) throws Exception {
+        Path configFile = gameDirectory.resolve("config/mcmods_exporter.properties");
+        Files.createDirectories(configFile.getParent());
+        Files.writeString(configFile, """
+            mcmods.export.recipeTypes.exclude=create:automatic_shaped,minecraft:smithing
+            mcmods.export.recipeTypes.templateOnly=minecraft:anvil,minecraft:smithing
+            """);
+
+        ExportConfig fromFile = ExportConfig.fromSystemProperties(
+            gameDirectory,
+            false,
+            "minecraft",
+            ExportProfile.ALL
+        );
+
+        assertTrue(fromFile.excludesRecipeType("create:automatic_shaped"));
+        assertTrue(fromFile.excludesRecipeType("minecraft:smithing"));
+        assertTrue(fromFile.exportsRecipeTypeTemplatesOnly("minecraft:anvil"));
+        assertFalse(fromFile.exportsRecipeTypeTemplatesOnly("minecraft:smithing"));
+        assertEquals(configFile, fromFile.configFile());
+
+        System.setProperty("mcmods.export.recipeTypes.templateOnly", "minecraft:stonecutting");
+        ExportConfig overridden = ExportConfig.fromSystemProperties(
+            gameDirectory,
+            false,
+            "minecraft",
+            ExportProfile.ALL
+        );
+        assertTrue(overridden.exportsRecipeTypeTemplatesOnly("minecraft:stonecutting"));
+        assertFalse(overridden.exportsRecipeTypeTemplatesOnly("minecraft:anvil"));
     }
 }
