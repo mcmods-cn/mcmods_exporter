@@ -91,6 +91,12 @@ public final class ExportReport {
         JsonArray modules = new JsonArray();
         selectedModules.forEach(modules::add);
         configuration.add("modules", modules);
+        JsonArray excludedRecipeTypes = new JsonArray();
+        config.excludedRecipeTypes().forEach(excludedRecipeTypes::add);
+        configuration.add("excluded_recipe_type_ids", excludedRecipeTypes);
+        JsonArray templateOnlyRecipeTypes = new JsonArray();
+        config.templateOnlyRecipeTypes().forEach(templateOnlyRecipeTypes::add);
+        configuration.add("template_only_recipe_type_ids", templateOnlyRecipeTypes);
         root.add("configuration", configuration);
 
         JsonArray stageArray = new JsonArray();

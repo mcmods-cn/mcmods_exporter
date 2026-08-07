@@ -30,8 +30,22 @@ public final class RecipeDataStage extends OnceStage {
         List<RecipeHolder<?>> recipes = new ArrayList<>(context.minecraft().level.getRecipeManager().getRecipes());
         recipes.sort(Comparator.comparing(holder -> holder.id().toString()));
         JsonArray data = new JsonArray();
+        int selectedRecipeCount = 0;
+        int excludedRecipeTypeCount = 0;
+        int templateOnlyRecipeTypeCount = 0;
         for (RecipeHolder<?> holder : recipes) {
             if (!context.matches(holder.id())) {
+                continue;
+            }
+            Recipe<?> recipe = holder.value();
+            selectedRecipeCount++;
+            String recipeTypeId = recipeTypeId(recipe);
+            if (context.config().excludesRecipeType(recipeTypeId)) {
+                excludedRecipeTypeCount++;
+                continue;
+            }
+            if (context.config().exportsRecipeTypeTemplatesOnly(recipeTypeId)) {
+                templateOnlyRecipeTypeCount++;
                 continue;
             }
             try {
@@ -42,10 +56,15 @@ public final class RecipeDataStage extends OnceStage {
         }
         JsonObject root = new JsonObject();
         root.addProperty("schema_version", "mcmods-recipes/v2");
+        root.addProperty("selected_recipe_count", selectedRecipeCount);
         root.addProperty("count", data.size());
+        root.addProperty("excluded_recipe_type_count", excludedRecipeTypeCount);
+        root.addProperty("template_only_recipe_type_count", templateOnlyRecipeTypeCount);
         root.add("recipes", data);
         context.writeJson("recipes/recipes.json", root);
         context.report().addCount(ID, "recipes", data.size());
+        context.report().addCount(ID, "excluded_recipe_types", excludedRecipeTypeCount);
+        context.report().addCount(ID, "template_only_recipes_omitted", templateOnlyRecipeTypeCount);
     }
 
     private static JsonObject recipeJson(ExportContext context, RecipeHolder<?> holder) {
@@ -90,5 +109,10 @@ public final class RecipeDataStage extends OnceStage {
         json.addProperty("parameter_count", parameters.size());
         json.add("parameters", parameters);
         return json;
+    }
+
+    private static String recipeTypeId(Recipe<?> recipe) {
+        ResourceLocation type = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
+        return type == null ? recipe.getType().toString() : type.toString();
     }
 }

@@ -124,6 +124,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
         }
 
         List<JeiRecipeSelection.Candidate> candidates = discovered.stream()
+            .filter(entry -> !context.config().excludesRecipeType(entry.type.getUid().toString()))
             .map(entry -> new JeiRecipeSelection.Candidate(
                 entry.ordinal,
                 entry.type.getUid().toString(),
@@ -137,8 +138,12 @@ public final class JeiRecipeGuiStage implements ExportStage {
         Map<String, Map<String, Integer>> excludedByCategory = new HashMap<>();
         Map<String, Integer> categoryCounts = new HashMap<>();
         Map<String, Entry> categoryRepresentatives = new HashMap<>();
+        int templateOnlyPresentationCount = 0;
         for (Entry exportEntry : discovered) {
-            String exclusion = selection.exclusions().get(exportEntry.ordinal);
+            String categoryId = exportEntry.type.getUid().toString();
+            String exclusion = context.config().excludesRecipeType(categoryId)
+                ? "configured_recipe_type_exclusion"
+                : selection.exclusions().get(exportEntry.ordinal);
             if (exclusion != null) {
                 excludedByReason.merge(exclusion, 1, Integer::sum);
                 excludedByCategory.computeIfAbsent(
@@ -149,9 +154,14 @@ public final class JeiRecipeGuiStage implements ExportStage {
                 continue;
             }
             entries.add(exportEntry);
-            String categoryId = exportEntry.type.getUid().toString();
             categoryCounts.merge(categoryId, 1, Integer::sum);
             categoryRepresentatives.putIfAbsent(categoryId, exportEntry);
+
+            if (context.config().exportsRecipeTypeTemplatesOnly(categoryId)) {
+                templateOnlyPresentationCount++;
+                context.report().addCount(ID, "template_only_recipe_presentations", 1);
+                continue;
+            }
 
             JsonObject recipeJson = new JsonObject();
             recipeJson.addProperty("recipe_type_id", categoryId);
@@ -185,7 +195,11 @@ public final class JeiRecipeGuiStage implements ExportStage {
             addLocalizedComponent(context, categoryJson, "title", category.getTitle());
             categoryJson.addProperty("width", category.getWidth());
             categoryJson.addProperty("height", category.getHeight());
-            categoryJson.addProperty("recipe_count", categoryCounts.get(categoryId));
+            boolean templatesOnly = context.config().exportsRecipeTypeTemplatesOnly(categoryId);
+            categoryJson.addProperty("export_mode", templatesOnly ? "templates_only" : "full");
+            categoryJson.addProperty("recipes_omitted", templatesOnly);
+            categoryJson.addProperty("source_recipe_count", categoryCounts.get(categoryId));
+            categoryJson.addProperty("recipe_count", templatesOnly ? 0 : categoryCounts.get(categoryId));
             categoryJson.addProperty("template_collection", relative(context, templateCollectionPath(context, type.getUid())));
             categoryJson.addProperty("recipe_collection", relative(context, recipeCollectionPath(context, type.getUid())));
             categoryJson.addProperty("image_scale", IMAGE_SCALE);
@@ -196,7 +210,16 @@ public final class JeiRecipeGuiStage implements ExportStage {
             categoryIndex.add(categoryJson);
             categoryMetadataById.put(categoryId, categoryJson);
         }
-        filterSummary = filterSummary(discovered.size(), entries.size(), excludedByReason, excludedByCategory);
+        filterSummary = filterSummary(
+            discovered.size(),
+            recipeIndex.size(),
+            entries.size(),
+            excludedByReason,
+            excludedByCategory
+        );
+        filterSummary.addProperty("template_only_recipe_presentations", templateOnlyPresentationCount);
+        filterSummary.add("configured_excluded_recipe_type_ids", stringArray(context.config().excludedRecipeTypes()));
+        filterSummary.add("configured_template_only_recipe_type_ids", stringArray(context.config().templateOnlyRecipeTypes()));
     }
 
     @Override
@@ -210,8 +233,13 @@ public final class JeiRecipeGuiStage implements ExportStage {
         }
         Entry entry = entries.get(index++);
         try {
-            renderEntry(context, entry);
-            context.report().addCount(ID, "recipe_bindings", 1);
+            boolean includeRecipeBindings = !context.config().exportsRecipeTypeTemplatesOnly(entry.type.getUid().toString());
+            renderEntry(context, entry, includeRecipeBindings);
+            context.report().addCount(
+                ID,
+                includeRecipeBindings ? "recipe_bindings" : "template_only_layout_samples",
+                1
+            );
         } catch (Throwable throwable) {
             context.report().error(ID, entry.type.getUid() + "#" + entry.index, throwable);
         }
@@ -223,7 +251,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "removal"})
-    private void renderEntry(ExportContext context, Entry entry) throws Exception {
+    private void renderEntry(ExportContext context, Entry entry, boolean includeRecipeBindings) throws Exception {
         IRecipeManager recipeManager = runtime.getRecipeManager();
         Optional layoutOptional = recipeManager.createRecipeLayoutDrawable(
             entry.category,
@@ -280,6 +308,10 @@ public final class JeiRecipeGuiStage implements ExportStage {
                 split.templateSlots()
             );
             context.report().addCount(ID, "layout_template_reuses", 1);
+        }
+
+        if (!includeRecipeBindings) {
+            return;
         }
 
         JsonObject recipeBindings = new JsonObject();
@@ -525,6 +557,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
                 .sorted(Map.Entry.comparingByKey())
                 .forEach(entry -> templateArray.add(entry.getValue()));
             JsonArray recipes = recipesByCategory.getOrDefault(categoryId, new JsonArray());
+            boolean templatesOnly = context.config().exportsRecipeTypeTemplatesOnly(categoryId);
 
             int contentWidth = representative.category.getWidth();
             int contentHeight = representative.category.getHeight();
@@ -534,6 +567,8 @@ public final class JeiRecipeGuiStage implements ExportStage {
             JsonObject templateRoot = new JsonObject();
             templateRoot.addProperty("schema_version", "mcmods-jei-template-collection/v2");
             templateRoot.addProperty("recipe_type_id", categoryId);
+            templateRoot.addProperty("export_mode", templatesOnly ? "templates_only" : "full");
+            templateRoot.addProperty("recipes_omitted", templatesOnly);
             templateRoot.addProperty("coordinate_space", "logical_pixels");
             templateRoot.addProperty("image_scale", IMAGE_SCALE);
             templateRoot.add("canvas", rect(0, 0, canvasWidth, canvasHeight));
@@ -545,6 +580,8 @@ public final class JeiRecipeGuiStage implements ExportStage {
             JsonObject recipeRoot = new JsonObject();
             recipeRoot.addProperty("schema_version", "mcmods-jei-recipe-collection/v2");
             recipeRoot.addProperty("recipe_type_id", categoryId);
+            recipeRoot.addProperty("export_mode", templatesOnly ? "templates_only" : "full");
+            recipeRoot.addProperty("recipes_omitted", templatesOnly);
             recipeRoot.addProperty(
                 "template_collection",
                 relative(context, templateCollectionPath(context, representative.type.getUid()))
@@ -580,9 +617,10 @@ public final class JeiRecipeGuiStage implements ExportStage {
         }
 
         JsonObject indexJson = new JsonObject();
-        indexJson.addProperty("schema_version", "mcmods-jei-categories/v6");
+        indexJson.addProperty("schema_version", "mcmods-jei-categories/v7");
         indexJson.addProperty("category_count", categoryIndex.size());
-        indexJson.addProperty("recipe_count", entries.size());
+        indexJson.addProperty("recipe_count", recipeIndex.size());
+        indexJson.addProperty("layout_sample_count", entries.size());
         indexJson.add("filter_summary", filterSummary);
         indexJson.add("categories", categoryIndex);
         indexJson.add("recipes", recipeIndex);
@@ -591,6 +629,12 @@ public final class JeiRecipeGuiStage implements ExportStage {
         } catch (Exception exception) {
             context.report().error(ID, "categories_index", exception);
         }
+    }
+
+    private static JsonArray stringArray(Iterable<String> values) {
+        JsonArray array = new JsonArray();
+        values.forEach(array::add);
+        return array;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -656,6 +700,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
     private static JsonObject filterSummary(
         int discovered,
         int exported,
+        int layoutSamples,
         Map<String, Integer> excludedByReason,
         Map<String, Map<String, Integer>> excludedByCategory
     ) {
@@ -663,7 +708,8 @@ public final class JeiRecipeGuiStage implements ExportStage {
         summary.addProperty("policy", "source_recipe_namespace_with_recipe_id_deduplication");
         summary.addProperty("discovered_recipe_presentations", discovered);
         summary.addProperty("exported_recipe_presentations", exported);
-        summary.addProperty("excluded_recipe_presentations", discovered - exported);
+        summary.addProperty("layout_sample_presentations", layoutSamples);
+        summary.addProperty("excluded_recipe_presentations", discovered - layoutSamples);
         JsonObject reasons = new JsonObject();
         excludedByReason.entrySet().stream()
             .sorted(Map.Entry.comparingByKey())

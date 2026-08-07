@@ -149,6 +149,8 @@ JEI 合成类别 ID，例如 `minecraft:crafting`。它表示“使用哪一种�
 
 每个 `recipe_type_id` 有一个绑定集合文件，Schema 为 `mcmods-jei-recipe-collection/v2`：
 
+导出器还支持按 `recipe_type_id` 设置 `templates_only`。此模式仍生成类别、Catalyst、背景和模板，但配方集合固定为 `count=0`、`recipes=[]`，并标记 `export_mode=templates_only` 与 `recipes_omitted=true`。配置方式与导入规则见 [`recipe-type-export-policy.md`](recipe-type-export-policy.md)。
+
 ```json
 {
   "schema_version": "mcmods-jei-recipe-collection/v2",
