@@ -1,6 +1,6 @@
 # JEI 通用模板导出格式 v2
 
-本文档描述 `mcmods_exporter 0.8.0` 的 JEI 配方 GUI 导出方式。该格式把配方类别、空白 GUI、槽位几何和具体配方材料拆开，使网站能够用同一模板渲染多条配方，并让 GUI 上的物品保持可点击。
+本文档描述当前 `mcmods_exporter` 的 JEI 配方 GUI 导出方式。该格式把配方类别、空白 GUI、槽位几何和具体配方材料拆开，使网站能够用同一模板渲染多条配方，并让 GUI 上的物品保持可点击。
 
 ## 1. 数据分层
 
@@ -67,10 +67,16 @@ JEI 合成类别 ID，例如 `minecraft:crafting`。它表示“使用哪一种�
 
 ## 4. 类别索引
 
-`recipes/jei/categories.json` 使用 `mcmods-jei-categories/v6`。顶层包含：
+`recipes/jei/categories.json` 使用 `mcmods-jei-categories/v7`。模板与配方绑定集合仍为 v2；类别索引版本独立演进。顶层包含：
 
 - `categories[]`：每种合成方式的标题、尺寸、Catalyst、模板数和导出配方数。
-- `recipes[]`：配方快速索引，包含配方身份、规范化的有序/无序信息、模板与背景引用。
+- `recipes[]`：实际导出的配方快速索引，包含配方身份、规范化的有序/无序信息、模板与背景引用。
+- `layout_sample_count`：用于提取模板的配方展示数，包含只导出模板的样本，不能当作实际导出配方数。
+- `filter_summary.layout_sample_presentations`、`template_only_recipe_presentations`：分别记录布局样本和只导出模板的展示数；`configured_excluded_recipe_type_ids`、`configured_template_only_recipe_type_ids` 保留本次明确的类别过滤设置。
+
+v7 每个类别新增 `export_mode=full|templates_only`、`recipes_omitted` 与 `source_recipe_count`。`source_recipe_count` 是完成来源过滤后的展示数；模板模式的 `recipe_count`、`exported_recipe_count` 均为 0，`recipes_omitted=true`，但模板和背景仍可用。对应模板集合与配方集合也带相同的模式字段，配方集合为 `count=0, recipes=[]`。消费者不能把这些零值解释为源游戏确实没有配方，也不能据此删除既有配方。`full` 模式的 `recipes_omitted=false`。
+
+旧 v6 类别索引使用独立的 [`legacy/jei-categories-v6.schema.json`](../schema/legacy/jei-categories-v6.schema.json)，没有模板省略模式。消费者须按版本选择契约，v6 可按完整导出读取；不能把 v7 的版本字符串改成 v6，或为 v6 伪造 v7 的样本计数。未知主版本明确拒绝。
 
 类别中的重要字段：
 
@@ -81,6 +87,9 @@ JEI 合成类别 ID，例如 `minecraft:crafting`。它表示“使用哪一种�
   "recipe_collection": "recipes/jei/recipes/minecraft/crafting.json",
   "template_count": 1,
   "background_count": 1,
+  "export_mode": "full",
+  "recipes_omitted": false,
+  "source_recipe_count": 1200,
   "recipe_count": 1200,
   "exported_recipe_count": 1200,
   "image_scale": 4,

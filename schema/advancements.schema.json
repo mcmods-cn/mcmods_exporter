@@ -1,50 +1,80 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://www.mcmod.cn/schemas/mcmods-advancements-v1.json",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-advancements-v2.json",
   "title": "MC百科进度/成就网",
   "type": "object",
-  "required": ["schema_version", "source", "count", "language_count", "roots", "advancements"],
+  "required": ["schema_version", "source", "count", "language_count", "roots", "advancements", "filter_mode", "filtered_recipe_unlock_count", "filtered_no_display_count", "filtered_count"],
   "properties": {
-    "schema_version": { "const": "mcmods-advancements/v1" },
-    "source": { "enum": ["integrated_server", "client_sync"] },
-    "count": { "type": "integer", "minimum": 0 },
-    "language_count": { "type": "integer", "minimum": 1 },
-    "roots": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "schema_version": {"const": "mcmods-advancements/v2"},
+    "source": {
+      "enum": ["integrated_server", "client_sync"]
+    },
+    "count": {"type": "integer", "minimum": 0},
+    "language_count": {"type": "integer", "minimum": 1},
+    "roots": {
+      "type": "array",
+      "items": {"type": "string"},
+      "uniqueItems": true
+    },
     "advancements": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "children", "criteria", "requirements", "max_criteria_required", "rewards"],
+        "required": ["id", "children", "criteria", "requirements", "max_criteria_required", "rewards", "display"],
         "properties": {
-          "id": { "type": "string" },
-          "parent": { "type": "string" },
-          "children": { "type": "array", "items": { "type": "string" } },
+          "id": {"type": "string"},
+          "parent": {"type": "string"},
+          "children": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
           "display": {
             "type": "object",
             "properties": {
-              "title_names": { "$ref": "#/$defs/localized" },
-              "description_names": { "$ref": "#/$defs/localized" },
-              "x": { "type": "number" },
-              "y": { "type": "number" }
+              "title_names": {"$ref": "#/$defs/localized"},
+              "description_names": {"$ref": "#/$defs/localized"},
+              "x": {"type": "number"},
+              "y": {"type": "number"},
+              "icon": {"type": "object"},
+              "frame": {
+                "enum": ["task", "challenge", "goal"]
+              },
+              "hidden": {"type": "boolean"},
+              "show_toast": {"type": "boolean"},
+              "announce_chat": {"type": "boolean"},
+              "background": {"type": "string"},
+              "title_translation_key": {"type": "string"},
+              "description_translation_key": {"type": "string"}
             },
-            "additionalProperties": true
+            "additionalProperties": true,
+            "required": ["title_names", "description_names", "icon", "frame", "x", "y", "hidden", "show_toast", "announce_chat"]
           },
-          "criteria": { "type": "array", "items": { "type": "string" } },
+          "criteria": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
           "requirements": {
             "type": "array",
-            "items": { "type": "array", "items": { "type": "string" } }
+            "items": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
           },
-          "max_criteria_required": { "type": "integer", "minimum": 0 },
-          "rewards": { "type": "object" }
+          "max_criteria_required": {"type": "integer", "minimum": 0},
+          "rewards": {"type": "object"}
         },
         "additionalProperties": true
       }
-    }
+    },
+    "filter_mode": {"const": "displayed_non_recipe_advancements"},
+    "filtered_recipe_unlock_count": {"type": "integer", "minimum": 0},
+    "filtered_no_display_count": {"type": "integer", "minimum": 0},
+    "filtered_count": {"type": "integer", "minimum": 0}
   },
   "$defs": {
     "localized": {
       "type": "object",
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": {"type": "string"}
     }
   },
   "additionalProperties": true

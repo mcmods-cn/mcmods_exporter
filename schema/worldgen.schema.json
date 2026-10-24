@@ -1,34 +1,34 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://www.mcmod.cn/schemas/mcmods-worldgen-v1.json",
+  "$id": "https://www.mcmod.cn/schemas/mcmods-worldgen.json",
   "title": "mcmods_exporter world data indexes",
   "oneOf": [
-    { "$ref": "#/$defs/registries" },
-    { "$ref": "#/$defs/files" },
-    { "$ref": "#/$defs/dimensions" },
-    { "$ref": "#/$defs/biomes" },
-    { "$ref": "#/$defs/entitySpawns" },
-    { "$ref": "#/$defs/naturalGeneration" },
-    { "$ref": "#/$defs/structures" },
-    { "$ref": "#/$defs/lootTables" }
+    {"$ref": "#/$defs/registries"},
+    {"$ref": "#/$defs/files"},
+    {"$ref": "#/$defs/dimensions"},
+    {"$ref": "#/$defs/biomes"},
+    {"$ref": "#/$defs/entitySpawns"},
+    {"$ref": "#/$defs/naturalGeneration"},
+    {"$ref": "#/$defs/structures"},
+    {"$ref": "#/$defs/lootTables"}
   ],
   "$defs": {
-    "id": {
-      "type": "string",
-      "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$"
-    },
+    "id": {"type": "string", "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$"},
     "namedDefinition": {
       "type": "object",
       "required": ["id", "namespace", "path", "runtime_registered"],
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "namespace": { "type": "string" },
-        "path": { "type": "string" },
-        "runtime_registered": { "type": "boolean" },
-        "translation_key": { "type": "string" },
-        "names": { "type": "object", "additionalProperties": { "type": "string" } },
+        "id": {"$ref": "#/$defs/id"},
+        "namespace": {"type": "string"},
+        "path": {"type": "string"},
+        "runtime_registered": {"type": "boolean"},
+        "translation_key": {"type": "string"},
+        "names": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        },
         "runtime_definition": true,
-        "definition_path": { "type": "string" },
+        "definition_path": {"type": "string"},
         "definition": true
       },
       "additionalProperties": true
@@ -37,10 +37,10 @@
       "type": "object",
       "required": ["schema_version", "registry_count", "entry_count", "registries"],
       "properties": {
-        "schema_version": { "const": "mcmods-worldgen-registries/v1" },
-        "registry_count": { "type": "integer", "minimum": 0 },
-        "entry_count": { "type": "integer", "minimum": 0 },
-        "registries": { "type": "array" }
+        "schema_version": {"const": "mcmods-worldgen-registries/v1"},
+        "registry_count": {"type": "integer", "minimum": 0},
+        "entry_count": {"type": "integer", "minimum": 0},
+        "registries": {"type": "array"}
       },
       "additionalProperties": true
     },
@@ -48,21 +48,23 @@
       "type": "object",
       "required": ["schema_version", "resource_source", "remote_server_data_complete", "count", "files"],
       "properties": {
-        "schema_version": { "const": "mcmods-worldgen-files/v1" },
-        "resource_source": { "enum": ["integrated_server_resource_stack", "installed_mod_fallback"] },
-        "remote_server_data_complete": { "type": "boolean" },
-        "count": { "type": "integer", "minimum": 0 },
+        "schema_version": {"const": "mcmods-worldgen-files/v1"},
+        "resource_source": {
+          "enum": ["integrated_server_resource_stack", "installed_mod_fallback"]
+        },
+        "remote_server_data_complete": {"type": "boolean"},
+        "count": {"type": "integer", "minimum": 0},
         "files": {
           "type": "array",
           "items": {
             "type": "object",
             "required": ["kind", "resource_id", "object_id", "path", "size_bytes"],
             "properties": {
-              "kind": { "type": "string" },
-              "resource_id": { "$ref": "#/$defs/id" },
-              "object_id": { "$ref": "#/$defs/id" },
-              "path": { "type": "string" },
-              "size_bytes": { "type": "integer", "minimum": 0 }
+              "kind": {"type": "string"},
+              "resource_id": {"$ref": "#/$defs/id"},
+              "object_id": {"$ref": "#/$defs/id"},
+              "path": {"type": "string"},
+              "size_bytes": {"type": "integer", "minimum": 0}
             },
             "additionalProperties": false
           }
@@ -74,11 +76,17 @@
       "type": "object",
       "required": ["schema_version", "dimension_count", "dimension_type_count", "dimensions", "dimension_types"],
       "properties": {
-        "schema_version": { "const": "mcmods-dimensions/v1" },
-        "dimension_count": { "type": "integer", "minimum": 0 },
-        "dimension_type_count": { "type": "integer", "minimum": 0 },
-        "dimensions": { "type": "array", "items": { "$ref": "#/$defs/namedDefinition" } },
-        "dimension_types": { "type": "array", "items": { "$ref": "#/$defs/namedDefinition" } }
+        "schema_version": {"const": "mcmods-dimensions/v1"},
+        "dimension_count": {"type": "integer", "minimum": 0},
+        "dimension_type_count": {"type": "integer", "minimum": 0},
+        "dimensions": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/namedDefinition"}
+        },
+        "dimension_types": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/namedDefinition"}
+        }
       },
       "additionalProperties": true
     },
@@ -86,9 +94,12 @@
       "type": "object",
       "required": ["schema_version", "count", "biomes"],
       "properties": {
-        "schema_version": { "const": "mcmods-biomes/v1" },
-        "count": { "type": "integer", "minimum": 0 },
-        "biomes": { "type": "array", "items": { "$ref": "#/$defs/namedDefinition" } }
+        "schema_version": {"const": "mcmods-biomes/v1"},
+        "count": {"type": "integer", "minimum": 0},
+        "biomes": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/namedDefinition"}
+        }
       },
       "additionalProperties": true
     },
@@ -96,31 +107,35 @@
       "type": "object",
       "required": ["schema_version", "source", "biome_count", "spawn_count", "biomes"],
       "properties": {
-        "schema_version": { "const": "mcmods-entity-spawns/v1" },
-        "source": { "enum": ["runtime_biome_registry", "unavailable"] },
-        "biome_count": { "type": "integer", "minimum": 0 },
-        "spawn_count": { "type": "integer", "minimum": 0 },
+        "schema_version": {"const": "mcmods-entity-spawns/v1"},
+        "source": {
+          "enum": ["runtime_biome_registry", "unavailable"]
+        },
+        "biome_count": {"type": "integer", "minimum": 0},
+        "spawn_count": {"type": "integer", "minimum": 0},
         "biomes": {
           "type": "array",
           "items": {
             "type": "object",
             "required": ["id", "selected_namespace", "inclusion_reason", "spawn_count", "spawns"],
             "properties": {
-              "id": { "$ref": "#/$defs/id" },
-              "selected_namespace": { "type": "boolean" },
-              "inclusion_reason": { "enum": ["target_biome", "contains_target_entity_spawn"] },
-              "spawn_count": { "type": "integer", "minimum": 0 },
+              "id": {"$ref": "#/$defs/id"},
+              "selected_namespace": {"type": "boolean"},
+              "inclusion_reason": {
+                "enum": ["target_biome", "contains_target_entity_spawn"]
+              },
+              "spawn_count": {"type": "integer", "minimum": 0},
               "spawns": {
                 "type": "array",
                 "items": {
                   "type": "object",
                   "required": ["entity", "category", "weight", "min_count", "max_count"],
                   "properties": {
-                    "entity": { "$ref": "#/$defs/id" },
-                    "category": { "type": "string" },
-                    "weight": { "type": "integer", "minimum": 1 },
-                    "min_count": { "type": "integer", "minimum": 0 },
-                    "max_count": { "type": "integer", "minimum": 0 }
+                    "entity": {"$ref": "#/$defs/id"},
+                    "category": {"type": "string"},
+                    "weight": {"type": "integer", "minimum": 1},
+                    "min_count": {"type": "integer", "minimum": 0},
+                    "max_count": {"type": "integer", "minimum": 0}
                   },
                   "additionalProperties": false
                 }
@@ -134,12 +149,117 @@
     },
     "naturalGeneration": {
       "type": "object",
-      "required": ["schema_version", "category_count", "entry_count", "categories"],
+      "required": ["schema_version", "export_mode", "counts_by_category", "technical_registry_categories_omitted_from_catalog", "entry_count", "placed_feature_count", "configured_carver_count", "complete_count", "partial_count", "consumed_biome_modifier_count", "unreferenced_configured_feature_count", "technical_registry_category_count", "entries"],
       "properties": {
-        "schema_version": { "const": "mcmods-natural-generation/v1" },
-        "category_count": { "type": "integer", "minimum": 0 },
-        "entry_count": { "type": "integer", "minimum": 0 },
-        "categories": { "type": "array" }
+        "schema_version": {"const": "mcmods-natural-generation/v2"},
+        "export_mode": {"const": "normalized_catalog"},
+        "counts_by_category": {
+          "type": "object",
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        },
+        "technical_registry_categories_omitted_from_catalog": {
+          "type": "array",
+          "items": {"type": "object"}
+        },
+        "entry_count": {"type": "integer", "minimum": 0},
+        "placed_feature_count": {"type": "integer", "minimum": 0},
+        "configured_carver_count": {"type": "integer", "minimum": 0},
+        "complete_count": {"type": "integer", "minimum": 0},
+        "partial_count": {"type": "integer", "minimum": 0},
+        "consumed_biome_modifier_count": {"type": "integer", "minimum": 0},
+        "unreferenced_configured_feature_count": {"type": "integer", "minimum": 0},
+        "technical_registry_category_count": {"type": "integer", "minimum": 0},
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "namespace", "path", "generation_id", "entry_kind", "source_mod_id", "category", "runtime_registered", "normalization_status", "generation_steps", "biome_selectors", "resolved_biome_ids", "biome_modifier_ids", "dimension_ids", "dimension_resolution"],
+            "properties": {
+              "id": {"$ref": "#/$defs/id"},
+              "generation_id": {"$ref": "#/$defs/id"},
+              "feature_type": {"$ref": "#/$defs/id"},
+              "carver_type": {"$ref": "#/$defs/id"},
+              "configured_feature_id": {"$ref": "#/$defs/id"},
+              "name_source_block_id": {"$ref": "#/$defs/id"},
+              "namespace": {"type": "string"},
+              "path": {"type": "string"},
+              "entry_kind": {
+                "enum": ["placed_feature", "configured_carver"]
+              },
+              "source_mod_id": {"type": "string"},
+              "source_mod_version": {"type": "string"},
+              "category": {"type": "string"},
+              "runtime_registered": {"type": "boolean"},
+              "normalization_status": {
+                "enum": ["complete", "partial"]
+              },
+              "outputs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["block_id"],
+                  "properties": {
+                    "block_id": {"$ref": "#/$defs/id"}
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "names": {
+                "type": "object",
+                "additionalProperties": {"type": "string"}
+              },
+              "placement": {"type": "object"},
+              "dimension_resolution": {
+                "enum": ["biome_selector_inference", "not_directly_resolvable"]
+              },
+              "configured_feature_definition_paths": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["configured_feature_id", "path"],
+                  "properties": {
+                    "configured_feature_id": {"$ref": "#/$defs/id"},
+                    "path": {"type": "string"}
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "configured_feature_ids": {
+                "type": "array",
+                "items": {"$ref": "#/$defs/id"}
+              },
+              "referenced_feature_ids": {
+                "type": "array",
+                "items": {"$ref": "#/$defs/id"}
+              },
+              "resolved_biome_ids": {
+                "type": "array",
+                "items": {"$ref": "#/$defs/id"}
+              },
+              "biome_modifier_ids": {
+                "type": "array",
+                "items": {"$ref": "#/$defs/id"}
+              },
+              "dimension_ids": {
+                "type": "array",
+                "items": {"$ref": "#/$defs/id"}
+              },
+              "targets": {
+                "type": "array",
+                "items": {"type": "string"}
+              },
+              "generation_steps": {
+                "type": "array",
+                "items": {"type": "string"}
+              },
+              "biome_selectors": {
+                "type": "array",
+                "items": {"type": "string"}
+              }
+            },
+            "additionalProperties": true
+          }
+        }
       },
       "additionalProperties": true
     },
@@ -147,45 +267,47 @@
       "type": "object",
       "required": ["schema_version", "export_mode", "count", "definition_count", "structure_set_reference_count", "internal_templates_exported", "omitted_internal_template_count", "structures"],
       "properties": {
-        "schema_version": { "const": "mcmods-structures/v2" },
-        "export_mode": { "const": "catalog_only" },
-        "count": { "type": "integer", "minimum": 0 },
-        "definition_count": { "type": "integer", "minimum": 0 },
-        "structure_set_reference_count": { "type": "integer", "minimum": 0 },
-        "internal_templates_exported": { "const": false },
-        "omitted_internal_template_count": { "type": "integer", "minimum": 0 },
+        "schema_version": {"const": "mcmods-structures/v2"},
+        "export_mode": {"const": "catalog_only"},
+        "count": {"type": "integer", "minimum": 0},
+        "definition_count": {"type": "integer", "minimum": 0},
+        "structure_set_reference_count": {"type": "integer", "minimum": 0},
+        "internal_templates_exported": {"const": false},
+        "omitted_internal_template_count": {"type": "integer", "minimum": 0},
         "structures": {
           "type": "array",
           "items": {
             "type": "object",
             "required": ["id", "namespace", "path", "structure_id", "catalog_kind", "runtime_registered", "internal_templates_exported", "structure_set_ids", "structure_set_references"],
             "properties": {
-              "id": { "$ref": "#/$defs/id" },
-              "namespace": { "type": "string" },
-              "path": { "type": "string" },
-              "structure_id": { "$ref": "#/$defs/id" },
-              "catalog_kind": { "const": "top_level_structure" },
-              "runtime_registered": { "type": "boolean" },
-              "internal_templates_exported": { "const": false },
-              "definition_source": { "enum": ["runtime_registry", "effective_data_resource"] },
-              "definition_path": { "type": "string" },
+              "id": {"$ref": "#/$defs/id"},
+              "namespace": {"type": "string"},
+              "path": {"type": "string"},
+              "structure_id": {"$ref": "#/$defs/id"},
+              "catalog_kind": {"const": "top_level_structure"},
+              "runtime_registered": {"type": "boolean"},
+              "internal_templates_exported": {"const": false},
+              "definition_source": {
+                "enum": ["runtime_registry", "effective_data_resource"]
+              },
+              "definition_path": {"type": "string"},
               "definition": true,
-              "structure_type": { "$ref": "#/$defs/id" },
+              "structure_type": {"$ref": "#/$defs/id"},
               "biomes": true,
-              "generation_step": { "type": "string" },
-              "terrain_adaptation": { "type": "string" },
-              "spawn_overrides": { "type": "object" },
+              "generation_step": {"type": "string"},
+              "terrain_adaptation": {"type": "string"},
+              "spawn_overrides": {"type": "object"},
               "start_pool": true,
               "start_jigsaw_name": true,
-              "jigsaw_size": { "type": "integer", "minimum": 0 },
+              "jigsaw_size": {"type": "integer", "minimum": 0},
               "start_height": true,
-              "max_distance_from_center": { "type": "integer", "minimum": 0 },
-              "use_expansion_hack": { "type": "boolean" },
-              "project_start_to_heightmap": { "type": "string" },
-              "liquid_settings": { "type": "string" },
+              "max_distance_from_center": {"type": "integer", "minimum": 0},
+              "use_expansion_hack": {"type": "boolean"},
+              "project_start_to_heightmap": {"type": "string"},
+              "liquid_settings": {"type": "string"},
               "structure_set_ids": {
                 "type": "array",
-                "items": { "$ref": "#/$defs/id" },
+                "items": {"$ref": "#/$defs/id"},
                 "uniqueItems": true
               },
               "structure_set_references": {
@@ -194,10 +316,10 @@
                   "type": "object",
                   "required": ["structure_set_id"],
                   "properties": {
-                    "structure_set_id": { "$ref": "#/$defs/id" },
-                    "weight": { "type": "integer", "minimum": 1 },
-                    "placement_type": { "$ref": "#/$defs/id" },
-                    "placement": { "type": "object" }
+                    "structure_set_id": {"$ref": "#/$defs/id"},
+                    "weight": {"type": "integer", "minimum": 1},
+                    "placement_type": {"$ref": "#/$defs/id"},
+                    "placement": {"type": "object"}
                   },
                   "additionalProperties": true
                 }
@@ -211,47 +333,158 @@
     },
     "lootTables": {
       "type": "object",
-      "required": ["schema_version", "count", "dependency_count", "predicate_count", "item_modifier_count", "counts_by_category", "loot_tables", "predicates", "item_modifiers"],
+      "required": ["schema_version", "count", "dependency_count", "predicate_count", "item_modifier_count", "counts_by_category", "loot_tables", "predicates", "item_modifiers", "pools_format", "definition_count", "definition_missing_count", "normalized_pool_count"],
       "properties": {
-        "schema_version": { "const": "mcmods-loot-tables/v1" },
-        "count": { "type": "integer", "minimum": 0 },
-        "dependency_count": { "type": "integer", "minimum": 0 },
-        "predicate_count": { "type": "integer", "minimum": 0 },
-        "item_modifier_count": { "type": "integer", "minimum": 0 },
+        "schema_version": {"const": "mcmods-loot-tables/v2"},
+        "count": {"type": "integer", "minimum": 0},
+        "dependency_count": {"type": "integer", "minimum": 0},
+        "predicate_count": {"type": "integer", "minimum": 0},
+        "item_modifier_count": {"type": "integer", "minimum": 0},
         "counts_by_category": {
           "type": "object",
-          "additionalProperties": { "type": "integer", "minimum": 0 }
+          "additionalProperties": {"type": "integer", "minimum": 0}
         },
         "loot_tables": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["id", "namespace", "path", "category", "selected_namespace", "inclusion_reason", "runtime_loaded"],
+            "required": ["id", "namespace", "path", "category", "selected_namespace", "inclusion_reason", "runtime_loaded", "definition_available"],
             "properties": {
-              "id": { "$ref": "#/$defs/id" },
-              "namespace": { "type": "string" },
-              "path": { "type": "string" },
-              "category": { "type": "string" },
-              "selected_namespace": { "type": "boolean" },
-              "inclusion_reason": { "enum": ["target_namespace", "external_namespace"] },
-              "runtime_loaded": { "type": "boolean" },
-              "data_path": { "type": "string" },
+              "id": {"$ref": "#/$defs/id"},
+              "namespace": {"type": "string"},
+              "path": {"type": "string"},
+              "category": {"type": "string"},
+              "selected_namespace": {"type": "boolean"},
+              "inclusion_reason": {
+                "enum": ["target_namespace", "external_namespace"]
+              },
+              "runtime_loaded": {"type": "boolean"},
+              "data_path": {"type": "string"},
               "definition": true,
               "referenced_loot_tables": {
                 "type": "array",
-                "items": { "$ref": "#/$defs/id" }
+                "items": {"$ref": "#/$defs/id"}
               },
-              "possible_item_count": { "type": "integer", "minimum": 0 },
-              "possible_item_ids": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true },
-              "possible_item_tags": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true },
-              "possible_items_complete": { "const": false },
-              "possible_items_analysis": { "const": "static_candidates_including_nested_tables" }
+              "possible_item_count": {"type": "integer", "minimum": 0},
+              "possible_item_ids": {
+                "type": "array",
+                "items": {"$ref": "#/$defs/id"},
+                "uniqueItems": true
+              },
+              "possible_item_tags": {
+                "type": "array",
+                "items": {"$ref": "#/$defs/id"},
+                "uniqueItems": true
+              },
+              "possible_items_complete": {"const": false},
+              "possible_items_analysis": {"const": "static_candidates_including_nested_tables"},
+              "definition_available": {"type": "boolean"},
+              "pool_count": {"type": "integer", "minimum": 0},
+              "pools": {
+                "type": "array",
+                "items": {"$ref": "#/$defs/normalizedLootPool"}
+              },
+              "top_level_entry_count": {"type": "integer", "minimum": 0}
             },
-            "additionalProperties": true
+            "additionalProperties": true,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "definition_available": {"const": true}
+                  }
+                },
+                "then": {
+                  "required": ["definition", "pool_count", "pools", "top_level_entry_count", "referenced_loot_tables", "possible_item_count", "possible_item_ids", "possible_item_tags", "possible_items_complete", "possible_items_analysis"]
+                }
+              }
+            ]
           }
         },
-        "predicates": { "type": "array" },
-        "item_modifiers": { "type": "array" }
+        "predicates": {"type": "array"},
+        "item_modifiers": {"type": "array"},
+        "pools_format": {"const": "mcmods-normalized-loot-pools/v1"},
+        "definition_count": {"type": "integer", "minimum": 0},
+        "definition_missing_count": {"type": "integer", "minimum": 0},
+        "normalized_pool_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": true
+    },
+    "normalizedLootEntry": {
+      "type": "object",
+      "required": ["entry_index", "entry_kind", "conditions", "condition_types", "functions", "function_types", "child_count", "children", "normalization_status"],
+      "properties": {
+        "conditions": {
+          "type": "array",
+          "items": {}
+        },
+        "condition_types": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "functions": {
+          "type": "array",
+          "items": {}
+        },
+        "function_types": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "entry_index": {"type": "integer", "minimum": 0},
+        "entry_type": {"type": "string"},
+        "entry_kind": {"type": "string"},
+        "child_count": {"type": "integer", "minimum": 0},
+        "children": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/normalizedLootEntry"}
+        },
+        "normalization_status": {
+          "enum": ["complete", "partial"]
+        },
+        "item_id": {"$ref": "#/$defs/id"},
+        "tag_id": {"$ref": "#/$defs/id"},
+        "loot_table_id": {"$ref": "#/$defs/id"},
+        "dynamic_id": {"$ref": "#/$defs/id"}
+      },
+      "additionalProperties": true
+    },
+    "normalizedLootPool": {
+      "type": "object",
+      "required": ["conditions", "condition_types", "functions", "function_types", "pool_index", "entry_count", "entries", "possible_item_ids", "possible_item_tags", "possible_items_complete"],
+      "properties": {
+        "conditions": {
+          "type": "array",
+          "items": {}
+        },
+        "condition_types": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "functions": {
+          "type": "array",
+          "items": {}
+        },
+        "function_types": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "pool_index": {"type": "integer", "minimum": 0},
+        "entry_count": {"type": "integer", "minimum": 0},
+        "entries": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/normalizedLootEntry"}
+        },
+        "possible_item_ids": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/id"}
+        },
+        "possible_item_tags": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/id"}
+        },
+        "possible_items_complete": {"const": false},
+        "rolls": {},
+        "bonus_rolls": {}
       },
       "additionalProperties": true
     }

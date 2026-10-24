@@ -1,0 +1,92 @@
+{
+  "schema_version": "mcmods-natural-generation/v2",
+  "export_mode": "normalized_catalog",
+  "entry_count": 2,
+  "placed_feature_count": 1,
+  "configured_carver_count": 1,
+  "complete_count": 1,
+  "partial_count": 1,
+  "consumed_biome_modifier_count": 0,
+  "unreferenced_configured_feature_count": 2,
+  "technical_registry_category_count": 1,
+  "technical_registry_categories_omitted_from_catalog": [
+    {
+      "registry": "minecraft:worldgen/noise",
+      "count": 1
+    }
+  ],
+  "counts_by_category": {
+    "ore": 1,
+    "carver": 1
+  },
+  "entries": [
+    {
+      "id": "example:tin_ore",
+      "namespace": "example",
+      "path": "tin_ore",
+      "generation_id": "example:tin_ore",
+      "entry_kind": "placed_feature",
+      "source_mod_id": "example",
+      "source_mod_version": "1.0",
+      "category": "ore",
+      "feature_type": "minecraft:ore",
+      "runtime_registered": true,
+      "normalization_status": "complete",
+      "configured_feature_definition_paths": [],
+      "configured_feature_ids": [
+        "example:tin_ore"
+      ],
+      "configured_feature_id": "example:tin_ore",
+      "outputs": [
+        {
+          "block_id": "example:tin_ore"
+        }
+      ],
+      "targets": [
+        "#minecraft:stone_ore_replaceables"
+      ],
+      "referenced_feature_ids": [],
+      "size": 9,
+      "discard_chance_on_air_exposure": 0.25,
+      "placement": {
+        "count": {
+          "type": "example:custom_count",
+          "value": 12
+        },
+        "modifier_types": [
+          "example:custom_count"
+        ],
+        "modifiers": [
+          {
+            "type": "example:custom_count",
+            "value": 12
+          }
+        ],
+        "biome_filter": true
+      },
+      "generation_steps": [],
+      "biome_selectors": [],
+      "resolved_biome_ids": [],
+      "biome_modifier_ids": [],
+      "dimension_ids": [],
+      "dimension_resolution": "not_directly_resolvable"
+    },
+    {
+      "id": "example:cave",
+      "namespace": "example",
+      "path": "cave",
+      "generation_id": "example:cave",
+      "entry_kind": "configured_carver",
+      "source_mod_id": "example",
+      "category": "carver",
+      "runtime_registered": true,
+      "normalization_status": "partial",
+      "generation_steps": [],
+      "biome_selectors": [],
+      "resolved_biome_ids": [],
+      "biome_modifier_ids": [],
+      "dimension_ids": [],
+      "dimension_resolution": "not_directly_resolvable"
+    }
+  ]
+}

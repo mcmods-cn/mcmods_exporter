@@ -1,0 +1,57 @@
+{
+  "schema_version": "mcmods-jei-categories/v7",
+  "category_count": 1,
+  "recipe_count": 0,
+  "layout_sample_count": 4,
+  "filter_summary": {
+    "policy": "source_recipe_namespace_with_recipe_id_deduplication",
+    "discovered_recipe_presentations": 4,
+    "exported_recipe_presentations": 0,
+    "layout_sample_presentations": 4,
+    "excluded_recipe_presentations": 0,
+    "excluded_by_reason": {},
+    "excluded_by_recipe_type": {},
+    "template_only_recipe_presentations": 4,
+    "configured_excluded_recipe_type_ids": [],
+    "configured_template_only_recipe_type_ids": [
+      "example:pressing"
+    ]
+  },
+  "categories": [
+    {
+      "recipe_type_id": "example:pressing",
+      "title_names": {
+        "en_us": "Pressing",
+        "zh_cn": "压制"
+      },
+      "width": 100,
+      "height": 50,
+      "export_mode": "templates_only",
+      "recipes_omitted": true,
+      "source_recipe_count": 4,
+      "recipe_count": 0,
+      "exported_recipe_count": 0,
+      "template_count": 1,
+      "background_count": 1,
+      "template_collection": "recipes/jei/templates/example/pressing.json",
+      "recipe_collection": "recipes/jei/recipes/example/pressing.json",
+      "image_scale": 4,
+      "canvas": {
+        "x": 0,
+        "y": 0,
+        "width": 132,
+        "height": 82
+      },
+      "catalyst_count": 1,
+      "catalysts": [
+        {
+          "type": "item_stack",
+          "resource_location": "example:press",
+          "item": "example:press",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "recipes": []
+}

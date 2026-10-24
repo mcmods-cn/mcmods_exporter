@@ -1,0 +1,50 @@
+{
+  "schema_version": "mcmods-advancements/v2",
+  "source": "integrated_server",
+  "filter_mode": "displayed_non_recipe_advancements",
+  "count": 1,
+  "filtered_recipe_unlock_count": 2,
+  "filtered_no_display_count": 1,
+  "filtered_count": 3,
+  "language_count": 2,
+  "roots": [
+    "example:root"
+  ],
+  "advancements": [
+    {
+      "id": "example:root",
+      "children": [],
+      "criteria": [
+        "obtain"
+      ],
+      "requirements": [
+        [
+          "obtain"
+        ]
+      ],
+      "max_criteria_required": 1,
+      "rewards": {
+        "experience": 5
+      },
+      "display": {
+        "title_names": {
+          "en_us": "First plate",
+          "zh_cn": "第一块板"
+        },
+        "description_names": {
+          "en_us": "Press a plate"
+        },
+        "icon": {
+          "item": "example:plate",
+          "count": 1
+        },
+        "frame": "task",
+        "x": 0.0,
+        "y": 0.0,
+        "hidden": false,
+        "show_toast": true,
+        "announce_chat": false
+      }
+    }
+  ]
+}

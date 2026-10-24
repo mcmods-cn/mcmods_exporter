@@ -1,0 +1,99 @@
+{
+  "schema_version": "mcmods-loot-tables/v2",
+  "pools_format": "mcmods-normalized-loot-pools/v1",
+  "count": 2,
+  "definition_count": 1,
+  "definition_missing_count": 1,
+  "normalized_pool_count": 1,
+  "dependency_count": 0,
+  "predicate_count": 0,
+  "item_modifier_count": 0,
+  "counts_by_category": {
+    "chest": 2
+  },
+  "loot_tables": [
+    {
+      "id": "example:chests/test",
+      "namespace": "example",
+      "path": "chests/test",
+      "category": "chest",
+      "selected_namespace": true,
+      "inclusion_reason": "target_namespace",
+      "runtime_loaded": true,
+      "definition_available": true,
+      "data_path": "worldgen/data/example/loot_tables/chests/test.json",
+      "definition": {
+        "pools": [
+          {
+            "rolls": {
+              "type": "minecraft:uniform",
+              "min": 1,
+              "max": 3
+            },
+            "entries": [
+              {
+                "type": "example:unknown",
+                "extension": {
+                  "retained": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "pool_count": 1,
+      "pools": [
+        {
+          "pool_index": 0,
+          "rolls": {
+            "type": "minecraft:uniform",
+            "min": 1,
+            "max": 3
+          },
+          "bonus_rolls": 0,
+          "conditions": [],
+          "condition_types": [],
+          "functions": [],
+          "function_types": [],
+          "entry_count": 1,
+          "entries": [
+            {
+              "entry_index": 0,
+              "entry_type": "example:unknown",
+              "entry_kind": "unknown",
+              "conditions": [],
+              "condition_types": [],
+              "functions": [],
+              "function_types": [],
+              "child_count": 0,
+              "children": [],
+              "normalization_status": "complete"
+            }
+          ],
+          "possible_item_ids": [],
+          "possible_item_tags": [],
+          "possible_items_complete": false
+        }
+      ],
+      "top_level_entry_count": 1,
+      "referenced_loot_tables": [],
+      "possible_item_count": 0,
+      "possible_item_ids": [],
+      "possible_item_tags": [],
+      "possible_items_complete": false,
+      "possible_items_analysis": "static_candidates_including_nested_tables"
+    },
+    {
+      "id": "example:chests/missing",
+      "namespace": "example",
+      "path": "chests/missing",
+      "category": "chest",
+      "selected_namespace": true,
+      "inclusion_reason": "target_namespace",
+      "runtime_loaded": true,
+      "definition_available": false
+    }
+  ],
+  "predicates": [],
+  "item_modifiers": []
+}

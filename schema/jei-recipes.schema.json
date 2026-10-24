@@ -7,6 +7,8 @@
   "properties": {
     "schema_version": { "const": "mcmods-jei-recipe-collection/v2" },
     "recipe_type_id": { "type": "string" },
+    "export_mode": { "enum": ["full", "templates_only"] },
+    "recipes_omitted": { "type": "boolean" },
     "template_collection": { "type": "string" },
     "count": { "type": "integer", "minimum": 0 },
     "recipes": {
