@@ -10,10 +10,7 @@
   "unreferenced_configured_feature_count": 2,
   "technical_registry_category_count": 1,
   "technical_registry_categories_omitted_from_catalog": [
-    {
-      "registry": "minecraft:worldgen/noise",
-      "count": 1
-    }
+    "noise"
   ],
   "counts_by_category": {
     "ore": 1,

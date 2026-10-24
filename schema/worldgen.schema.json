@@ -159,7 +159,7 @@
         },
         "technical_registry_categories_omitted_from_catalog": {
           "type": "array",
-          "items": {"type": "object"}
+          "items": {"type": "string"}
         },
         "entry_count": {"type": "integer", "minimum": 0},
         "placed_feature_count": {"type": "integer", "minimum": 0},
