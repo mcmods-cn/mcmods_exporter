@@ -110,7 +110,7 @@ public final class ExportConfig {
         templateOnlyRecipeTypes.removeAll(excludedRecipeTypes);
 
         return new ExportConfig(
-            output.normalize(),
+            output.toAbsolutePath().normalize(),
             configFile,
             namespaces,
             languages,

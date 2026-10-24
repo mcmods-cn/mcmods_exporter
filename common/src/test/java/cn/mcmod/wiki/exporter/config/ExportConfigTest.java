@@ -1,5 +1,7 @@
 package cn.mcmod.wiki.exporter.config;
 
+import cn.mcmod.wiki.exporter.util.ExportPaths;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -64,6 +66,23 @@ class ExportConfigTest {
 
         assertEquals(gameDirectory.resolve("exports/wiki").normalize(), config.outputRoot());
         assertFalse(config.exitAfterExport());
+    }
+
+    @Test
+    void relativeLauncherGameDirectoryProducesRelativizableExportPaths(@TempDir Path temporaryDirectory) {
+        System.setProperty("mcmods.export.config", temporaryDirectory.resolve("exporter.properties").toString());
+        System.setProperty("mcmods.export.output", "exports/wiki");
+        Path gameDirectory = Path.of("relative-launcher-game");
+
+        ExportConfig config = ExportConfig.fromSystemProperties(gameDirectory, true, "auditfixture", ExportProfile.ALL);
+        Path dataFile = ExportPaths.safeResolve(config.outputRoot(), "data/auditfixture/worldgen/example.json");
+
+        assertEquals(
+            "data/auditfixture/worldgen/example.json",
+            config.outputRoot().relativize(dataFile).toString().replace('\\', '/')
+        );
+        assertTrue(config.outputRoot().isAbsolute());
+        assertEquals(gameDirectory.resolve("exports/wiki").toAbsolutePath().normalize(), config.outputRoot());
     }
 
     @Test
