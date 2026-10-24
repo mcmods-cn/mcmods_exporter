@@ -10,6 +10,9 @@
   "entrypoints": {
     "client": [
       "cn.mcmod.wiki.exporter.fabric.McModsExporterFabric"
+    ],
+    "jei_mod_plugin": [
+      "cn.mcmod.wiki.exporter.compat.jei.McModsJeiPlugin"
     ]
   },
   "depends": {

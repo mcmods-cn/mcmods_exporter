@@ -45,6 +45,13 @@ def main():
         except Exception as error:
             observations.append({"test": name, "status": "FAIL", "reason": str(error)})
 
+    def fabric_jei_entrypoint_registered():
+        metadata = load(ROOT / "fabric/src/main/resources/fabric.mod.json")
+        plugins = metadata["entrypoints"].get("jei_mod_plugin", [])
+        assert plugins.count("cn.mcmod.wiki.exporter.compat.jei.McModsJeiPlugin") == 1, "Fabric must register exactly one exporter JEI runtime plugin"
+
+    record("fabric:exporter-jei-runtime-entrypoint", fabric_jei_entrypoint_registered)
+
     for name, (schema_file, source_file, export_file, definition) in CONTRACTS.items():
         schema = load(ROOT / "schema" / schema_file)
         Draft202012Validator.check_schema(schema)
@@ -158,6 +165,8 @@ def main():
             assert manifest["loader"] in ["fabric", "forge"], "Sample requires a currently supported loader"
             assert manifest["status"] == "complete" and manifest["error_count"] == 0, "Game export is incomplete or contains exporter errors; inspect original game evidence"
             assert manifest["configuration"]["profile"] == "all", "Full contract validation requires the all profile"
+            build_version = next(line.split("=", 1)[1].strip() for line in (ROOT / "gradle.properties").read_text().splitlines() if line.startswith("mod_version="))
+            assert manifest["exporter_version"] == build_version, "Manifest exporter version differs from the tested build version"
 
         record("manifest:actual-game-complete-supported-all-profile", actual_complete_supported_export)
     print(json.dumps({"sample_kind": "actual-game-and-synthetic" if args.export_root else "synthetic-contract-only", "results": observations}, ensure_ascii=False, indent=2))

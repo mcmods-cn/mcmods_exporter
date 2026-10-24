@@ -61,7 +61,7 @@ public final class ExportReport {
     public JsonObject manifest(ExportConfig config, List<String> exportedLanguages, String archiveName) {
         JsonObject root = new JsonObject();
         root.addProperty("schema_version", McModsExporter.SCHEMA_VERSION);
-        root.addProperty("exporter_version", McModsExporter.VERSION);
+        root.addProperty("exporter_version", Platform.getMod(McModsExporter.MOD_ID).getVersion());
         root.addProperty("status", status);
         root.addProperty("started_at", startedAt.toString());
         if (finishedAt != null) {
