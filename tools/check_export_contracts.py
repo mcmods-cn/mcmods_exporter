@@ -12,6 +12,7 @@ import re
 import sys
 
 from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = {
@@ -29,7 +30,7 @@ def load(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--export-root", type=Path, help="Unmodified, unpacked game export (no synthetic fallback)")
+    parser.add_argument("--export-root", type=Path, help="Unmodified, unpacked all-profile game export (no synthetic fallback)")
     args = parser.parse_args()
     observations = []
 
@@ -37,6 +38,10 @@ def main():
         try:
             operation()
             observations.append({"test": name, "status": "PASS"})
+        except ValidationError as error:
+            # ValidationError.__str__ includes the entire failed instance. Never
+            # print imported documents: diagnostics need only path and rule.
+            observations.append({"test": name, "status": "FAIL", "reason": "schema violation", "instance_path": list(error.absolute_path), "schema_path": list(error.absolute_schema_path), "validator": error.validator})
         except Exception as error:
             observations.append({"test": name, "status": "FAIL", "reason": str(error)})
 
@@ -143,6 +148,18 @@ def main():
                     validator.validate(load(document))
 
         record("jei:actual-game-referenced-template-and-binding-collections", validate_actual_collections)
+        record("manifest:actual-game-schema", lambda: Draft202012Validator(
+            load(ROOT / "schema/manifest.schema.json")
+        ).validate(load(export_root / "manifest.json")))
+
+        def actual_complete_supported_export():
+            manifest = load(export_root / "manifest.json")
+            assert manifest["minecraft_version"] == "1.20.1", "Sample requires this repository's supported Minecraft version"
+            assert manifest["loader"] in ["fabric", "forge"], "Sample requires a currently supported loader"
+            assert manifest["status"] == "complete" and manifest["error_count"] == 0, "Game export is incomplete or contains exporter errors; inspect original game evidence"
+            assert manifest["configuration"]["profile"] == "all", "Full contract validation requires the all profile"
+
+        record("manifest:actual-game-complete-supported-all-profile", actual_complete_supported_export)
     print(json.dumps({"sample_kind": "actual-game-and-synthetic" if args.export_root else "synthetic-contract-only", "results": observations}, ensure_ascii=False, indent=2))
     return int(any(row["status"] != "PASS" for row in observations))
 
