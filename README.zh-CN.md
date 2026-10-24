@@ -41,7 +41,7 @@
 /mcmods_export cancel
 ```
 
-默认输出到游戏目录的 `mcmods-export/`，最终文件名为 `<导出的Mod ID>-<yyyyMMdd-HHmmss-SSS>.zip`；多个 ID 使用 `+` 连接，例如 `create+mekanism-20260710-153012-123.zip`。导出过程中使用的隐藏暂存目录会在 ZIP 成功生成后删除。命名空间支持命令补全；`all` 会导出所有命名空间（导出器自身除外），文件名前缀为 `all-mods`。
+默认输出到游戏目录的 `mcmods-export/`，最终文件名为 `<导出的Mod ID>-<yyyyMMdd-HHmmss-SSS>.zip`；多个 ID 使用 `+` 连接，例如 `create+mekanism-20260710-153012-123.zip`。导出过程中使用的隐藏暂存目录会在 ZIP 成功生成后删除。命名空间支持命令补全；`all` 会导出所有命名空间（导出器自身除外），文件名前缀为 `all-mods`。网站单项目资料导入请使用 `/mcmods_export <目标MODID> all`；全量包适合离线采集，不能由导入端猜测内容属于哪个项目。详见[网站单项目导入范围](docs/export-format-v1.md#网站单项目导入范围)。
 
 ## 启动参数自动导出
 
@@ -183,8 +183,10 @@ $env:JAVA_HOME='C:\path\to\jdk-17'
 
 产物：
 
-- `fabric/build/libs/mcmods_exporter-0.8.0.jar`
-- `forge/build/libs/mcmods_exporter-0.8.0.jar`
+- `fabric/build/libs/mcmods_exporter-0.10.0.jar`
+- `forge/build/libs/mcmods_exporter-0.10.0.jar`
+
+实际版本号取自根目录 `gradle.properties` 的 `mod_version`，以上为当前 `0.10.0` 构建示例；请使用无 `-dev-shadow`、`-sources` 后缀的加载器产物。
 
 ## 后续版本适配
 
