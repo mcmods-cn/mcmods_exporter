@@ -84,3 +84,59 @@ started during source preparation. The old supported T02 actual82.827s dev
 run supports feasibility, not these new assertions. Normal release-JAR install
 remains separately unexecuted; no normal launcher/session is fabricated and
 its missing prerequisites do not block this honestly scoped contract layer.
+
+## NEW-EXPORT-004 successor: default project verification
+
+The source-freeze paragraphs above describe the unchanged first proof4e0f961.
+Its one actual targeted run retained1PASS/2FAIL: both failures precisely showed
+that real `JsonFiles` omitted the normalizer's explicitly supplied ordered:null.
+They are preserved under
+`artifacts/exporter-sys48-headless-first-20261115-01` in the audit coordinator.
+Root assigned NEW-EXPORT-004 outside original97, related to SYS48-T03/F002.
+Original F-004's advancement/worldgen/loot schema-version scope is distinct.
+
+This independent successor now includes the minimal production fix:
+`GsonBuilder.serializeNulls()`. It retains intentionally supplied null members,
+leaves absent members absent, and changes neither template hashing nor format
+labels. The new disk-boundary regression covers nested/array null, absence,
+false/count/chance/SNBT and input-tree immutability. All original three tests,
+nine vectors, PNG goldens and original assertions remain unchanged. The repair
+8062 checkout and old4e proof are not moved or modified.
+
+The default common test runtime now includes `sourceSets.test.compileClasspath`
+to load the real compile-only JEI API used by the collection-writer test. This
+is exactly the opt-in init's previously reviewed behavior, scoped to tests;
+it adds no production dependency, fake API or renderer. **The default command
+below needs no init script or test filter.** The earlier relative -p/-I example
+also had a retained path error because the wrapper runs Gradle from the repair
+checkout, so all project paths below are absolute.
+
+Future single default test/build command, only in root's released resource
+window, from any safe caller directory:
+
+```text
+python /workspace/audit-fixes-20261024/runtime/run-exporter-gradle.py -g /home/agent/.gradle -p /workspace/audit-fixes-20261024/verification/exporter-explicit-json-null-fix-20261115 :common:test build --offline --no-daemon --max-workers=1 --no-parallel -Dorg.gradle.jvmargs=-Xmx768m --console=plain
+```
+
+This requests default common JUnit and the normal Fabric+Forge build once.
+The expected suite size is53 (previous49 + three new SYS48 + one nested-null),
+subject to actual native XML; no result is inferred from the expected count.
+Do not first run the four new tests and then repeat the entire suite. Gradle
+heap is768MiB, max-workers1, no new test-JVM heap override; original defaults
+apply. Planning reserve is2GiB available RAM and1GiB free workspace; actual
+capacity and cost must be recorded at the window. No game/display/NSS/PG is
+requested, and `--offline` must remain effective. Do not auto-retry or silently
+download if cache/configuration/compilation/build fails.
+
+Separate static/synthetic contract command (not actual game output), after
+reading the script and in its own released window:
+
+```text
+/workspace/audit-fixes-20261024/runtime/exporter-contract-venv/bin/python /workspace/audit-fixes-20261024/verification/exporter-explicit-json-null-fix-20261115/tools/check_export_contracts.py
+```
+
+The new exporter fix commit must be recorded for any future real client. A
+different development-client proof must build/load that exact new source tree
+via absolute -p; the repair8062 ignored classes, old release JARs and old game
+ZIPs cannot establish this new fix. Actual graphics and normal release-JAR
+installation remain separate pending layers.

@@ -12,4 +12,5 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    classpath += sourceSets.test.compileClasspath
 }
