@@ -1,0 +1,11 @@
+// Opt-in proof invocation only; does not change the normal product build.
+// Compile-only JEI API is needed by the new real-writer boundary class.
+// Use --tests cn.mcmod.wiki.exporter.stage.Sys48WireMatrixContractTest so the
+// already accepted49 JUnit cases are not run again by this proof invocation.
+gradle.projectsEvaluated {
+    def common = rootProject.project(':common')
+    common.tasks.named('test', Test).configure {
+        classpath += common.sourceSets.test.compileClasspath
+        maxParallelForks = 1
+    }
+}

@@ -1,0 +1,52 @@
+{
+  "scope": "Independent analytical RGBA golden for real-client controlled category CONTENT only; never a production export. The full JEI border/alpha is compared separately with an ordinary empty-input real JEI draw.",
+  "padding": 4,
+  "image_scale": 4,
+  "content_width": 116,
+  "content_height": 54,
+  "outside_rgba": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "panels": {
+    "panel_a": [
+      40,
+      72,
+      104,
+      255
+    ],
+    "panel_b": [
+      16,
+      32,
+      48,
+      255
+    ]
+  },
+  "vertical_bar": {
+    "logical_x0": 8,
+    "logical_x1": 10,
+    "rgba": [
+      240,
+      224,
+      96,
+      255
+    ]
+  },
+  "horizontal_bar": {
+    "logical_y0": 46,
+    "logical_y1": 48,
+    "rgba": [
+      96,
+      192,
+      224,
+      255
+    ]
+  },
+  "full_material_control_must_differ_inside_at_least_one_declared_slot": true,
+  "production_content_must_match_all_analytic_pixels": true,
+  "production_full_frame_must_equal_independent_real_jei_empty_input_control": true,
+  "outside_analytic_pixels_are_not_the_expected_jei_border": true,
+  "vanilla_crafting_background": "No analytical colour claim for vanilla textured category: compare the full production background to an ordinary real empty3x3 ShapedRecipe control; actual stick/door full-material controls must differ inside declared item-slot regions."
+}
