@@ -174,6 +174,8 @@ OBJ 是实体在 idle 姿态下的基础 `EntityModel` 静态快照，含顶点�
 
 每个模板背景取第一次产生该 `template_id` 的配方创建 JEI layout，再给全部槽位设置空显示覆盖后单独渲染，因此不包含输入或输出物品。不同模板即使图片相同也使用不同 PNG。模板只保存完整可容纳槽位的稳定 `slot_id`、角色、`rect` 与 `visual_rect`，具体配方只保存 `template_id` 及 `slot_id → alternatives`；未使用槽位以 `minecraft:air` 明确占位但不计入输入。工作台木棍、木门等配方共享完整 3×3 模板，机械动力合成器等动态容量类别则生成多个模板和对应背景。完整格式见 [`docs/jei-template-export-v1.md`](docs/jei-template-export-v1.md)。
 
+历史包缺少 `ordered` 字段时，可先按[存量排序字段诊断与处置说明](docs/legacy-jei-ordering.md)只读统计。缺失不能推断为 `false`；保留原包，具备原始环境时使用修正版重新导出并通过正常审核形成新修订。
+
 ## 构建
 
 ```powershell
