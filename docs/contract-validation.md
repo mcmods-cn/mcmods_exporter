@@ -34,10 +34,11 @@ This command validates the actual manifest, capabilities, four affected indexes
 and every referenced JEI template/binding collection. It also joins each v7
 category to its collections, checks counts and the omission policy, and resolves
 each binding to the declared slot of the template in that category. The capability
-loader, Minecraft version, profile and format must agree with the manifest. It also requires the supported
-Minecraft/loader, `profile=all`, `status=complete` and `error_count=0` for that
-complete-export assertion. Recorded stages must have finished and the error list must be empty. Missing files fail explicitly. Validation diagnostics
-report schema paths/rules and do not echo document contents.
+loader, Minecraft version, profile and format must agree with the manifest.
+The complete-export check requires a supported Minecraft version and loader,
+`profile=all`, `status=complete`, finished stages and an empty error list with
+`error_count=0`. Diagnostics identify the missing file or the failing schema
+path and rule.
 
 The bundled examples are synthetic wire-contract samples. JUnit logic tests,
 synthetic schema validation, real game serialization, API/database import,
@@ -45,8 +46,58 @@ queue/Worker execution, independent moderation and public browser rendering are
 separate evidence layers. A schema PASS is not an end-to-end import or release
 approval. Preserve all prior failures and environment errors when rerunning.
 
+## Producing a package from a checkout
+
+Use JDK 17 and a disposable singleplayer world with the mod whose namespace
+you intend to export. Both loaders require the JEI runtime. Common sources
+compile against its API. To start a development client, save the following as
+an external Gradle init script named `client-jei.gradle`. Set `loader` to the
+selected Gradle subproject.
+
+```groovy
+def loader = 'fabric'
+gradle.beforeProject { project ->
+    if (project.path == ":${loader}") {
+        project.pluginManager.withPlugin('dev.architectury.loom') {
+            def versions = project.rootProject
+            project.dependencies.add('modLocalRuntime',
+                "mezz.jei:jei-${versions.minecraft_version}-${loader}:${versions.jei_version}")
+        }
+    }
+}
+```
+
+Run `./gradlew -I /path/to/client-jei.gradle :fabric:runClient`, or use
+`forge` in the script and `:forge:runClient` for Forge. Place the target mod
+in the selected subproject's `run/mods/`. Enter the world, wait for JEI, then
+run `/mcmods_export <modid> all`. Record the source commit, loader, JEI version,
+input mod hash, command, ZIP hash and manifest outcome. For an installed-JAR
+smoke test, load the remapped JAR, Architectury, JEI and the applicable Fabric
+API in a separate launcher profile.
+
+Inspect `status`, `error_count`, capabilities, and each stage before sending
+the ZIP to a test project. A cancelled job keeps its staging directory. A ZIP
+write failure records `status=failed` in the staging manifest when the
+directory remains writable. Retain this evidence, resolve the output path or
+disk issue, and start a fresh job. For regression checks keep the previous JAR
+and ZIP hash, so the previous loader-matched JAR can be restored while existing
+import revisions continue to refer to their original package.
+
+To investigate a slow export, reuse the same world, installed mods, resources,
+configuration and rendering environment. Inspect the stage `work_steps`,
+`max_step_us` and elapsed time in the manifest. In the world-generation stage
+each registry step handles at most one entry. Resource scans, individual codecs,
+JSON writes, renders and ZIP finalization still use the client thread. Measure
+finalization separately when attributing wall time to compression.
 
 ## Reusing a recorded game export
+
+The backend keeps both loader-specific test mods, their unmodified exports and
+the producer commit in `internal/httpapi/testdata/game-20261121/`. Each mod
+declares `governancefixture:two_sticks` with one oak plank and two sticks.
+Use the matching loader's input JAR to repeat the game run. Keep the original
+ZIP for byte-level comparisons. The directory's `provenance.json` pins both
+ZIPs and input JARs by SHA256.
 
 The backend repository keeps small, unmodified Minecraft 1.20.1/Fabric 0.16.14/
 JEI 15.20.0.133 exports in `internal/httpapi/testdata/audit-20261024/`.
@@ -58,8 +109,11 @@ To validate the same bytes with the website importer, run this from the
 backend repository:
 
 ```sh
-go test ./internal/httpapi -run '^TestExporterSamplePackageContracts$' -count=1
+go test ./internal/httpapi -run '^(TestExporterSamplePackageContracts|TestExportersForSupportedLoadersMatchRecordedPackages)$' -count=1
 ```
+
+Set `MCMODS_EXPORT_TEST_DIR` to an isolated directory containing additional
+unchanged ZIPs to exercise the same decoder and ownership checks on a new run.
 
 The backend check covers the full and template-only archives and exercises its
 decoder, recipe ownership scope, geometry and binding rules in memory. Its
