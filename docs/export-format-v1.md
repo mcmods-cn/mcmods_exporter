@@ -108,6 +108,8 @@ Mekanism 1.20.1 的四套 ChemicalStack 全部保留，但必须分开入库：`
 
 ## 方块实体模型与六面 UV
 
+原版信标光束、末地折跃门的放置效果和刷怪笼里的展示实体依赖世界或方块实体状态。游戏使用对应原版渲染器时，`block_entities/index.json` 保留方块与方块实体类型，记录 `model_source=runtime_block_entity_renderer`、`model_available=false`、`variant_count=0` 和空 `variants`。这些对象计入阶段的 `requires_placed_state`。资源目录独立收录常规方块模型与贴图。替换渲染器仍按自己的运行时行为采集，实际异常进入错误清单。
+
 箱子、末影箱等方块不使用普通 `blockstates → models/block → textures` 模型链，而由 `BlockEntityRenderer` 在运行时绘制。它们的模型和贴图入口位于 `block_entities/index.json`，Schema 为 `mcmods-block-entity-models/v1`：
 
 - 每个目标方块记录 `block_id`、`block_entity_type_id` 和全部模型变体；

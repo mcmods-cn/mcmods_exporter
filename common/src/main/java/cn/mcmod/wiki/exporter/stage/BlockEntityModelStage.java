@@ -13,8 +13,11 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.blockentity.BeaconRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.ChestRenderer;
+import net.minecraft.client.renderer.blockentity.SpawnerRenderer;
+import net.minecraft.client.renderer.blockentity.TheEndGatewayRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -184,6 +187,10 @@ public final class BlockEntityModelStage implements ExportStage {
         BlockEntityRenderer renderer,
         List<BlockEntityTextureResolver.TextureReference> textures
     ) throws Exception {
+        if (requiresPlacedState(renderer.getClass())) {
+            context.report().addCount(ID, "requires_placed_state", 1);
+            return null;
+        }
         ObjVertexConsumer consumer = new ObjVertexConsumer();
         renderer.render(
             blockEntity,
@@ -206,6 +213,14 @@ public final class BlockEntityModelStage implements ExportStage {
             textures,
             false
         );
+    }
+
+    // These vanilla effects use the placed entity's level, timer or spawn data.
+    // A replacement renderer can provide its own geometry for a detached entity.
+    static boolean requiresPlacedState(Class<?> rendererType) {
+        return rendererType == BeaconRenderer.class
+            || rendererType == TheEndGatewayRenderer.class
+            || rendererType == SpawnerRenderer.class;
     }
 
     private static JsonObject writeVariant(
