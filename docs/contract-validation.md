@@ -93,6 +93,25 @@ each registry step handles at most one entry. Resource scans, individual codecs,
 JSON writes, renders and ZIP finalization still use the client thread. Measure
 finalization separately when attributing wall time to compression.
 
+### Checking JEI ingredient placement in game output
+
+With Minecraft 1.20.1 and JEI 15.20.0.133, export the `minecraft` namespace
+and look up `minecraft:torch` in the crafting recipe collection. Follow that
+recipe's `template_id`. The result slot starts at (99, 23) in the 124×62
+logical canvas and has size 16×16. The separate background PNG uses 4× scale.
+
+For a custom renderer, use a separate game instance and enable `DebugMode`
+in `config/jei/jei-debug.ini` before starting JEI. Export the `jei` namespace.
+For a focused run, set `mcmods.export.modules=compatibility,jei` and
+`mcmods.export.recipeTypes.exclude=jei:obnoxiously_large_recipe`.
+In the upstream `jei:debug` template the fluid input uses 12×47 logical pixels
+at (28, 4). Its two fluid outputs use 16×58 at (94, 4) and (114, 4). Each
+18×60 tank frame starts one pixel above and to the left of its ingredient.
+The frame background and overlay come from JEI's
+`assets/jei/textures/jei/gui/debug.png` at texture coordinates (220, 196)
+and (238, 196). This exercises offset decorations with the custom sizes and
+keeps the upstream zero-amount fluid distinguishable from an empty slot.
+
 ## Reusing a recorded game export
 
 When checking a previous producer, pass `--expected-exporter-version` from its
