@@ -193,7 +193,7 @@ $env:JAVA_HOME='C:\path\to\jdk-17'
 
 导出包供网站前端预检、上传，再由后端导入和审核；客户端仅将文件写入游戏机本地。
 
-公共的配置、任务调度、Schema、错误隔离、OBJ 写入和大部分导出规则位于 `common`。加载器入口只负责命令与 tick。升级 Minecraft 时，优先只调整以下 API 边界：
+`common` 实现配置、任务调度、错误隔离、OBJ 写入和各导出阶段，包格式定义在 `schema/`。Fabric 与 Forge 的客户端入口注册导出命令，在每个客户端 tick 结束时调用 `ExportBootstrap.tick`，在客户端关闭时调用 `ExportCoordinator.clientStopping` 取消活动任务并写出暂存清单。升级 Minecraft 时优先核对下列 API 边界。
 
 - `render/OffscreenRenderer.java`：RenderTarget、GuiGraphics、投影矩阵；
 - `stage/JeiRecipeGuiStage.java`：JEI 类别空白背景与配方槽位 API；

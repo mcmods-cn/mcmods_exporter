@@ -26,7 +26,7 @@ Windows 使用 `gradlew.bat :common:test build`。安装 `fabric/build/libs/` �
 
 | 工作 | 入口 |
 | --- | --- |
-| 注册命令与 tick | `fabric/`、`forge/` 的客户端事件，以及 common 的 `ExportBootstrap` |
+| 接入客户端事件 | `fabric/`、`forge/` 注册命令，在客户端 tick 结束时调用 `ExportBootstrap.tick`，关闭时交给 `ExportCoordinator.clientStopping` 取消活动任务 |
 | 添加导出模块 | 在 common 的 `stage/` 实现阶段，在 `task/ExportPipeline` 定义 profile、选择条件、执行顺序。更新对应 schema 与 fixture，并检验网站消费者 |
 | 修改 JEI 展示 | `JeiRecipeGuiStage`、`RecipeLayoutNormalizer`、`JeiSlotSemantics`。[类别、模板、绑定与概率](docs/jei-template-export-v1.md) |
 | 输出与错误恢复 | `ExportJob`、`ExportReport`、`ExportArchives`。[manifest 与网站接收范围](docs/export-format-v1.md) |
