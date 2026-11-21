@@ -21,8 +21,12 @@ public final class ExportCoordinator {
         return INSTANCE;
     }
 
+    public boolean isBusy() {
+        return activeJob != null && !activeJob.isFinished();
+    }
+
     public boolean request(Minecraft minecraft, ExportConfig config, Consumer<Component> notifier) {
-        if (activeJob != null && !activeJob.isFinished()) {
+        if (isBusy()) {
             notifier.accept(Component.literal("[mcmods_exporter] 已有导出任务运行中: " + activeJob.status()));
             return false;
         }
@@ -39,7 +43,7 @@ public final class ExportCoordinator {
     }
 
     public void tick() {
-        if (activeJob != null && !activeJob.isFinished()) {
+        if (isBusy()) {
             activeJob.tick();
             if (activeJob.isFinished()) {
                 lastOutput = activeJob.output();
@@ -49,14 +53,14 @@ public final class ExportCoordinator {
     }
 
     public String status() {
-        if (activeJob == null || activeJob.isFinished()) {
+        if (!isBusy()) {
             return "idle" + (lastOutput == null ? "" : " last_output=" + lastOutput.toAbsolutePath());
         }
         return activeJob.status();
     }
 
     public boolean cancel() {
-        if (activeJob == null || activeJob.isFinished()) {
+        if (!isBusy()) {
             return false;
         }
         activeJob.cancel();

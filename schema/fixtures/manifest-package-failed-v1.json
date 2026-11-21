@@ -1,0 +1,47 @@
+{
+  "schema_version": "mcmods-export/v1",
+  "exporter_version": "0.10.0",
+  "status": "failed",
+  "started_at": "2026-11-21T00:00:00Z",
+  "minecraft_version": "1.20.1",
+  "loader": "fabric",
+  "package_format": "directory",
+  "configuration": {
+    "namespaces": [
+      "example"
+    ],
+    "all_namespaces": false,
+    "languages": [
+      "en_us"
+    ],
+    "image_sizes": [
+      32,
+      128,
+      256
+    ],
+    "profile": "all",
+    "automatic": false,
+    "modules": [
+      "languages"
+    ]
+  },
+  "stages": [
+    {
+      "id": "languages",
+      "status": "complete",
+      "work_steps": 1,
+      "max_step_us": 500,
+      "counts": {
+        "locales": 1
+      }
+    }
+  ],
+  "errors": [
+    {
+      "stage": "package",
+      "subject": "zip",
+      "message": "FileAlreadyExistsException"
+    }
+  ],
+  "error_count": 1
+}

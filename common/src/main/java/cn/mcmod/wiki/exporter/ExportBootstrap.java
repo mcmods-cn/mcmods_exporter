@@ -15,8 +15,11 @@ import java.util.TreeSet;
 import java.util.function.Consumer;
 
 public final class ExportBootstrap {
+    private static final int READY_TICKS = 40;
+    private static final int MAX_RETRY_TICKS = 20 * 60;
     private static boolean automaticStarted;
-    private static int readyTicks;
+    private static int ticksUntilAttempt = READY_TICKS;
+    private static int retryDelay = READY_TICKS;
 
     private ExportBootstrap() {
     }
@@ -27,19 +30,30 @@ public final class ExportBootstrap {
             return;
         }
         if (minecraft.level == null || minecraft.getConnection() == null || minecraft.getOverlay() instanceof LoadingOverlay) {
-            readyTicks = 0;
+            ticksUntilAttempt = READY_TICKS;
+            retryDelay = READY_TICKS;
             return;
         }
-        if (++readyTicks < 40) {
+        if (--ticksUntilAttempt > 0) {
             return;
         }
-        readyTicks = 0;
-        ExportConfig config = ExportConfig.fromSystemProperties(minecraft.gameDirectory.toPath(), true, null, null);
-        if (config.moduleEnabled("jei") && McModsJeiPlugin.runtime() == null) {
+        ticksUntilAttempt = READY_TICKS;
+        if (ExportCoordinator.get().isBusy()) {
             return;
         }
-        automaticStarted = true;
-        ExportCoordinator.get().request(minecraft, config, automaticNotifier(minecraft));
+        try {
+            ExportConfig config = ExportConfig.fromSystemProperties(minecraft.gameDirectory.toPath(), true, null, null);
+            if (config.moduleEnabled("jei") && McModsJeiPlugin.runtime() == null) {
+                return;
+            }
+            automaticStarted = ExportCoordinator.get().request(minecraft, config, automaticNotifier(minecraft));
+        } catch (RuntimeException exception) {
+            McModsExporter.LOGGER.warn("Could not read automatic export configuration", exception);
+        }
+        if (!automaticStarted) {
+            ticksUntilAttempt = retryDelay;
+            retryDelay = Math.min(MAX_RETRY_TICKS, retryDelay * 2);
+        }
     }
 
     public static boolean startManual(String namespace, ExportProfile profile, Consumer<Component> notifier) {

@@ -212,6 +212,14 @@ def main():
 
     record("jei-v7:reject-undeclared-slot", rejects_dangling_slot)
 
+    manifest_schema = Draft202012Validator(load(ROOT / "schema/manifest.schema.json"))
+    failed_manifest = load(ROOT / "schema/fixtures/manifest-package-failed-v1.json")
+    record("manifest:failed-staging-directory", lambda: manifest_schema.validate(failed_manifest))
+    record("manifest:reject-failed-zip", lambda: require(
+        not manifest_schema.is_valid(dict(failed_manifest, package_format="zip")),
+        "A failed staging manifest was accepted as a ZIP"
+    ))
+
     if export_root:
         def validate_actual_collections():
             categories = export_document(export_root, "recipes/jei/categories.json")
