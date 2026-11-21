@@ -14,6 +14,9 @@ format's future porting notes.
 | Natural generation | `mcmods-natural-generation/v2` | v2 normalized entries, partial data, and string category identifiers | v1 categories are not interpreted as v2 entries |
 | Loot tables | `mcmods-loot-tables/v2` | v2 definitions, missing counters and recursive pools | v1 is not interpreted as complete v2 pools |
 
+Each exported advancement carries a `rewards` field. Minecraft 1.20.1 writes
+`null` for `AdvancementRewards.EMPTY` and an object for a reward definition.
+
 Install the validator dependency and run the complete synthetic positive and
 negative contract examples:
 

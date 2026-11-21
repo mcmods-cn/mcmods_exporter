@@ -166,6 +166,22 @@ def main():
 
     record("natural-generation-v2:reject-wrong-nested-type", rejects_wrong_nested_type)
 
+    def checks_advancement_rewards():
+        validator = Draft202012Validator(load(ROOT / "schema/advancements.schema.json"))
+        document = load(ROOT / "schema/fixtures/advancements-v2.json")
+        entry = document["advancements"][0]
+        entry["rewards"] = None
+        validator.validate(document)
+        entry["rewards"] = {"experience": 0}
+        validator.validate(document)
+        for invalid in (False, 0, "none", []):
+            entry["rewards"] = invalid
+            require(not validator.is_valid(document), "Invalid advancement reward type was accepted")
+        del entry["rewards"]
+        require(not validator.is_valid(document), "Missing advancement rewards field was accepted")
+
+    record("advancements-v2:empty-rewards-and-required-type", checks_advancement_rewards)
+
     record("jei-v6:explicit-legacy-contract", lambda: Draft202012Validator(
         load(ROOT / "schema/legacy/jei-categories-v6.schema.json")
     ).validate(load(ROOT / "schema/fixtures/jei-categories-v6.json")))

@@ -61,7 +61,10 @@
             }
           },
           "max_criteria_required": {"type": "integer", "minimum": 0},
-          "rewards": {"type": "object"}
+          "rewards": {
+            "description": "Minecraft 1.20.1 serializes AdvancementRewards.EMPTY as null.",
+            "type": ["object", "null"]
+          }
         },
         "additionalProperties": true
       }
