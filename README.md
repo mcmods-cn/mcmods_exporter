@@ -10,7 +10,7 @@
 
 ## 构建与验证
 
-在安装 JDK 17 的环境中使用仓库的 Gradle 8.8 wrapper。首次构建需要访问 Minecraft、Fabric、Forge、Architectury、JEI 以及 Gradle 的依赖仓库。
+在安装 JDK 17 的环境中使用仓库的 Gradle 8.8 wrapper。Architectury Gradle 插件与 Loom 固定在根 `build.gradle`，升级时同时验证两个加载器。首次构建需要访问 Minecraft、Fabric、Forge、Architectury、JEI 以及 Gradle 的依赖仓库。
 
 ```sh
 ./gradlew :common:test build
