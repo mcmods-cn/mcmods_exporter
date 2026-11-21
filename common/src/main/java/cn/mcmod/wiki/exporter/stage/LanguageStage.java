@@ -65,7 +65,7 @@ public final class LanguageStage extends OnceStage {
                                 exportedTranslations.putAll(resourceValues);
                             }
                         } catch (Exception exception) {
-                            context.report().error(ID, entry.getKey() + "@" + resource.sourcePackId(), exception);
+                            context.report().error(ID, entry.getKey().toString(), exception);
                         }
                     }
                 }

@@ -21,8 +21,8 @@
 | 附魔 | 类型、稀有度、等级、类别、宝藏/诅咒/交易/发现属性和多语言名称 |
 | 热键 | 只保留目标 Mod 的翻译键、类别、默认绑定、当前绑定、是否解绑和多语言名称 |
 | 标签页、机器与交易 | 创造模式标签页成员、方块—方块实体—菜单标题关系、MenuType ID、村民/流浪商人交易的明确标记运行时样本 |
-| 世界生成数据 | Mod 新增的维度、维度类型、生物群系、配置/放置地物、结构、结构集、模板池、处理器、噪声，以及 Forge/NeoForge 生物群系与结构 Modifier 等动态注册表和生效数据定义 |
-| 结构与战利品表 | 结构定义、原始 `.nbt` 模板及箱子战利品引用；按方块、宝箱、生物、钓鱼等分类的战利品表、谓词、物品修饰器、递归依赖和静态候选产物 |
+| 世界生成数据 | Mod 新增的维度、维度类型、生物群系、配置/放置地物、顶层结构、结构集的放置参数、噪声，以及 Forge/NeoForge 生物群系与结构 Modifier 等动态注册表和生效数据定义 |
+| 结构与战利品表 | 顶层结构定义、结构集引用及省略的内部模板总数；按方块、宝箱、生物、钓鱼等分类的战利品表、谓词、物品修饰器、递归依赖和静态候选产物 |
 | Mod 元数据 | Mod ID、版本、作者、许可证、主页、源码和问题链接 |
 
 ## 安装和手动导出
@@ -63,7 +63,7 @@
 
 参数说明：
 
-- `auto`：进入世界且资源同步完成后自动开始。
+- `auto`：进入世界并建立连接后等待 40 个客户端 tick，再尝试自动导出。模组或服务器同步缓慢时可改用手动命令，在 JEI、配方与标签可用后执行。
 - `namespaces`：逗号分隔；留空或 `all` 表示全部。
 - `output`：相对路径以游戏目录为基准，也可用绝对路径。
 - `languages`：额外要求输出的语言；导出器还会自动发现目标 Mod 当前资源栈内的全部 `lang/*.json`，`en_us` 总会作为回退语言加入。
@@ -74,7 +74,7 @@
 - `profile`：`data`、`images` 或 `all`。
 - `modules`：逗号分隔的模块 ID；留空或 `all` 表示启用当前 profile 允许的全部模块。可选值为 `compatibility`、`registries`、`associations`、`trades`、`tags`、`recipes`、`advancements`、`worldgen`、`resources`、`block_entity_models`、`entity_models`、`item_icons`、`block_icons`、`effect_icons`、`jei`、`entity_renders`。语言模块始终启用，保证名称引用可解析。
 - `sizes`：会保留用户增加的尺寸，同时始终包含需求规定的 32、128、256。
-- `tickBudgetMs`：每个客户端 tick 的软时间预算，范围 1–100 ms。
+- `tickBudgetMs`：每个客户端 tick 的软时间预算，范围 1–100 ms。调度器在两个 step 之间检查时间；一次性的世界生成采集、单次渲染或最终打包可能占用更久。
 - `exit`：仅自动模式生效，ZIP 成功生成后关闭客户端；打包失败时保留客户端与暂存目录，便于排查。
 
 若要做到完全无人值守，可再使用 Minecraft 1.20.1 的游戏参数：
@@ -134,7 +134,6 @@ data/<namespace>/predicates/...
 data/<namespace>/item_modifiers/...
 data/<namespace>/forge|neoforge/biome_modifier/...
 data/<namespace>/forge|neoforge/structure_modifier/...
-data/<namespace>/structures/<id>.nbt
 icons/items/<size>/<namespace>/<id>.png
 icons/blocks/<size>/<namespace>/<id>.png
 icons/mob_effects/<size>/<namespace>/<id>.png
@@ -151,7 +150,7 @@ resources/index.json
 compatibility/capabilities.json
 ```
 
-所有 JSON 使用 UTF-8、稳定字段名和显式 `schema_version`。核心 Schema 位于 `schema/`，完整语义见 [docs/export-format-v1.md](docs/export-format-v1.md)。`manifest.json` 记录各阶段计数和逐对象错误；某个第三方对象渲染失败不会中止整个导出。
+索引 JSON 使用 UTF-8，依各自的 `schema_version` 解析。翻译映射与复制的游戏资源保持其原始文档约定。核心 Schema 位于 `schema/`，完整语义见 [docs/export-format-v1.md](docs/export-format-v1.md)。`manifest.json` 记录各阶段计数和逐对象错误；错误记录保存阶段、逻辑对象和异常类型，第三方异常文本留在导出包之外。单个对象失败可形成包含错误的已结束包。验收需同时检查 `status`、每个阶段、`error_count` 与 `compatibility/capabilities.json`。模板省略、能力降级和执行失败各有独立标记。
 
 ## 实体模型边界
 
@@ -192,12 +191,14 @@ $env:JAVA_HOME='C:\path\to\jdk-17'
 
 ## 后续版本适配
 
+导出包供网站前端预检、上传，再由后端导入和审核；客户端仅将文件写入游戏机本地。
+
 公共的配置、任务调度、Schema、错误隔离、OBJ 写入和大部分导出规则位于 `common`。加载器入口只负责命令与 tick。升级 Minecraft 时，优先只调整以下 API 边界：
 
 - `render/OffscreenRenderer.java`：RenderTarget、GuiGraphics、投影矩阵；
 - `stage/JeiRecipeGuiStage.java`：JEI 类别空白背景与配方槽位 API；
 - `stage/RecipeDataStage.java`、`AdvancementStage.java`：新版 RecipeHolder/AdvancementHolder；
-- `stage/WorldgenDataStage.java`：动态注册表、服务端数据资源栈和结构 NBT API；
+- `stage/WorldgenDataStage.java`：动态注册表、服务端数据资源栈和顶层结构定义与内部模板跳过规则；
 - `stage/RegistryDataStage.java`：数据驱动附魔和新版组件系统；
 - Fabric/Forge 子模块的事件和元数据。
 

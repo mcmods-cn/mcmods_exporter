@@ -43,6 +43,7 @@ public final class ExportCoordinator {
             activeJob.tick();
             if (activeJob.isFinished()) {
                 lastOutput = activeJob.output();
+                activeJob = null;
             }
         }
     }

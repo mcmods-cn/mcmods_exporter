@@ -1,4 +1,6 @@
-# SYS48 T01/T03: new non-graphical contract at exporter8062148
+# SYS48 T01/T03 at exporter 8062148
+
+This document preserves the successive runs and their original commands. For the current checkout use the [build instructions](../../../README.md) and [contract checks](../../../docs/contract-validation.md). Historical worktree paths and resource windows apply only to the recorded runs.
 
 Test-only proof derived directly from `806214802c1e3447a9895fa5311e73f3be6edfcc`.
 No production files, existing tests, schema labels, support matrix or root ledger

@@ -1,5 +1,6 @@
 package cn.mcmod.wiki.exporter.util;
 
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -44,7 +45,7 @@ public final class ExportArchives {
         Files.deleteIfExists(temporary);
         try {
             try (OutputStream output = Files.newOutputStream(temporary);
-                 ZipOutputStream zip = new ZipOutputStream(output)) {
+                 ZipOutputStream zip = new ZipOutputStream(new BufferedOutputStream(output))) {
                 try (Stream<Path> walk = Files.walk(source)) {
                     for (Path file : walk
                         .filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))

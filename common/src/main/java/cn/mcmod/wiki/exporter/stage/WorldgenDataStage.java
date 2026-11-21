@@ -41,7 +41,7 @@ import java.util.stream.Stream;
 
 /**
  * Exports the effective server-data resources needed to describe modded worlds.
- * Raw JSON/NBT is retained, while website-facing indexes contain stable logical IDs
+ * Effective JSON is retained. Structure templates are counted and omitted. Indexes contain logical IDs
  * and already parsed definitions so an importer does not need to understand data-pack paths.
  */
 public final class WorldgenDataStage extends OnceStage {
@@ -401,7 +401,8 @@ public final class WorldgenDataStage extends OnceStage {
                                 files.put(resourceId.toString(), file);
                             }
                         } catch (Exception exception) {
-                            context.report().error(ID, "installed_mod_data:" + source, exception);
+                            String relative = dataRoot.relativize(source).toString().replace('\\', '/');
+                            context.report().error(ID, "installed_mod_data:" + mod.getModId() + "/" + relative, exception);
                         }
                     });
                 } catch (Exception exception) {

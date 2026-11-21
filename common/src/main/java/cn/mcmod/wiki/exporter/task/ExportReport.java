@@ -49,7 +49,10 @@ public final class ExportReport {
         JsonObject error = new JsonObject();
         error.addProperty("stage", stageId);
         error.addProperty("subject", subject);
-        error.addProperty("message", String.valueOf(throwable.getMessage()));
+        // The manifest is uploaded with the archive. Third-party exception messages
+        // can include a user's absolute paths, pack names or file contents.
+        String failure = throwable.getClass().getSimpleName();
+        error.addProperty("message", failure.isEmpty() ? "Export error" : failure);
         errors.add(error);
     }
 
@@ -99,12 +102,16 @@ public final class ExportReport {
         configuration.add("template_only_recipe_type_ids", templateOnlyRecipeTypes);
         root.add("configuration", configuration);
 
+        writeStageResults(root);
+        return root;
+    }
+
+    void writeStageResults(JsonObject root) {
         JsonArray stageArray = new JsonArray();
         stages.forEach((id, info) -> stageArray.add(info.toJson(id)));
         root.add("stages", stageArray);
         root.add("errors", errors);
         root.addProperty("error_count", errors.size());
-        return root;
     }
 
     private static final class StageInfo {

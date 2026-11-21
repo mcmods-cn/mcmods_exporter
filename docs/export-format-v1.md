@@ -1,6 +1,6 @@
 # mcmods-export/v1
 
-最终产物是 `<Mod ID>-<时间戳>.zip`，ZIP 根目录的 `manifest.json` 是导出包入口。多个显式目标 ID 用 `+` 连接；全量导出使用 `all-mods`。导入端必须先检查 `schema_version`、`status` 和 `package_format`；只有 `status=complete` 才应自动入库。阶段失败不一定代表整个包不可用，应结合 `stages[].status` 与 `errors[]` 决定是否接收部分数据。
+最终产物是 `<Mod ID>-<时间戳>.zip`，ZIP 根目录的 `manifest.json` 是导出包入口。多个显式目标 ID 用 `+` 连接；全量导出使用 `all-mods`。导入端必须先检查 `schema_version`、`status` 和 `package_format`。现有 v1 写入器将遍历结束的任务标为 `complete`，可能附有逐对象错误或失败阶段。完整导出验收还需检查 `error_count`、`errors[]`、`stages[].status` 和对应能力声明。网站导入和发布分别校验来源、授权和审核状态。
 
 
 ## 网站单项目导入范围
