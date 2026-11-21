@@ -95,6 +95,10 @@ finalization separately when attributing wall time to compression.
 
 ## Reusing a recorded game export
 
+When checking a previous producer, pass `--expected-exporter-version` from its
+recorded provenance alongside `--export-root`. The default checks the current
+build version. Keep the input ZIP and its digest with the validation record.
+
 The backend keeps both loader-specific test mods, their unmodified exports and
 the producer commit in `internal/httpapi/testdata/game-20261121/`. Each mod
 declares `governancefixture:two_sticks` with one oak plank and two sticks.

@@ -68,7 +68,7 @@ JEI 使用“合成方式背景、通用槽位模板、具体配方绑定”三�
 - 指定 Mod 导出时只保留其权威 `recipe_id` 命名空间下的配方。随后按 `(recipe_id, underlying_recipe_type_id)` 去掉已有原生类别的跨类别兼容投影，避免兼容机器复制工作台全部配方；排除统计在 `categories.json.filter_summary`；
 - `canvas`、`content` 和模板中的所有槽位矩形使用 `logical_pixels`；PNG 的实际像素倍率由 `image_scale` 指定；
 - `templates[].slots[].role` 是 `input`、`output`、`catalyst` 或 `render_only`；
-- `rect` 是可点击材料区域，`visual_rect` 包含槽位自定义背景；
+- `rect` 定位点击区域，`visual_rect` 定位材料绘制区域。自定义底板与覆盖层由 JEI 绘入模板背景。旧包坐标的处理见[模板协议](jei-template-export-v1.md#5-模板集合)。
 - `bindings[].alternatives` 包含轮换展示的所有 JEI Ingredient，而不只是截图瞬间显示的一个物品；
 - 概率从 JEI 最终 tooltip 或类别直接绘制的百分比统一提取到绑定的 `chance*` 字段，并从共享背景中剥离；不依赖特定 Mod 的私有配方 API。非主输出只有在名称/tooltip 明示副产品或取得小于 100% 的概率时才标为 `byproduct`；
 - `background_contains_ingredients=false` 可供导入端校验背景没有烘焙物品。

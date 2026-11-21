@@ -411,10 +411,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
                     context.report().error(ID, "slot_" + (slotIndex - 1) + ":tooltip", throwable);
                 }
                 json.add("_jei_tooltip", tooltip);
-                Rect2i clickable = drawable.getRect();
-                Rect2i visual = drawable.getAreaIncludingBackground();
-                json.add("rect", canvasRect(clickable));
-                json.add("visual_rect", canvasRect(visual));
+                writeSlotGeometry(json, drawable);
             } else {
                 json.addProperty("coordinates_available", false);
             }
@@ -487,8 +484,14 @@ public final class JeiRecipeGuiStage implements ExportStage {
         }
     }
 
-    private static JsonObject canvasRect(Rect2i source) {
-        return rect(PADDING + source.getX(), PADDING + source.getY(), source.getWidth(), source.getHeight());
+    @SuppressWarnings("removal")
+    static void writeSlotGeometry(JsonObject slot, IRecipeSlotDrawable drawable) {
+        // JEI draws the ingredient at the slot origin. Its declared size includes
+        // custom renderer dimensions. Offset decorations are already in the PNG.
+        Rect2i source = drawable.getRect();
+        JsonObject bounds = rect(PADDING + source.getX(), PADDING + source.getY(), source.getWidth(), source.getHeight());
+        slot.add("rect", bounds);
+        slot.add("visual_rect", bounds.deepCopy());
     }
 
     private static JsonObject rect(int x, int y, int width, int height) {

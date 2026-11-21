@@ -83,6 +83,7 @@ def validate_capabilities(manifest, capabilities):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--export-root", type=Path, help="Unmodified, unpacked all-profile game export (no synthetic fallback)")
+    parser.add_argument("--expected-exporter-version", help="Producer version from the archive's provenance (defaults to the current build)")
     args = parser.parse_args()
     export_root = args.export_root.resolve() if args.export_root else None
     observations = []
@@ -268,7 +269,8 @@ def main():
             require(not manifest["errors"] and manifest["stages"] and all(stage["status"] == "complete" for stage in manifest["stages"]),
                     "Manifest contains errors or unfinished stages")
             build_version = next(line.split("=", 1)[1].strip() for line in (ROOT / "gradle.properties").read_text().splitlines() if line.startswith("mod_version="))
-            require(manifest["exporter_version"] == build_version, "Manifest exporter version differs from the tested build version")
+            expected_version = args.expected_exporter_version or build_version
+            require(manifest["exporter_version"] == expected_version, "Manifest exporter version differs from the expected producer version")
 
         record("manifest:actual-game-complete-supported-all-profile", actual_complete_supported_export)
     print(json.dumps({"sample_kind": "actual-game-and-synthetic" if args.export_root else "synthetic-contract-only", "results": observations}, ensure_ascii=False, indent=2))
