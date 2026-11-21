@@ -7,8 +7,28 @@ import java.nio.file.NoSuchFileException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ExportReportTest {
+    @Test
+    void packageFailureReplacesProvisionalCompletionAndKeepsDiagnosticsPrivate() {
+        ExportReport report = new ExportReport();
+        report.finish(false);
+        report.packageFailed(new NoSuchFileException("/private-fixture/export.zip"));
+        JsonObject result = new JsonObject();
+        report.writeStageResults(result);
+        assertEquals("failed", result.get("status").getAsString());
+        assertEquals(1, result.get("error_count").getAsInt());
+        assertEquals("zip", result.getAsJsonArray("errors").get(0).getAsJsonObject().get("subject").getAsString());
+        assertFalse(result.toString().contains("private-fixture"));
+    }
+
+    @Test
+    void fatalVmFailuresEscapeObjectRecovery() {
+        ExportReport report = new ExportReport();
+        assertThrows(InternalError.class, () -> report.error("resources", "example:icon", new InternalError("test")));
+    }
+
     @Test
     void reportsObjectAndFailureKindWithoutEmbeddingPrivateExceptionData() {
         ExportReport report = new ExportReport();

@@ -5,6 +5,10 @@ import cn.mcmod.wiki.exporter.config.ExportConfig;
 import cn.mcmod.wiki.exporter.util.ExportArchives;
 import cn.mcmod.wiki.exporter.util.JsonFiles;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.LoadingOverlay;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.network.chat.Component;
 
 import java.io.IOException;
@@ -12,7 +16,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.function.Consumer;
 
 final class ExportJob {
@@ -20,11 +25,14 @@ final class ExportJob {
 
     private final ExportConfig config;
     private final Consumer<Component> notifier;
-    private final List<ExportStage> stages;
+    private final Deque<ExportStage> stages;
+    private final int stageCount;
+    private final ClientLevel sourceLevel;
+    private final ClientPacketListener sourceConnection;
+    private final ResourceManager sourceServerResources;
     private final ExportContext context;
     private final Path archive;
     private Path output;
-    private int stageIndex;
     private boolean stageStarted;
     private boolean cancelled;
     private boolean finished;
@@ -33,6 +41,10 @@ final class ExportJob {
     ExportJob(Minecraft minecraft, ExportConfig config, Consumer<Component> notifier) throws IOException {
         this.config = config;
         this.notifier = notifier;
+        this.sourceLevel = minecraft.level;
+        this.sourceConnection = minecraft.getConnection();
+        var server = minecraft.getSingleplayerServer();
+        this.sourceServerResources = server == null ? null : server.getResourceManager();
         Files.createDirectories(config.outputRoot());
         PackagePaths paths = uniqueResultPaths(config);
         Path root = paths.staging();
@@ -42,7 +54,8 @@ final class ExportJob {
         ExportReport report = new ExportReport();
         this.context = new ExportContext(minecraft, config, root, report);
         ExportPipeline.Selection pipeline = ExportPipeline.create(config);
-        this.stages = pipeline.stages();
+        this.stages = new ArrayDeque<>(pipeline.stages());
+        this.stageCount = stages.size();
         report.modulesSelected(pipeline.modules());
     }
 
@@ -63,17 +76,22 @@ final class ExportJob {
         if (finished) {
             return;
         }
-        if (cancelled) {
+        var minecraft = context.minecraft();
+        var server = minecraft.getSingleplayerServer();
+        if (cancelled || minecraft.level != sourceLevel || minecraft.getConnection() != sourceConnection
+            || minecraft.getOverlay() instanceof LoadingOverlay
+            || (server == null ? null : server.getResourceManager()) != sourceServerResources) {
             finish(true);
             return;
         }
         long deadline = System.nanoTime() + config.tickBudgetNanos();
         do {
-            if (stageIndex >= stages.size()) {
+            if (stages.isEmpty()) {
                 finish(false);
                 return;
             }
-            ExportStage stage = stages.get(stageIndex);
+            ExportStage stage = stages.getFirst();
+            long stepStart = System.nanoTime();
             try {
                 if (!stageStarted) {
                     stageStarted = true;
@@ -86,17 +104,20 @@ final class ExportJob {
                 if (result == StageResult.DONE) {
                     context.report().stageFinished(stage.id());
                     notify(Component.literal("[mcmods_exporter] 完成: " + stage.id()));
-                    stageIndex++;
+                    stages.removeFirst();
                     stageStarted = false;
                 } else if (workSteps % 100 == 0 && !stage.progress().isBlank()) {
                     notify(Component.literal("[mcmods_exporter] " + stage.id() + " " + stage.progress()));
                 }
             } catch (Throwable throwable) {
+                ExportReport.rethrowFatal(throwable);
                 McModsExporter.LOGGER.error("Export stage {} failed", stage.id(), throwable);
                 context.report().stageFailed(stage.id(), throwable);
                 notify(Component.literal("[mcmods_exporter] 阶段失败，已记录并继续: " + stage.id()));
-                stageIndex++;
+                stages.removeFirst();
                 stageStarted = false;
+            } finally {
+                context.report().recordStep(stage.id(), System.nanoTime() - stepStart);
             }
         } while (System.nanoTime() < deadline);
     }
@@ -128,7 +149,7 @@ final class ExportJob {
             }
         } catch (IOException exception) {
             McModsExporter.LOGGER.error("Could not write export package", exception);
-            context.report().error("package", "zip", exception);
+            context.report().packageFailed(exception);
             try {
                 JsonFiles.write(context.root().resolve("manifest.json"), context.report().manifest(config, context.languages(), null));
             } catch (IOException ignored) {
@@ -152,8 +173,8 @@ final class ExportJob {
         if (finished) {
             return "idle";
         }
-        String stage = stageIndex < stages.size() ? stages.get(stageIndex).id() : "finalizing";
-        return "running stage=" + stage + " (" + (stageIndex + 1) + "/" + stages.size() + ")";
+        String stage = stages.isEmpty() ? "finalizing" : stages.getFirst().id();
+        return "running stage=" + stage + " (" + Math.min(stageCount, stageCount - stages.size() + 1) + "/" + stageCount + ")";
     }
 
     Path output() {

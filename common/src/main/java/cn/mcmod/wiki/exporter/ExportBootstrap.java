@@ -1,10 +1,12 @@
 package cn.mcmod.wiki.exporter;
 
+import cn.mcmod.wiki.exporter.compat.jei.McModsJeiPlugin;
 import cn.mcmod.wiki.exporter.config.ExportConfig;
 import cn.mcmod.wiki.exporter.config.ExportProfile;
 import cn.mcmod.wiki.exporter.task.ExportCoordinator;
 import dev.architectury.platform.Platform;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.LoadingOverlay;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 
@@ -24,15 +26,19 @@ public final class ExportBootstrap {
         if (automaticStarted || !ExportConfig.autoEnabled()) {
             return;
         }
-        if (minecraft.level == null || minecraft.getConnection() == null) {
+        if (minecraft.level == null || minecraft.getConnection() == null || minecraft.getOverlay() instanceof LoadingOverlay) {
             readyTicks = 0;
             return;
         }
         if (++readyTicks < 40) {
             return;
         }
-        automaticStarted = true;
+        readyTicks = 0;
         ExportConfig config = ExportConfig.fromSystemProperties(minecraft.gameDirectory.toPath(), true, null, null);
+        if (config.moduleEnabled("jei") && McModsJeiPlugin.runtime() == null) {
+            return;
+        }
+        automaticStarted = true;
         ExportCoordinator.get().request(minecraft, config, automaticNotifier(minecraft));
     }
 

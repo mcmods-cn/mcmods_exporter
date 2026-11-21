@@ -7,7 +7,7 @@
   "properties": {
     "schema_version": { "const": "mcmods-export/v1" },
     "exporter_version": { "type": "string" },
-    "status": { "enum": ["running", "complete", "cancelled"] },
+    "status": { "enum": ["running", "complete", "cancelled", "failed"] },
     "started_at": { "type": "string", "format": "date-time" },
     "finished_at": { "type": "string", "format": "date-time" },
     "duration_ms": { "type": "integer", "minimum": 0 },
@@ -33,6 +33,10 @@
     "errors": { "type": "array", "items": { "$ref": "#/$defs/error" } },
     "error_count": { "type": "integer", "minimum": 0 }
   },
+  "allOf": [{
+    "if": {"properties": {"status": {"const": "failed"}}},
+    "then": {"properties": {"package_format": {"const": "directory"}}}
+  }],
   "$defs": {
     "stage": {
       "type": "object",
@@ -40,6 +44,8 @@
       "properties": {
         "id": { "type": "string" },
         "status": { "enum": ["running", "complete", "failed"] },
+        "work_steps": {"type": "integer", "minimum": 1},
+        "max_step_us": {"type": "integer", "minimum": 0},
         "counts": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } }
       },
       "additionalProperties": true

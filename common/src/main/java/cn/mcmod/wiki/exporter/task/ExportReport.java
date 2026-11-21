@@ -6,6 +6,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import dev.architectury.platform.Platform;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -18,6 +19,24 @@ public final class ExportReport {
     private List<String> selectedModules = List.of();
     private String status = "running";
     private Instant finishedAt;
+
+    static void rethrowFatal(Throwable throwable) {
+        if (throwable instanceof VirtualMachineError fatal) {
+            throw fatal;
+        }
+        if (throwable instanceof ThreadDeath death) {
+            throw death;
+        }
+    }
+
+    void recordStep(String id, long nanoseconds) {
+        StageInfo stage = stages.get(id);
+        if (stage == null) {
+            return;
+        }
+        stage.workSteps++;
+        stage.longestStepNanos = Math.max(stage.longestStepNanos, nanoseconds);
+    }
 
     public void stageStarted(String id) {
         stages.computeIfAbsent(id, ignored -> new StageInfo()).startedAt = Instant.now();
@@ -46,6 +65,7 @@ public final class ExportReport {
     }
 
     public void error(String stageId, String subject, Throwable throwable) {
+        rethrowFatal(throwable);
         JsonObject error = new JsonObject();
         error.addProperty("stage", stageId);
         error.addProperty("subject", subject);
@@ -61,11 +81,16 @@ public final class ExportReport {
         finishedAt = Instant.now();
     }
 
+    void packageFailed(IOException failure) {
+        finishedAt = Instant.now();
+        status = "failed";
+        error("package", "zip", failure);
+    }
+
     public JsonObject manifest(ExportConfig config, List<String> exportedLanguages, String archiveName) {
         JsonObject root = new JsonObject();
         root.addProperty("schema_version", McModsExporter.SCHEMA_VERSION);
         root.addProperty("exporter_version", Platform.getMod(McModsExporter.MOD_ID).getVersion());
-        root.addProperty("status", status);
         root.addProperty("started_at", startedAt.toString());
         if (finishedAt != null) {
             root.addProperty("finished_at", finishedAt.toString());
@@ -107,6 +132,7 @@ public final class ExportReport {
     }
 
     void writeStageResults(JsonObject root) {
+        root.addProperty("status", status);
         JsonArray stageArray = new JsonArray();
         stages.forEach((id, info) -> stageArray.add(info.toJson(id)));
         root.add("stages", stageArray);
@@ -118,12 +144,18 @@ public final class ExportReport {
         private Instant startedAt;
         private Instant finishedAt;
         private String status = "running";
+        private long workSteps;
+        private long longestStepNanos;
         private final Map<String, Long> counts = new LinkedHashMap<>();
 
         private JsonObject toJson(String id) {
             JsonObject json = new JsonObject();
             json.addProperty("id", id);
             json.addProperty("status", status);
+            if (workSteps > 0) {
+                json.addProperty("work_steps", workSteps);
+                json.addProperty("max_step_us", longestStepNanos / 1000);
+            }
             if (startedAt != null && finishedAt != null) {
                 json.addProperty("duration_ms", finishedAt.toEpochMilli() - startedAt.toEpochMilli());
             }

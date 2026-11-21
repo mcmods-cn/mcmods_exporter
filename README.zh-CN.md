@@ -63,7 +63,7 @@
 
 参数说明：
 
-- `auto`：进入世界并建立连接后等待 40 个客户端 tick，再尝试自动导出。模组或服务器同步缓慢时可改用手动命令，在 JEI、配方与标签可用后执行。
+- `auto`：进入世界并建立连接后等待 40 个客户端 tick；选择 JEI 模块时还会等待 JEI runtime 就绪。遇到特殊服务器同步延迟时，可在需要的配方和标签可见后手动导出。
 - `namespaces`：逗号分隔；留空或 `all` 表示全部。
 - `output`：相对路径以游戏目录为基准，也可用绝对路径。
 - `languages`：额外要求输出的语言；导出器还会自动发现目标 Mod 当前资源栈内的全部 `lang/*.json`，`en_us` 总会作为回退语言加入。
@@ -74,7 +74,7 @@
 - `profile`：`data`、`images` 或 `all`。
 - `modules`：逗号分隔的模块 ID；留空或 `all` 表示启用当前 profile 允许的全部模块。可选值为 `compatibility`、`registries`、`associations`、`trades`、`tags`、`recipes`、`advancements`、`worldgen`、`resources`、`block_entity_models`、`entity_models`、`item_icons`、`block_icons`、`effect_icons`、`jei`、`entity_renders`。语言模块始终启用，保证名称引用可解析。
 - `sizes`：会保留用户增加的尺寸，同时始终包含需求规定的 32、128、256。
-- `tickBudgetMs`：每个客户端 tick 的软时间预算，范围 1–100 ms。调度器在两个 step 之间检查时间；一次性的世界生成采集、单次渲染或最终打包可能占用更久。
+- `tickBudgetMs`：每个客户端 tick 的软时间预算，范围 1–100 ms。调度器在两个 step 之间检查时间；世界生成注册表每个 step 最多编码一个条目，各索引独立写出。单个编解码器、资源扫描、一次索引写入、渲染和最终打包仍可能占用更久。
 - `exit`：仅自动模式生效，ZIP 成功生成后关闭客户端；打包失败时保留客户端与暂存目录，便于排查。
 
 若要做到完全无人值守，可再使用 Minecraft 1.20.1 的游戏参数：
@@ -150,7 +150,7 @@ resources/index.json
 compatibility/capabilities.json
 ```
 
-索引 JSON 使用 UTF-8，依各自的 `schema_version` 解析。翻译映射与复制的游戏资源保持其原始文档约定。核心 Schema 位于 `schema/`，完整语义见 [docs/export-format-v1.md](docs/export-format-v1.md)。`manifest.json` 记录各阶段计数和逐对象错误；错误记录保存阶段、逻辑对象和异常类型，第三方异常文本留在导出包之外。单个对象失败可形成包含错误的已结束包。验收需同时检查 `status`、每个阶段、`error_count` 与 `compatibility/capabilities.json`。模板省略、能力降级和执行失败各有独立标记。
+索引 JSON 使用 UTF-8，依各自的 `schema_version` 解析。翻译映射与复制的游戏资源保持其原始文档约定。核心 Schema 位于 `schema/`，完整语义见 [docs/export-format-v1.md](docs/export-format-v1.md)。`manifest.json` 记录各阶段计数和逐对象错误；每个已执行阶段记录 `work_steps` 和 `max_step_us`（最长一次调度的微秒数，含本阶段初始化）。切换世界/连接、游戏资源重载或服务端数据栈更换时取消正在运行的任务。打包写入失败时，暂存目录在可写的情况下记录 `status=failed`。错误记录保存阶段、逻辑对象和异常类型，第三方异常文本留在导出包之外。单个对象失败可形成包含错误的已结束包。验收需同时检查 `status`、每个阶段、`error_count` 与 `compatibility/capabilities.json`。模板省略、能力降级和执行失败各有独立标记。
 
 ## 实体模型边界
 

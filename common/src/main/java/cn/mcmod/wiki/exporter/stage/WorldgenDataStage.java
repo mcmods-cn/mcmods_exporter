@@ -1,21 +1,19 @@
 package cn.mcmod.wiki.exporter.stage;
 
 import cn.mcmod.wiki.exporter.task.ExportContext;
-import cn.mcmod.wiki.exporter.task.OnceStage;
+import cn.mcmod.wiki.exporter.task.ExportStage;
+import cn.mcmod.wiki.exporter.task.StageResult;
 import cn.mcmod.wiki.exporter.util.ExportPaths;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.mojang.serialization.JsonOps;
 import dev.architectury.platform.Mod;
 import dev.architectury.platform.Platform;
 import net.minecraft.core.Registry;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.RegistryDataLoader;
-import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.level.storage.loot.LootDataType;
@@ -32,6 +30,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,7 +43,7 @@ import java.util.stream.Stream;
  * Effective JSON is retained. Structure templates are counted and omitted. Indexes contain logical IDs
  * and already parsed definitions so an importer does not need to understand data-pack paths.
  */
-public final class WorldgenDataStage extends OnceStage {
+public final class WorldgenDataStage implements ExportStage {
     public static final String ID = "worldgen_data";
     private static final List<String> DATA_PREFIXES = List.of(
         "dimension",
@@ -97,12 +96,46 @@ public final class WorldgenDataStage extends OnceStage {
         return ID;
     }
 
+    private Map<String, Set<ResourceLocation>> registries;
+    private WorldgenRegistryDefinitions definitions;
+    private Iterator<IndexWriter> indexes;
+
+    @FunctionalInterface
+    private interface IndexWriter {
+        void write() throws Exception;
+    }
+
     @Override
-    protected void run(ExportContext context) throws Exception {
-        Map<String, Set<ResourceLocation>> registries = collectRuntimeRegistries(context);
-        Map<String, Map<String, JsonElement>> runtimeDefinitions = collectRuntimeDefinitions(context);
-        Map<String, Map<String, JsonElement>> naturalGenerationRuntimeDefinitions =
-            collectNaturalGenerationRuntimeDefinitions(context);
+    public void start(ExportContext context) {
+        registries = collectRuntimeRegistries(context);
+        var server = context.minecraft().getSingleplayerServer();
+        if (server != null) {
+            var types = Stream.concat(RegistryDataLoader.WORLDGEN_REGISTRIES.stream(),
+                    RegistryDataLoader.DIMENSION_REGISTRIES.stream())
+                .filter(type -> isWorldRegistry(type.key().location().toString()))
+                .iterator();
+            definitions = new WorldgenRegistryDefinitions(server.registryAccess(), types, NATURAL_GENERATION_RESOLUTION_REGISTRIES);
+        }
+    }
+
+    @Override
+    public StageResult step(ExportContext context) throws Exception {
+        if (indexes == null) {
+            if (definitions != null && !definitions.finishedAfterStep(context)) {
+                return StageResult.MORE_WORK;
+            }
+            indexes = prepareIndexes(context, definitions == null ? Map.of() : definitions.selected,
+                definitions == null ? Map.of() : definitions.dependencies);
+            definitions = null;
+            return StageResult.MORE_WORK;
+        }
+        indexes.next().write();
+        return indexes.hasNext() ? StageResult.MORE_WORK : StageResult.DONE;
+    }
+
+    private Iterator<IndexWriter> prepareIndexes(ExportContext context,
+        Map<String, Map<String, JsonElement>> runtimeDefinitions,
+        Map<String, Map<String, JsonElement>> dependencyDefinitions) {
         Map<String, DataFile> files = new TreeMap<>();
         String resourceSource;
 
@@ -119,30 +152,23 @@ public final class WorldgenDataStage extends OnceStage {
             resourceSource = "installed_mod_fallback";
         }
 
-        writeRegistryIndex(context, registries);
-        writeDataFileIndex(context, files, resourceSource);
-        writeDimensions(context, registries, runtimeDefinitions, files);
-        writeBiomes(context, registries, runtimeDefinitions, files);
-        writeEntitySpawns(context);
-        writeNaturalGeneration(
-            context,
-            registries,
-            runtimeDefinitions,
-            naturalGenerationRuntimeDefinitions,
-            files
-        );
-        writeStructures(context, registries, runtimeDefinitions, files, omittedStructureTemplates);
-        writeLootTables(context, files);
-
-        context.report().addCount(ID, "runtime_registries", registries.size());
-        context.report().addCount(
-            ID,
-            "runtime_definitions",
-            runtimeDefinitions.values().stream().mapToInt(Map::size).sum()
-        );
-        context.report().addCount(ID, "data_files", files.size());
-        context.report().addCount(ID, "omitted_structure_templates", omittedStructureTemplates);
-        context.report().addCount(ID, "loot_tables", countKind(files, "loot_table"));
+        return List.<IndexWriter>of(
+            () -> writeRegistryIndex(context, registries),
+            () -> writeDataFileIndex(context, files, resourceSource),
+            () -> writeDimensions(context, registries, runtimeDefinitions, files),
+            () -> writeBiomes(context, registries, runtimeDefinitions, files),
+            () -> writeEntitySpawns(context),
+            () -> writeNaturalGeneration(context, registries, runtimeDefinitions, dependencyDefinitions, files),
+            () -> writeStructures(context, registries, runtimeDefinitions, files, omittedStructureTemplates),
+            () -> {
+                writeLootTables(context, files);
+                context.report().addCount(ID, "runtime_registries", registries.size());
+                context.report().addCount(ID, "runtime_definitions", runtimeDefinitions.values().stream().mapToInt(Map::size).sum());
+                context.report().addCount(ID, "data_files", files.size());
+                context.report().addCount(ID, "omitted_structure_templates", omittedStructureTemplates);
+                context.report().addCount(ID, "loot_tables", countKind(files, "loot_table"));
+            }
+        ).iterator();
     }
 
     private static Map<String, Set<ResourceLocation>> collectRuntimeRegistries(ExportContext context) {
@@ -174,139 +200,6 @@ public final class WorldgenDataStage extends OnceStage {
             || registryId.equals("minecraft:dimension_type")
             || registryId.startsWith("minecraft:worldgen/")
             || EXTENSION_WORLDGEN_REGISTRIES.containsKey(registryId);
-    }
-
-    private static Map<String, Map<String, JsonElement>> collectRuntimeDefinitions(ExportContext context) {
-        Map<String, Map<String, JsonElement>> result = new TreeMap<>();
-        if (context.minecraft().getSingleplayerServer() == null) {
-            return result;
-        }
-        RegistryAccess access = context.minecraft().getSingleplayerServer().registryAccess();
-        RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, access);
-        Stream.concat(
-            RegistryDataLoader.WORLDGEN_REGISTRIES.stream(),
-            RegistryDataLoader.DIMENSION_REGISTRIES.stream()
-        ).filter(data -> isWorldRegistry(data.key().location().toString()))
-            .forEach(data -> encodeUnknownRegistry(context, access, ops, data, result));
-        return result;
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static void encodeUnknownRegistry(
-        ExportContext context,
-        RegistryAccess access,
-        RegistryOps<JsonElement> ops,
-        RegistryDataLoader.RegistryData<?> data,
-        Map<String, Map<String, JsonElement>> result
-    ) {
-        encodeRegistry(context, access, ops, (RegistryDataLoader.RegistryData) data, result);
-    }
-
-    private static <T> void encodeRegistry(
-        ExportContext context,
-        RegistryAccess access,
-        RegistryOps<JsonElement> ops,
-        RegistryDataLoader.RegistryData<T> data,
-        Map<String, Map<String, JsonElement>> result
-    ) {
-        String registryId = data.key().location().toString();
-        Registry<T> registry = access.registry(data.key()).orElse(null);
-        if (registry == null) {
-            return;
-        }
-        Map<String, JsonElement> definitions = new TreeMap<>();
-        registry.keySet().stream()
-            .filter(context::matches)
-            .sorted(Comparator.comparing(ResourceLocation::toString))
-            .forEach(id -> {
-                T value = registry.get(id);
-                if (value == null) {
-                    return;
-                }
-                String[] error = new String[1];
-                data.elementCodec().encodeStart(ops, value)
-                    .resultOrPartial(message -> error[0] = message)
-                    .ifPresent(json -> definitions.put(id.toString(), json));
-                if (error[0] != null && !definitions.containsKey(id.toString())) {
-                    context.report().error(
-                        ID,
-                        "runtime_definition:" + registryId + "/" + id,
-                        new IllegalStateException(error[0])
-                    );
-                }
-            });
-        if (!definitions.isEmpty()) {
-            result.put(registryId, definitions);
-        }
-    }
-
-    private static Map<String, Map<String, JsonElement>> collectNaturalGenerationRuntimeDefinitions(
-        ExportContext context
-    ) {
-        if (context.minecraft().getSingleplayerServer() == null) {
-            return Map.of();
-        }
-        RegistryAccess access = context.minecraft().getSingleplayerServer().registryAccess();
-        RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, access);
-        Map<String, Map<String, JsonElement>> result = new TreeMap<>();
-        for (RegistryDataLoader.RegistryData<?> data : RegistryDataLoader.WORLDGEN_REGISTRIES) {
-            String registryId = data.key().location().toString();
-            if (NATURAL_GENERATION_RESOLUTION_REGISTRIES.contains(registryId)) {
-                Map<String, JsonElement> definitions = encodeAllRegistryEntriesUnknown(
-                    context,
-                    access,
-                    ops,
-                    data
-                );
-                if (!definitions.isEmpty()) {
-                    result.put(registryId, definitions);
-                }
-            }
-        }
-        return result;
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static Map<String, JsonElement> encodeAllRegistryEntriesUnknown(
-        ExportContext context,
-        RegistryAccess access,
-        RegistryOps<JsonElement> ops,
-        RegistryDataLoader.RegistryData<?> data
-    ) {
-        return encodeAllRegistryEntries(context, access, ops, (RegistryDataLoader.RegistryData) data);
-    }
-
-    private static <T> Map<String, JsonElement> encodeAllRegistryEntries(
-        ExportContext context,
-        RegistryAccess access,
-        RegistryOps<JsonElement> ops,
-        RegistryDataLoader.RegistryData<T> data
-    ) {
-        Registry<T> registry = access.registry(data.key()).orElse(null);
-        if (registry == null) {
-            return Map.of();
-        }
-        Map<String, JsonElement> definitions = new TreeMap<>();
-        registry.keySet().stream()
-            .sorted(Comparator.comparing(ResourceLocation::toString))
-            .forEach(id -> {
-                T value = registry.get(id);
-                if (value == null) {
-                    return;
-                }
-                String[] error = new String[1];
-                data.elementCodec().encodeStart(ops, value)
-                    .resultOrPartial(message -> error[0] = message)
-                    .ifPresent(json -> definitions.put(id.toString(), json));
-                if (error[0] != null && !definitions.containsKey(id.toString())) {
-                    context.report().error(
-                        ID,
-                        "runtime_biome_definition:" + id,
-                        new IllegalStateException(error[0])
-                    );
-                }
-            });
-        return definitions;
     }
 
     private static int copyEffectiveResources(

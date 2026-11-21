@@ -1,6 +1,8 @@
 # mcmods-export/v1
 
-最终产物是 `<Mod ID>-<时间戳>.zip`，ZIP 根目录的 `manifest.json` 是导出包入口。多个显式目标 ID 用 `+` 连接；全量导出使用 `all-mods`。导入端必须先检查 `schema_version`、`status` 和 `package_format`。现有 v1 写入器将遍历结束的任务标为 `complete`，可能附有逐对象错误或失败阶段。完整导出验收还需检查 `error_count`、`errors[]`、`stages[].status` 和对应能力声明。网站导入和发布分别校验来源、授权和审核状态。
+最终产物是 `<Mod ID>-<时间戳>.zip`，ZIP 根目录的 `manifest.json` 是导出包入口。多个显式目标 ID 用 `+` 连接；全量导出使用 `all-mods`。导入端必须先检查 `schema_version`、`status` 和 `package_format`。现有 v1 写入器将遍历结束的任务标为 `complete`，可能附有逐对象错误或失败阶段。完整导出验收还需检查 `error_count`、`errors[]`、`stages[].status` 和对应能力声明。网站导入和发布分别校验来源、授权和审核状态。打包失败且暂存目录可写时，目录版清单记录 `status=failed`、`package_format=directory` 和打包错误。该状态只用于失败暂存，不应用于上传。较早的 v1 写入器可能以 `complete` 配合目录格式和打包错误表示同一情形。
+
+阶段的可选字段 `work_steps` 和 `max_step_us` 记录步数和最长一次调度耗时；首步包含初始化。新旧清单均可通过各自声明的成员判读。墙钟 `duration_ms` 包含跨 tick 等待，不用于推断最快或最慢帧。
 
 
 ## 网站单项目导入范围
