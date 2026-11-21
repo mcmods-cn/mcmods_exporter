@@ -9,6 +9,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.GameShuttingDownEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.loading.FMLEnvironment;
@@ -21,8 +22,13 @@ public final class McModsExporterForge {
     public McModsExporterForge() {
         if (FMLEnvironment.dist == Dist.CLIENT) {
             MinecraftForge.EVENT_BUS.addListener(McModsExporterForge::onClientTick);
+            MinecraftForge.EVENT_BUS.addListener(McModsExporterForge::onClientStopping);
             MinecraftForge.EVENT_BUS.addListener(McModsExporterForge::onRegisterCommands);
         }
+    }
+
+    private static void onClientStopping(GameShuttingDownEvent event) {
+        ExportCoordinator.get().clientStopping();
     }
 
     private static void onClientTick(TickEvent.ClientTickEvent event) {

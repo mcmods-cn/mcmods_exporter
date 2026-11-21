@@ -7,6 +7,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.network.chat.Component;
 
@@ -14,6 +15,7 @@ public final class McModsExporterFabric implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         ClientTickEvents.END_CLIENT_TICK.register(ExportBootstrap::tick);
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ExportCoordinator.get().clientStopping());
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
             ClientCommandManager.literal("mcmods_export")
                 .executes(context -> start(context.getSource()::sendFeedback, "all", ExportProfile.ALL))

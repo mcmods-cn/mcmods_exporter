@@ -150,7 +150,7 @@ resources/index.json
 compatibility/capabilities.json
 ```
 
-索引 JSON 使用 UTF-8，依各自的 `schema_version` 解析。翻译映射与复制的游戏资源保持其原始文档约定。核心 Schema 位于 `schema/`，完整语义见 [docs/export-format-v1.md](docs/export-format-v1.md)。`manifest.json` 记录各阶段计数和逐对象错误；每个已执行阶段记录 `work_steps` 和 `max_step_us`（最长一次调度的微秒数，含本阶段初始化）。切换世界/连接、游戏资源重载或服务端数据栈更换时取消正在运行的任务。打包写入失败时，暂存目录在可写的情况下记录 `status=failed`。错误记录保存阶段、逻辑对象和异常类型，第三方异常文本留在导出包之外。单个对象失败可形成包含错误的已结束包。验收需同时检查 `status`、每个阶段、`error_count` 与 `compatibility/capabilities.json`。模板省略、能力降级和执行失败各有独立标记。
+索引 JSON 使用 UTF-8，依各自的 `schema_version` 解析。翻译映射与复制的游戏资源保持其原始文档约定。核心 Schema 位于 `schema/`，完整语义见 [docs/export-format-v1.md](docs/export-format-v1.md)。`manifest.json` 记录各阶段计数和逐对象错误；每个已执行阶段记录 `work_steps` 和 `max_step_us`（最长一次调度的微秒数，含本阶段初始化）。切换世界/连接、可见的资源重载、服务端数据栈更换或客户端正常关闭时取消正在运行的任务。操作系统强制终止时，应检查暂存目录是否已有完整清单。打包写入失败时，暂存目录在可写的情况下记录 `status=failed`。错误记录保存阶段、逻辑对象和异常类型，第三方异常文本留在导出包之外。单个对象失败可形成包含错误的已结束包。验收需同时检查 `status`、每个阶段、`error_count` 与 `compatibility/capabilities.json`。模板省略、能力降级和执行失败各有独立标记。
 
 ## 实体模型边界
 

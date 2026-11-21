@@ -59,6 +59,13 @@ public final class ExportCoordinator {
         return activeJob.status();
     }
 
+    /** The client may have no further ticks after the loader's stopping event. */
+    public void clientStopping() {
+        if (cancel()) {
+            tick();
+        }
+    }
+
     public boolean cancel() {
         if (!isBusy()) {
             return false;
