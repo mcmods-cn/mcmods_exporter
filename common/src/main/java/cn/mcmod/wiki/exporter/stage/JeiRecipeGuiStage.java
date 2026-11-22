@@ -526,7 +526,7 @@ public final class JeiRecipeGuiStage implements ExportStage {
     }
 
     private static String recipeKey(Entry entry) {
-        return entry.recipeId + "#" + String.format("%06d", entry.index);
+        return entry.recipeId + "#" + recipeOrdinal(entry.index);
     }
 
     private static String recipeIndexKey(Entry entry) {
@@ -675,12 +675,16 @@ public final class JeiRecipeGuiStage implements ExportStage {
         return type == null ? null : type.toString();
     }
 
-    private static ResourceLocation generatedRecipeId(RecipeType<?> type, int index) {
+    static ResourceLocation generatedRecipeId(RecipeType<?> type, int index) {
         ResourceLocation categoryId = type.getUid();
         return new ResourceLocation(
             categoryId.getNamespace(),
-            categoryId.getPath() + "/__generated/" + String.format("recipe_%06d", index)
+            categoryId.getPath() + "/__generated/recipe_" + recipeOrdinal(index)
         );
+    }
+
+    private static String recipeOrdinal(int index) {
+        return String.format(Locale.ROOT, "%06d", index);
     }
 
     private static void addRecipeIdentity(JsonObject target, Entry entry) {

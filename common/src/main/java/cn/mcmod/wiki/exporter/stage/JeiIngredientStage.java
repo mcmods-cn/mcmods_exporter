@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -267,7 +268,7 @@ public final class JeiIngredientStage implements ExportStage {
     }
 
     private static String safeSlug(String value) {
-        String slug = value.toLowerCase().replaceAll("[^a-z0-9._-]+", "_");
+        String slug = value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9._-]+", "_");
         if (slug.length() <= 72) {
             return slug;
         }
@@ -279,7 +280,7 @@ public final class JeiIngredientStage implements ExportStage {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
             StringBuilder output = new StringBuilder(12);
             for (int index = 0; index < 6; index++) {
-                output.append(String.format("%02x", digest[index]));
+                output.append(String.format(Locale.ROOT, "%02x", digest[index]));
             }
             return output.toString();
         } catch (Exception exception) {

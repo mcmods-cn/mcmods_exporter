@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /** Splits JEI slot geometry from recipe-specific ingredient bindings. */
@@ -103,7 +104,7 @@ final class JeiLayoutTemplateJson {
             byte[] hash = digest.digest(identitySlots.toString().getBytes(StandardCharsets.UTF_8));
             StringBuilder value = new StringBuilder("template_");
             for (int index = 0; index < 8; index++) {
-                value.append(String.format("%02x", hash[index]));
+                value.append(String.format(Locale.ROOT, "%02x", hash[index]));
             }
             return value.toString();
         } catch (NoSuchAlgorithmException exception) {
@@ -137,7 +138,7 @@ final class JeiLayoutTemplateJson {
     }
 
     private static String padded(int value) {
-        return String.format("%011d", value);
+        return String.format(Locale.ROOT, "%011d", value);
     }
 
     record Split(String templateId, JsonArray templateSlots, JsonArray bindings) {

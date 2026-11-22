@@ -170,7 +170,7 @@ public final class ExportReport {
         JsonArray sizes = new JsonArray();
         config.imageSizes().forEach(sizes::add);
         configuration.add("image_sizes", sizes);
-        configuration.addProperty("profile", config.profile().name().toLowerCase());
+        configuration.addProperty("profile", config.profile().wireId());
         configuration.addProperty("automatic", config.automatic());
         JsonArray modules = new JsonArray();
         selectedModules.forEach(modules::add);

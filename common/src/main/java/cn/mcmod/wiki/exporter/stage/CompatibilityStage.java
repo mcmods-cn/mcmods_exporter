@@ -32,7 +32,7 @@ public final class CompatibilityStage extends OnceStage {
         root.addProperty("schema_version", "mcmods-capabilities/v1");
         root.addProperty("minecraft_version", Platform.getMinecraftVersion());
         root.addProperty("loader", Platform.isFabric() ? "fabric" : Platform.isForge() ? "forge" : "unknown");
-        root.addProperty("profile", context.config().profile().name().toLowerCase(java.util.Locale.ROOT));
+        root.addProperty("profile", context.config().profile().wireId());
         root.addProperty("format_contract", "mcmods-export/v1");
         root.addProperty("binary_compatibility", "exact_minecraft_version_build_required");
         root.addProperty("porting_policy", "optional_or_version_specific_features_must_degrade_without_breaking_core_export");

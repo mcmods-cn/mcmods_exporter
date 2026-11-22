@@ -170,7 +170,7 @@ public final class AdvancementStage extends OnceStage {
             addComponent(context, displayJson, "title", display.getTitle());
             addComponent(context, displayJson, "description", display.getDescription());
             displayJson.add("icon", ExportContext.stackJson(display.getIcon()));
-            displayJson.addProperty("frame", display.getFrame().name().toLowerCase());
+            displayJson.addProperty("frame", display.getFrame().getName());
             if (display.getBackground() != null) {
                 displayJson.addProperty("background", display.getBackground().toString());
             }

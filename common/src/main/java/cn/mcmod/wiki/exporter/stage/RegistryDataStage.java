@@ -77,7 +77,7 @@ public final class RegistryDataStage extends OnceStage {
                 json.addProperty("max_stack_size", item.getMaxStackSize());
                 json.addProperty("max_damage", item.getMaxDamage());
                 json.addProperty("edible", item.isEdible());
-                json.addProperty("rarity", stack.getRarity().name().toLowerCase());
+                json.addProperty("rarity", stack.getRarity().name().toLowerCase(Locale.ROOT));
                 try {
                     RegistryPropertyExtractor.addItemProperties(json, item, stack);
                 } catch (RuntimeException throwable) {
@@ -109,7 +109,7 @@ public final class RegistryDataStage extends OnceStage {
                 JsonObject json = baseNamed(context, id, block.getDescriptionId());
                 json.addProperty("air", state.isAir());
                 json.addProperty("can_occlude", state.canOcclude());
-                json.addProperty("render_shape", state.getRenderShape().name().toLowerCase());
+                json.addProperty("render_shape", state.getRenderShape().name().toLowerCase(Locale.ROOT));
                 json.addProperty("has_block_entity", block instanceof EntityBlock);
                 try {
                     RegistryPropertyExtractor.addBlockProperties(json, block, state);
@@ -172,7 +172,7 @@ public final class RegistryDataStage extends OnceStage {
                 ResourceLocation id = entry.getKey().location();
                 MobEffect effect = entry.getValue();
                 JsonObject json = baseNamed(context, id, effect.getDescriptionId());
-                json.addProperty("category", effect.getCategory().name().toLowerCase());
+                json.addProperty("category", effect.getCategory().name().toLowerCase(Locale.ROOT));
                 json.addProperty("color_rgb", effect.getColor());
                 json.addProperty("instant", effect.isInstantenous());
                 json.addProperty("beneficial", effect.isBeneficial());
@@ -206,8 +206,8 @@ public final class RegistryDataStage extends OnceStage {
                 ResourceLocation id = entry.getKey().location();
                 Enchantment enchantment = entry.getValue();
                 JsonObject json = baseNamed(context, id, enchantment.getDescriptionId());
-                json.addProperty("category", enchantment.category.name().toLowerCase());
-                json.addProperty("rarity", enchantment.getRarity().name().toLowerCase());
+                json.addProperty("category", enchantment.category.name().toLowerCase(Locale.ROOT));
+                json.addProperty("rarity", enchantment.getRarity().name().toLowerCase(Locale.ROOT));
                 json.addProperty("rarity_weight", enchantment.getRarity().getWeight());
                 json.addProperty("min_level", enchantment.getMinLevel());
                 json.addProperty("max_level", enchantment.getMaxLevel());
