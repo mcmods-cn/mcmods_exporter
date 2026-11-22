@@ -1,7 +1,9 @@
 package cn.mcmod.wiki.exporter.stage;
 
 import com.google.gson.JsonObject;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.RangedAttribute;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -54,6 +56,19 @@ class RegistryPropertyExtractorTest {
             new AttributeModifier("total", 0.25D, AttributeModifier.Operation.MULTIPLY_TOTAL)
         );
 
-        assertEquals(11.875D, RegistryPropertyExtractor.applyModifiers(5.0D, modifiers));
+        var attribute = new RangedAttribute("fixture.combat", 5.0D, 0.0D, 200.0D);
+        var game = new AttributeInstance(attribute, ignored -> {});
+        modifiers.forEach(game::addTransientModifier);
+
+        assertEquals(13.125D, game.getValue());
+        assertEquals(game.getValue(), RegistryPropertyExtractor.equippedValue(attribute, 5.0D, modifiers));
+    }
+
+    @Test
+    void equippedDisplayUsesTheGameAttributeRangeAndSpecifiedPlayerBase() {
+        var attribute = new RangedAttribute("fixture.combat", 2.0D, 0.0D, 16.0D);
+        var addition = new AttributeModifier("addition", 14.0D, AttributeModifier.Operation.ADDITION);
+        assertEquals(16.0D, RegistryPropertyExtractor.equippedValue(attribute, 4.0D, List.of(addition)));
+        assertEquals(4.0D, RegistryPropertyExtractor.equippedValue(attribute, 4.0D, List.of()));
     }
 }

@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.food.FoodProperties;
@@ -234,9 +235,11 @@ final class RegistryPropertyExtractor {
     }
 
     private static void addAttributes(JsonObject json, ItemStack stack) {
+        Multimap<Attribute, AttributeModifier> mainHand = stack.getAttributeModifiers(EquipmentSlot.MAINHAND);
         JsonArray slots = new JsonArray();
         for (EquipmentSlot slot : EquipmentSlot.values()) {
-            Multimap<Attribute, AttributeModifier> modifiers = stack.getAttributeModifiers(slot);
+            Multimap<Attribute, AttributeModifier> modifiers =
+                slot == EquipmentSlot.MAINHAND ? mainHand : stack.getAttributeModifiers(slot);
             if (modifiers.isEmpty()) {
                 continue;
             }
@@ -253,13 +256,14 @@ final class RegistryPropertyExtractor {
         }
         json.add("attribute_modifiers", slots);
 
-        Multimap<Attribute, AttributeModifier> mainHand = stack.getAttributeModifiers(EquipmentSlot.MAINHAND);
         if (mainHand.containsKey(Attributes.ATTACK_DAMAGE) || mainHand.containsKey(Attributes.ATTACK_SPEED)) {
             JsonObject combat = new JsonObject();
             addModifierSummary(combat, "attack_damage_modifier", mainHand.get(Attributes.ATTACK_DAMAGE));
             addModifierSummary(combat, "attack_speed_modifier", mainHand.get(Attributes.ATTACK_SPEED));
-            combat.addProperty("attack_damage", applyModifiers(1.0D, mainHand.get(Attributes.ATTACK_DAMAGE)));
-            combat.addProperty("attack_speed", applyModifiers(4.0D, mainHand.get(Attributes.ATTACK_SPEED)));
+            combat.addProperty("attack_damage",
+                equippedValue(Attributes.ATTACK_DAMAGE, 1.0D, mainHand.get(Attributes.ATTACK_DAMAGE)));
+            combat.addProperty("attack_speed",
+                equippedValue(Attributes.ATTACK_SPEED, 4.0D, mainHand.get(Attributes.ATTACK_SPEED)));
             json.add("combat", combat);
         }
     }
@@ -416,24 +420,17 @@ final class RegistryPropertyExtractor {
         target.addProperty(name, addition);
     }
 
-    static double applyModifiers(double baseValue, Collection<AttributeModifier> modifiers) {
-        double value = baseValue;
-        for (AttributeModifier modifier : modifiers) {
-            if (modifier.getOperation() == AttributeModifier.Operation.ADDITION) {
-                value += modifier.getAmount();
-            }
+    static double equippedValue(Attribute attribute, double playerBase, Collection<AttributeModifier> modifiers) {
+        if (modifiers.isEmpty()) {
+            return attribute.sanitizeValue(playerBase);
         }
+        AttributeInstance equipped = new AttributeInstance(attribute, ignored -> {});
+        equipped.setBaseValue(playerBase);
         for (AttributeModifier modifier : modifiers) {
-            if (modifier.getOperation() == AttributeModifier.Operation.MULTIPLY_BASE) {
-                value += baseValue * modifier.getAmount();
-            }
+            equipped.removeModifier(modifier);
+            equipped.addTransientModifier(modifier);
         }
-        for (AttributeModifier modifier : modifiers) {
-            if (modifier.getOperation() == AttributeModifier.Operation.MULTIPLY_TOTAL) {
-                value *= 1.0D + modifier.getAmount();
-            }
-        }
-        return value;
+        return equipped.getValue();
     }
 
     private static String vanillaTierId(Tier tier) {
