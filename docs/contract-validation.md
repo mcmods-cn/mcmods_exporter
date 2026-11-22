@@ -123,6 +123,19 @@ links. Before publication, cancellation discards the private candidate and keeps
 staging. After publication the task remains occupied until cleanup returns.
 `finished_at` in the successful ZIP still records the end of stage collection.
 
+In the third-round detached packaging benchmark, both implementations used the
+same staged 20 MiB payload across 320 files, JDK 17, one pinned host CPU and seven
+measured iterations after two warmups. These are caller and packaging times from
+the filesystem workflow without the game renderer.
+
+| ZIP workflow | Longest caller work per run, median / max | Total packaging, median / max |
+| --- | ---: | ---: |
+| `452941e`, synchronous | 417.381 / 540.813 ms | 417.381 / 540.813 ms |
+| `585d02f`, worker and CRC verification | 0.150 / 15.256 ms | 421.904 / 611.635 ms |
+
+The filesystem harness and raw timings are in the round-three handoff. Use the
+in-game procedure below to measure client ticks, frames and stage costs.
+
 The language stage indexes the selected resource stacks once and processes
 one locale per step. Dependency translations remain available when resolving a
 component, and selected namespaces take precedence over dependencies. A single
