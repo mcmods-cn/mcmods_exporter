@@ -78,6 +78,16 @@ input mod hash, command, ZIP hash and manifest outcome. For an installed-JAR
 smoke test, load the remapped JAR, Architectury, JEI and the applicable Fabric
 API in a separate launcher profile.
 
+Record installation, loader discovery, and in-world export separately. The
+0.10.2 remapped JARs from `3ad1dd8` were installed in fresh Minecraft 1.20.1
+profiles. Fabric Loader 0.16.14 and Forge 47.4.21 each identified
+`mcmods_exporter` version 0.10.2 in the instance's `mods/` directory. The
+official launcher had an empty account store. Its vanilla demo entry required
+`accessToken`, so standard-profile world entry remains unverified. The real
+Fabric and Forge ZIPs for this revision came from singleplayer development
+clients. For a standard-profile export, enter a world with an authorized
+launcher session and record the resulting ZIP checksum and manifest.
+
 Inspect `status`, `error_count`, capabilities, and each stage before sending
 the ZIP to a test project. A cancelled job keeps its staging directory. A ZIP
 write failure records `status=failed` in the staging manifest when the
@@ -107,6 +117,47 @@ The language stage indexes the selected resource stacks once and processes
 one locale per step. Dependency translations remain available when resolving a
 component, and selected namespaces take precedence over dependencies. A single
 large locale still needs its JSON decoded and written on the client thread.
+
+For a resource-reload check, confirm the client accepts
+`/mcmods_export status` in the active world, start an export, press F3+T and
+wait for the game log's `Reloading ResourceManager` event. On `3ad1dd8` the
+loader observed the reload during the language stage. The staging manifest
+reported `cancelled`, directory format and zero errors after 30 locales, with
+no ZIP published. Two earlier automated shortcut attempts completed their
+exports without a confirmed reload. Separate runs verified the normal cancel
+command and closing the active client window during that stage.
+
+### Measuring export work per tick
+
+In the 0.10.2 validation, two development-only copies timed every active
+`ExportJob.tick()` on entry and return. The hook recorded nanoseconds in a
+fixed array and wrote it after the final timed call. Both runs used copies of
+the same world and resource files, one CPU, Temurin 17, Fabric Loader 0.16.14,
+JEI 15.20.0.133, Mesa software rendering, a 1,856 MiB heap and the default
+12 ms soft budget. They exported the full `minecraft` namespace, including
+145 languages, 2,084 JEI recipes and 8,555 PNGs.
+
+| Source | Active ticks | p50 (ms) | p95 (ms) | p99 (ms) | Maximum (ms) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `b136ed6` | 1,673 | 15.346 | 34.991 | 297.748 | 10,981.182 |
+| `3ad1dd8` | 1,763 | 15.365 | 41.465 | 97.869 | 8,149.999 |
+
+The older maximum occurred in the language stage. With one locale per step,
+the 146 calls that entered that stage had a 75.519 ms p95 and a 760.838 ms
+maximum. The new longest call finished entity rendering, wrote the ZIP and
+cleaned the staging directory. PNG encoding and ZIP finalization still run on
+the client thread. Whole-job p95 rose in this matched pair on a shared host.
+
+For a repeat measurement, apply the validation handoff's
+`tick-benchmark/development-hook.patch` in a disposable checkout and set
+`mcmods.export.output` to an empty private directory. After exporting, sort the
+`elapsed_ns` column in the sibling `tick-samples.csv` and take the one-based
+rank `ceil(percentile × sample_count / 100)`. The handoff retains both raw
+files and the input checksums. These times cover active exporter work within
+each client tick. Use a separate frame timer for the complete Minecraft frame.
+The uninstrumented manifests record a different unit, the longest stage step.
+For languages this changed from one 15,863 ms step to 146 steps with a 1,432 ms
+maximum in the separate full-package run.
 
 ### Checking JEI ingredient placement in game output
 
