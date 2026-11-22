@@ -7,20 +7,20 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.LoadingOverlay;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.packs.resources.ResourceManager;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Locale;
 import java.util.function.Consumer;
 
 final class ExportJob {
-    private static final DateTimeFormatter DIRECTORY_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS");
+    private static final DateTimeFormatter DIRECTORY_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS", Locale.ROOT);
 
     private final ExportConfig config;
     private final Consumer<Component> notifier;
@@ -31,10 +31,11 @@ final class ExportJob {
     private final ResourceManager sourceServerResources;
     private final ExportContext context;
     private final Path archive;
+    private final ExportPackage packaging;
     private Path output;
     private boolean stageStarted;
     private boolean cancelled;
-    private boolean finished;
+    private Phase phase = Phase.COLLECTING;
     private long workSteps;
 
     ExportJob(Minecraft minecraft, ExportConfig config, Consumer<Component> notifier) throws IOException {
@@ -44,54 +45,53 @@ final class ExportJob {
         this.sourceConnection = minecraft.getConnection();
         var server = minecraft.getSingleplayerServer();
         this.sourceServerResources = server == null ? null : server.getResourceManager();
-        PackagePaths paths = uniqueResultPaths(config);
+        String base = ExportArchives.modSetName(config.namespaces()) + "-" + DIRECTORY_TIME.format(LocalDateTime.now());
+        ExportArchives.Destination paths = ExportArchives.reserve(config.outputRoot(), base);
         Path root = paths.staging();
         this.archive = paths.archive();
         this.output = root;
         ExportReport report = new ExportReport(minecraft.gameDirectory.toPath().resolve("logs"), root, archive.getFileName().toString());
         try {
-            Files.createDirectories(root);
             this.context = new ExportContext(minecraft, config, root, report);
             ExportPipeline.Selection pipeline = ExportPipeline.create(config);
             this.stages = new ArrayDeque<>(pipeline.stages());
             this.stageCount = stages.size();
             report.modulesSelected(pipeline.modules());
-        } catch (IOException | RuntimeException failure) {
+            this.packaging = new ExportPackage(paths);
+        } catch (RuntimeException failure) {
             report.error("job", "create", failure);
             report.closeDiagnostics();
             throw failure;
         }
     }
 
-    private static PackagePaths uniqueResultPaths(ExportConfig config) {
-        String base = ExportArchives.modSetName(config.namespaces()) + "-" + DIRECTORY_TIME.format(LocalDateTime.now());
-        Path candidateArchive = config.outputRoot().resolve(base + ".zip");
-        Path candidateStaging = config.outputRoot().resolve("." + base + ".staging");
-        int suffix = 2;
-        while (Files.exists(candidateArchive) || Files.exists(candidateStaging)) {
-            String suffixed = base + "-" + suffix++;
-            candidateArchive = config.outputRoot().resolve(suffixed + ".zip");
-            candidateStaging = config.outputRoot().resolve("." + suffixed + ".staging");
-        }
-        return new PackagePaths(candidateStaging, candidateArchive);
-    }
-
     void tick() {
-        if (finished) {
+        if (isFinished()) {
             return;
         }
-        var minecraft = context.minecraft();
-        var server = minecraft.getSingleplayerServer();
-        if (cancelled || minecraft.level != sourceLevel || minecraft.getConnection() != sourceConnection
-            || minecraft.getOverlay() instanceof LoadingOverlay
-            || (server == null ? null : server.getResourceManager()) != sourceServerResources) {
-            finish(true);
+        if (phase == Phase.PUBLISHED || phase == Phase.RETAINING) {
+            if (packaging.finalized()) {
+                finish(false);
+            }
+            return;
+        }
+        if (cancelled || !sourceIsActive()) {
+            retainCancelledExport();
+            return;
+        }
+        if (phase == Phase.PACKAGING) {
+            if (packaging.prepared()) {
+                publishArchive();
+            }
             return;
         }
         long deadline = System.nanoTime() + config.tickBudgetNanos();
         do {
             if (stages.isEmpty()) {
-                finish(false);
+                context.report().finish(false);
+                packaging.prepare(manifest(archive.getFileName().toString()));
+                phase = Phase.PACKAGING;
+                notify(Component.literal("[mcmods_exporter] 正在打包。"));
                 return;
             }
             ExportStage stage = stages.getFirst();
@@ -125,61 +125,94 @@ final class ExportJob {
         } while (System.nanoTime() < deadline);
     }
 
-    private void finish(boolean wasCancelled) {
-        if (finished) {
-            return;
-        }
-        finished = true;
-        context.report().finish(wasCancelled);
-        boolean packagedSuccessfully = false;
+    private boolean sourceIsActive() {
+        var minecraft = context.minecraft();
+        var server = minecraft.getSingleplayerServer();
+        return minecraft.level == sourceLevel && minecraft.getConnection() == sourceConnection
+            && !(minecraft.getOverlay() instanceof LoadingOverlay)
+            && (server == null ? null : server.getResourceManager()) == sourceServerResources;
+    }
+
+    private void publishArchive() {
         try {
-            JsonFiles.write(
-                context.root().resolve("manifest.json"),
-                context.report().manifest(config, context.languages(), wasCancelled ? null : archive.getFileName().toString())
-            );
-            if (wasCancelled) {
-                notify(Component.literal("[mcmods_exporter] 已取消: " + context.root().toAbsolutePath()));
-            } else {
-                ExportArchives.createZip(context.root(), archive);
-                output = archive;
-                try {
-                    ExportArchives.deleteTree(context.root());
-                } catch (IOException cleanupFailure) {
-                    context.report().error("package", "staging_cleanup", cleanupFailure);
-                }
-                notify(Component.literal("[mcmods_exporter] 导出完成: " + archive.toAbsolutePath()));
-                packagedSuccessfully = true;
-            }
-        } catch (IOException exception) {
-            context.report().packageFailed(exception);
-            try {
-                JsonFiles.write(context.root().resolve("manifest.json"), context.report().manifest(config, context.languages(), null));
-            } catch (IOException manifestFailure) {
-                context.report().error("package", "manifest", manifestFailure);
-            }
-            notify(Component.literal("[mcmods_exporter] 无法生成 ZIP。请检查输出目录和本地游戏日志。"));
-        } finally {
-            context.report().closeDiagnostics();
-        }
-        if (!wasCancelled && packagedSuccessfully && config.exitAfterExport()) {
-            context.minecraft().stop();
+            packaging.publish();
+            output = archive;
+            phase = Phase.PUBLISHED;
+        } catch (IOException failure) {
+            context.report().packageFailed(failure);
+            retainStaging();
         }
     }
 
-    void cancel() {
+    private void retainCancelledExport() {
         cancelled = true;
+        context.report().finish(true);
+        retainStaging();
+    }
+
+    private void retainStaging() {
+        packaging.retain(manifest(null));
+        phase = Phase.RETAINING;
+    }
+
+    private String manifest(String archiveName) {
+        return JsonFiles.GSON.toJson(context.report().manifest(config, context.languages(), archiveName));
+    }
+
+    private void finish(boolean clientStopping) {
+        boolean packaged = phase == Phase.PUBLISHED;
+        try {
+            packaging.awaitFinalization();
+        } catch (IOException failure) {
+            context.report().error("package", packaged ? "staging_cleanup" : "manifest", failure);
+        } finally {
+            phase = Phase.FINISHED;
+            context.report().closeDiagnostics();
+        }
+        if (packaged) {
+            notify(Component.literal("[mcmods_exporter] 导出完成: " + archive.toAbsolutePath()));
+            if (!clientStopping && config.exitAfterExport() && sourceIsActive()) {
+                context.minecraft().stop();
+            }
+        } else if (cancelled) {
+            notify(Component.literal("[mcmods_exporter] 已取消: " + context.root().toAbsolutePath()));
+        } else {
+            notify(Component.literal("[mcmods_exporter] 无法生成 ZIP。请检查输出目录和本地游戏日志。"));
+        }
+    }
+
+    boolean cancel() {
+        if (phase != Phase.COLLECTING && phase != Phase.PACKAGING) {
+            return false;
+        }
+        cancelled = true;
+        packaging.requestCancellation();
+        return true;
+    }
+
+    void clientStopping() {
+        if (cancel()) {
+            retainCancelledExport();
+        }
+        if (!isFinished()) {
+            finish(true);
+        }
     }
 
     boolean isFinished() {
-        return finished;
+        return phase == Phase.FINISHED;
     }
 
     String status() {
-        if (finished) {
-            return "idle";
-        }
-        String stage = stages.isEmpty() ? "finalizing" : stages.getFirst().id();
-        return "running stage=" + stage + " (" + Math.min(stageCount, stageCount - stages.size() + 1) + "/" + stageCount + ")";
+        return switch (phase) {
+            case COLLECTING -> stages.isEmpty() ? "running stage=packaging"
+                : "running stage=" + stages.getFirst().id()
+                    + " (" + (stageCount - stages.size() + 1) + "/" + stageCount + ")";
+            case PACKAGING -> "running stage=packaging";
+            case PUBLISHED -> "running stage=cleanup";
+            case RETAINING -> "running stage=retaining_staging";
+            case FINISHED -> "idle";
+        };
     }
 
     Path output() {
@@ -193,6 +226,7 @@ final class ExportJob {
         }
     }
 
-    private record PackagePaths(Path staging, Path archive) {
+    private enum Phase {
+        COLLECTING, PACKAGING, PUBLISHED, RETAINING, FINISHED
     }
 }

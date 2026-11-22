@@ -7,12 +7,26 @@ import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class JsonFilesNullPreservationTest {
+    @Test
+    void failedReplacementLeavesExistingContentsAndNoTemporaryJson(@TempDir Path directory) throws IOException {
+        Path occupied = Files.createDirectory(directory.resolve("index.json"));
+        Path original = Files.writeString(occupied.resolve("contents"), "previous data");
+
+        assertThrows(IOException.class, () -> JsonFiles.write(occupied, new JsonObject()));
+
+        assertEquals("previous data", Files.readString(original));
+        try (var entries = Files.list(directory)) {
+            assertEquals(1, entries.count());
+        }
+    }
+
     @Test
     void preservesExplicitNestedNullWithoutInventingAbsentFieldsOrChangingBusinessValues(@TempDir Path directory) throws Exception {
         JsonObject recipe = new JsonObject();

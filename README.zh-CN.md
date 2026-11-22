@@ -41,7 +41,7 @@
 /mcmods_export cancel
 ```
 
-默认输出到游戏目录的 `mcmods-export/`，最终文件名为 `<导出的Mod ID>-<yyyyMMdd-HHmmss-SSS>.zip`；多个 ID 使用 `+` 连接，例如 `create+mekanism-20260710-153012-123.zip`。导出过程中使用的隐藏暂存目录会在 ZIP 成功生成后删除。命名空间支持命令补全；`all` 会导出所有命名空间（导出器自身除外），文件名前缀为 `all-mods`。网站单项目资料导入请使用 `/mcmods_export <目标MODID> all`；全量包适合离线采集，不能由导入端猜测内容属于哪个项目。详见[网站单项目导入范围](docs/export-format-v1.md#网站单项目导入范围)。
+默认输出到游戏目录的 `mcmods-export/`，最终文件名为 `<导出的Mod ID>-<yyyyMMdd-HHmmss-SSS>.zip`。多个 ID 使用 `+` 连接，例如 `create+mekanism-20260710-153012-123.zip`。ZIP 校验并发布后，导出器清理隐藏暂存目录。输出目录所在文件系统须支持同目录硬链接。命名空间支持命令补全。`all` 会导出所有命名空间（导出器自身除外），文件名前缀为 `all-mods`。网站单项目资料导入请使用 `/mcmods_export <目标MODID> all`。全量包供离线采集。[网站单项目导入范围](docs/export-format-v1.md#网站单项目导入范围)
 
 ## 启动参数自动导出
 
@@ -74,7 +74,7 @@
 - `profile`：`data`、`images` 或 `all`。
 - `modules`：逗号分隔的模块 ID；留空或 `all` 表示启用当前 profile 允许的全部模块。可选值为 `compatibility`、`registries`、`associations`、`trades`、`tags`、`recipes`、`advancements`、`worldgen`、`resources`、`block_entity_models`、`entity_models`、`item_icons`、`block_icons`、`effect_icons`、`jei`、`entity_renders`。语言模块始终启用，保证名称引用可解析。
 - `sizes`：会保留用户增加的尺寸，同时始终包含需求规定的 32、128、256。
-- `tickBudgetMs`：每个客户端 tick 的软时间预算，范围 1–100 ms。调度器在两个 step 之间检查时间。世界生成注册表每步最多编码一个条目，语言阶段每步最多处理一种语言。资源扫描、单次编解码、文件写入、渲染和最终打包仍可能超过预算。
+- `tickBudgetMs`：每个客户端 tick 的软时间预算，范围 1–100 ms。调度器在两个 step 之间检查时间。世界生成注册表每步最多编码一个条目，语言阶段每步最多处理一种语言。资源扫描、单次编解码、采集阶段文件写入及渲染单步仍可能超过预算。最终压缩、CRC 校验与暂存清理在后台执行。
 - `exit`：仅自动模式生效，ZIP 成功生成后关闭客户端；打包失败时保留客户端与暂存目录，便于排查。
 
 若要做到完全无人值守，可再使用 Minecraft 1.20.1 的游戏参数：
@@ -150,7 +150,7 @@ resources/index.json
 compatibility/capabilities.json
 ```
 
-索引 JSON 使用 UTF-8，依各自的 `schema_version` 解析。翻译映射与复制的游戏资源保持其原始文档约定。核心 Schema 位于 `schema/`，完整语义见 [docs/export-format-v1.md](docs/export-format-v1.md)。`manifest.json` 记录各阶段计数和错误样本。每个已执行阶段记录 `work_steps` 和 `max_step_us`（最长一次调度的微秒数，含本阶段初始化）。切换世界/连接、可见的资源重载、服务端数据栈更换或客户端正常关闭时取消正在运行的任务。操作系统强制终止时，应检查暂存目录是否已有完整清单。打包写入失败时，暂存目录在可写的情况下记录 `status=failed`。
+索引 JSON 使用 UTF-8，依各自的 `schema_version` 解析。翻译映射与复制的游戏资源保持其原始文档约定。`manifest.json` 记录各阶段计数和错误样本。每个已执行阶段记录 `work_steps` 和 `max_step_us`（最长一次调度的微秒数，含本阶段初始化）。在 ZIP 发布前，切换世界或连接、可见的资源重载、服务端数据栈更换和客户端正常关闭均会取消任务。打包失败时，暂存目录在可写的情况下记录 `status=failed`。进程被强制终止后，待确认的隐藏文件与暂存目录可能需要人工清理。[包格式](docs/export-format-v1.md)
 
 清单的错误样本只包含阶段、逻辑对象和异常类型。详细异常样本保存在游戏目录的私有 `logs/mcmods-export-*.log`，游戏日志会提示文件名。单个对象失败可形成包含错误的已结束包。验收需同时检查 `status`、每个阶段、`error_count` 与 `compatibility/capabilities.json`。模板省略、能力降级和执行失败各有独立标记。[诊断与复跑](docs/contract-validation.md#producing-a-package-from-a-checkout)
 
@@ -195,7 +195,7 @@ $env:JAVA_HOME='C:\path\to\jdk-17'
 
 导出包供网站前端预检、上传，再由后端导入和审核；客户端仅将文件写入游戏机本地。
 
-`common` 实现配置、任务调度、错误隔离、OBJ 写入和各导出阶段，包格式定义在 `schema/`。Fabric 与 Forge 的客户端入口注册导出命令，在每个客户端 tick 结束时调用 `ExportBootstrap.tick`，在客户端关闭时调用 `ExportCoordinator.clientStopping` 取消活动任务并写出暂存清单。升级 Minecraft 时优先核对下列 API 边界。
+`common` 实现配置、任务调度、错误隔离、OBJ 写入和各导出阶段，包格式定义在 `schema/`。Fabric 与 Forge 的客户端入口注册导出命令，在每个客户端 tick 结束时调用 `ExportBootstrap.tick`，关闭时调用 `ExportCoordinator.clientStopping` 等待本次文件收尾。升级 Minecraft 时优先核对下列 API 边界。
 
 - `render/OffscreenRenderer.java`：RenderTarget、GuiGraphics、投影矩阵；
 - `stage/JeiRecipeGuiStage.java`：JEI 类别空白背景与配方槽位 API；

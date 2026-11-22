@@ -90,9 +90,10 @@ class ExportReportTest {
         assertEquals(99, result.get("errors_omitted").getAsInt());
         assertEquals("object", result.getAsJsonArray("errors").get(0).getAsJsonObject().get("subject").getAsString());
         Path staging = Files.createDirectory(game.resolve("staging"));
-        Files.writeString(staging.resolve("manifest.json"), result.toString());
         Path zip = game.resolve("example.zip");
-        ExportArchives.createZip(staging, zip);
+        try (var prepared = ExportArchives.prepare(staging, zip, result.toString(), () -> false)) {
+            prepared.publish();
+        }
         try (ZipFile archive = new ZipFile(zip.toFile())) {
             assertEquals(1, archive.size());
             try (var manifest = archive.getInputStream(archive.getEntry("manifest.json"))) {

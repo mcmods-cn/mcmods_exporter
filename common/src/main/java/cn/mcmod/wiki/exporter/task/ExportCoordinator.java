@@ -45,10 +45,7 @@ public final class ExportCoordinator {
     public void tick() {
         if (isBusy()) {
             activeJob.tick();
-            if (activeJob.isFinished()) {
-                lastOutput = activeJob.output();
-                activeJob = null;
-            }
+            releaseFinishedJob();
         }
     }
 
@@ -61,16 +58,20 @@ public final class ExportCoordinator {
 
     /** The client may have no further ticks after the loader's stopping event. */
     public void clientStopping() {
-        if (cancel()) {
-            tick();
+        if (isBusy()) {
+            activeJob.clientStopping();
+            releaseFinishedJob();
         }
     }
 
     public boolean cancel() {
-        if (!isBusy()) {
-            return false;
+        return isBusy() && activeJob.cancel();
+    }
+
+    private void releaseFinishedJob() {
+        if (activeJob != null && activeJob.isFinished()) {
+            lastOutput = activeJob.output();
+            activeJob = null;
         }
-        activeJob.cancel();
-        return true;
     }
 }

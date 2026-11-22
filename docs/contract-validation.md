@@ -110,8 +110,18 @@ To investigate a slow export, reuse the same world, installed mods, resources,
 configuration and rendering environment. Inspect the stage `work_steps`,
 `max_step_us` and elapsed time in the manifest. In the world-generation stage
 each registry step handles at most one entry. Resource scans, individual codecs,
-JSON writes, renders and ZIP finalization still use the client thread. Measure
-finalization separately when attributing wall time to compression.
+collection-phase writes and renders use the client thread. Measure the packaging
+wall time separately from active export ticks and full game frames.
+
+When collection ends, the client serializes the manifest and starts one worker
+with the staging path, output path and immutable manifest text. The worker
+compresses to a hidden file and verifies every entry's content length and CRC.
+After checking the original world, connection, resource state and cancellation,
+the client publishes the verified ZIP with one hard link. Cleanup then runs on
+the worker. Local output needs a filesystem that supports same-directory hard
+links. Before publication, cancellation discards the private candidate and keeps
+staging. After publication the task remains occupied until cleanup returns.
+`finished_at` in the successful ZIP still records the end of stage collection.
 
 The language stage indexes the selected resource stacks once and processes
 one locale per step. Dependency translations remain available when resolving a
@@ -145,8 +155,8 @@ JEI 15.20.0.133, Mesa software rendering, a 1,856 MiB heap and the default
 The older maximum occurred in the language stage. With one locale per step,
 the 146 calls that entered that stage had a 75.519 ms p95 and a 760.838 ms
 maximum. The new longest call finished entity rendering, wrote the ZIP and
-cleaned the staging directory. PNG encoding and ZIP finalization still run on
-the client thread. Whole-job p95 rose in this matched pair on a shared host.
+cleaned the staging directory. Both measurements predate the move of ZIP
+finalization to the worker. Whole-job p95 rose in this matched pair on a shared host.
 
 For a repeat measurement, apply the validation handoff's
 `tick-benchmark/development-hook.patch` in a disposable checkout and set

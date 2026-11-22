@@ -26,10 +26,10 @@ Windows 使用 `gradlew.bat :common:test build`。CI 在 JDK 17 上以 wrapper �
 
 | 工作 | 入口 |
 | --- | --- |
-| 接入客户端事件 | `fabric/`、`forge/` 注册命令，在客户端 tick 结束时调用 `ExportBootstrap.tick`，关闭时交给 `ExportCoordinator.clientStopping` 取消活动任务 |
+| 接入客户端事件 | `fabric/`、`forge/` 注册命令，在客户端 tick 结束时调用 `ExportBootstrap.tick`，关闭时交给 `ExportCoordinator.clientStopping` 收尾 |
 | 添加导出模块 | 在 common 的 `stage/` 实现阶段，在 `task/ExportPipeline` 定义 profile、选择条件、执行顺序。更新对应 schema 与 fixture，并检验网站消费者 |
 | 修改 JEI 展示 | `JeiRecipeGuiStage`、`RecipeLayoutNormalizer`、`JeiSlotSemantics`。[类别、模板、绑定与概率](docs/jei-template-export-v1.md) |
-| 输出与错误恢复 | `ExportJob`、`ExportReport`、`ExportArchives`。[manifest 与网站接收范围](docs/export-format-v1.md) |
+| 输出与错误恢复 | `ExportJob` 负责客户端生命周期，`ExportPackage` 负责后台打包，`ExportArchives` 负责校验、发布和暂存目录。[manifest 与网站接收范围](docs/export-format-v1.md) |
 | 世界生成 | `WorldgenDataStage` 汇总顶层结构与放置规则；内部拼图模板只计数。[结构 v2](docs/worldgen-structure-export-v2.md) |
 
-游戏注册表、资源栈和 JEI 在客户端阶段读取，离屏绘图依赖有效的 OpenGL 上下文。远程服务器上的世界生成数据可能降级为已安装模组的数据。检查 manifest 的阶段与错误列表，并查阅能力声明。生成 ZIP 失败或主动取消时保留暂存目录，修复原因后重新导出。构建无法解析插件时先核实上游仓库可达性与本机 JDK 的 CA 信任配置。
+游戏注册表、资源栈和 JEI 在客户端阶段读取，离屏绘图依赖有效的 OpenGL 上下文。远程服务器上的世界生成数据可能降级为已安装模组的数据。检查 manifest 的阶段与错误列表，并查阅能力声明。打包和完整性校验在后台执行。输出目录所在文件系统须支持同目录硬链接，才能原子发布已完成的 ZIP 并保护同名文件。打包失败或发布前取消时保留暂存目录。构建无法解析插件时先核实上游仓库可达性与本机 JDK 的 CA 信任配置。
