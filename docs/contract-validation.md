@@ -103,6 +103,11 @@ each registry step handles at most one entry. Resource scans, individual codecs,
 JSON writes, renders and ZIP finalization still use the client thread. Measure
 finalization separately when attributing wall time to compression.
 
+The language stage indexes the selected resource stacks once and processes
+one locale per step. Dependency translations remain available when resolving a
+component, and selected namespaces take precedence over dependencies. A single
+large locale still needs its JSON decoded and written on the client thread.
+
 ### Checking JEI ingredient placement in game output
 
 With Minecraft 1.20.1 and JEI 15.20.0.133, export the `minecraft` namespace

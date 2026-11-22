@@ -18,7 +18,7 @@ python -m pip install -r tools/requirements-contracts.txt
 python tools/check_export_contracts.py
 ```
 
-Windows 使用 `gradlew.bat :common:test build`。安装 `fabric/build/libs/` 或 `forge/build/libs/` 中与加载器匹配的发布 JAR。协议校验支持 Python 3.12，默认读取合成样例。向 `--export-root` 提供保留原始 SHA256 的真实全模块导出解包目录，可对照游戏输出。[验证范围与历史样例](docs/contract-validation.md)
+Windows 使用 `gradlew.bat :common:test build`。CI 在 JDK 17 上以 wrapper 运行 `clean :common:test :fabric:build :forge:build`。安装 `fabric/build/libs/` 或 `forge/build/libs/` 中与加载器匹配的发布 JAR。协议校验支持 Python 3.12，默认读取合成样例。向 `--export-root` 提供保留原始 SHA256 的真实全模块导出解包目录，可对照游戏输出。[验证范围与历史样例](docs/contract-validation.md)
 
 从源码启动客户端时，需要将对应加载器的 JEI 完整实现加入开发运行环境。先使用独立单人世界和目标模组生成 ZIP，再以同一文件核验后端解码与网站导入。[开发客户端、诊断与回滚](docs/contract-validation.md#producing-a-package-from-a-checkout)
 

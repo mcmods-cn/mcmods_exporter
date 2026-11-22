@@ -184,8 +184,8 @@ $env:JAVA_HOME='C:\path\to\jdk-17'
 
 产物：
 
-- `fabric/build/libs/mcmods_exporter-0.10.1.jar`
-- `forge/build/libs/mcmods_exporter-0.10.1.jar`
+- `fabric/build/libs/mcmods_exporter-0.10.2.jar`
+- `forge/build/libs/mcmods_exporter-0.10.2.jar`
 
 实际版本号取自根目录 `gradle.properties` 的 `mod_version`。请使用无 `-dev-shadow`、`-sources` 后缀的加载器产物。
 
