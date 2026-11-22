@@ -45,7 +45,7 @@
 - 嵌套战利品表：`loot_table_id`；
 - 动态掉落：`dynamic_id`。
 
-未知条目不会丢弃所在的原始 `definition`，规范化条目会标记 `normalization_status=partial`。
+自定义条目的原始 `definition` 保留扩展字段。规范化条目保留声明的类型。缺少类型时使用 `entry_kind=unknown` 与 `normalization_status=partial`。
 
 ## 版本目录适配
 

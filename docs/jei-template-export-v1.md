@@ -182,7 +182,7 @@ v7 每个类别新增 `export_mode=full|templates_only`、`recipes_omitted` 与 
   "recipe_id_source": "minecraft_recipe",
   "recipe_id_canonical": true,
   "source_mod_id": "minecraft",
-  "source_mod_version": "1.21.1",
+  "source_mod_version": "1.20.1",
   "source_mod_id_source": "recipe_id_namespace",
   "origin_kind": "registered_recipe",
   "recipe_key": "minecraft:stick#000001",
@@ -271,7 +271,7 @@ for (const binding of recipe.bindings) {
   const slot = template.slotsById.get(binding.slot_id)
   const rect = slot.visual_rect ?? slot.rect
   drawIngredient(binding.alternatives[currentFrame], rect)
-  registerClickableArea(slot.rect, binding.alternatives)
+  if (binding.clickable) registerClickableArea(slot.rect, binding.alternatives)
 }
 ```
 

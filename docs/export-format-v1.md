@@ -67,7 +67,7 @@ JEI 使用“合成方式背景、通用槽位模板、具体配方绑定”三�
 - `recipe_id_source` 说明 ID 来源：`minecraft_recipe` 是原版 `Recipe` ID，`jei_category` 是 JEI 类别通过 `getRegistryName` 提供的权威 ID，`generated_index` 表示第三方类别没有注册 ID；
 - 每个布局都保证存在 `recipe_id`。只有 `recipe_id_canonical=true` 时才能把它当作跨次导出稳定主键；`generated_index` 只用于本次导出内关联，网站应另用布局内容指纹做去重；
 - 普通配方和 JEI 绑定都输出 `source_mod_id`、`source_mod_version`、`source_mod_id_source`。权威配方以 `recipe_id` 命名空间作为来源；只有没有权威 ID 的 JEI 动态条目才回退到类别命名空间；
-- 指定 Mod 导出时只保留其权威 `recipe_id` 命名空间下的配方。随后按 `(recipe_id, underlying_recipe_type_id)` 去掉已有原生类别的跨类别兼容投影，避免兼容机器复制工作台全部配方；排除统计在 `categories.json.filter_summary`；
+- 指定 Mod 导出时，只保留其权威 `recipe_id` 命名空间下的配方。跨类别的重复展示按权威 `recipe_id` 去重，即使底层配方类型不同。排除统计在 `categories.json.filter_summary`。
 - `canvas`、`content` 和模板中的所有槽位矩形使用 `logical_pixels`；PNG 的实际像素倍率由 `image_scale` 指定；
 - `templates[].slots[].role` 是 `input`、`output`、`catalyst` 或 `render_only`；
 - `rect` 定位点击区域，`visual_rect` 定位材料绘制区域。自定义底板与覆盖层由 JEI 绘入模板背景。旧包坐标的处理见[模板协议](jei-template-export-v1.md#5-模板集合)。
@@ -84,7 +84,7 @@ JEI 使用“合成方式背景、通用槽位模板、具体配方绑定”三�
 
 类别级 `catalysts` 与布局中的 `slots[].role=catalyst` 含义不同：前者是整个 `recipe_type_id` 的工作站，后者只是某条配方画布中的催化剂材料槽。若第三方模组没有向 JEI 注册 Recipe Catalyst，则类别输出空数组，导出器不会根据类别名称或背景猜测机器。
 
-网站把模板背景的 CSS 尺寸设为 `canvas.width × canvas.height`，再用配方 `template_id` 找到对应背景和模板，通过 `bindings[].slot_id` 取得 `slots[].rect` 并叠加物品或其他 Ingredient 图标与数量文字。固定容量类别的配方共享模板；动态容量类别按模板分别使用背景。
+网站按 `canvas.width × canvas.height` 显示背景，用 `template_id` 与 `bindings[].slot_id` 找到槽位。图标和数量文字按 `visual_rect` 绘制，交互区域使用 `rect` 并遵循绑定的 `clickable`。旧包缺少 `visual_rect` 时，绘制回退到 `rect`。固定容量配方共享模板。动态容量按模板分别使用背景。
 
 ## 流体与非物品 Ingredient
 
@@ -132,7 +132,7 @@ Mekanism 1.20.1 的四套 ChemicalStack 全部保留，但必须分开入库：`
 - `entity_spawns.json`：目标群系完整刷怪表，以及外部群系中与目标实体有关的刷怪行；
 - `natural_generation.json`：`mcmods-natural-generation/v2` 面向百科的规范化自然生成目录。以放置地物为主键，将配置地物、生成结果、替换目标、放置参数、生成阶段、运行时群系引用和 Forge/NeoForge Biome Modifier 合并成一条记录；洞穴/峡谷等配置雕刻器作为 `configured_carver` 条目。噪声、密度函数和世界预设等技术注册表不会成为公开目录条目；
 - `structures.json`：`mcmods-structures/v2` 顶层结构大类目录。每项对应一个 `worldgen/structure` 注册 ID，并包含已规范化的群系、生成阶段、地形适配、起始结构池和结构集放置参数；
-- `loot_tables.json`：`mcmods-loot-tables/v2` 完整战利品表、谓词与物品修饰器定义。每张表同时保留生效 `definition`，并输出网站可直接渲染的规范化 `pools[]`、递归 `entries[]`、rolls、条件、函数、权重和静态候选产物；根节点通过 `definition_count`、`definition_missing_count` 与 `normalized_pool_count` 明确审计完整性。每张表带 `category=block/chest/entity/fishing/...`，原版 `gameplay/fishing/**` 会规范化为 `fishing`。`possible_item_ids`/`possible_item_tags` 已递归合并嵌套表的静态候选产物，但条件、动态表与函数可能改变结果，因此固定标记 `possible_items_complete=false`。1.21+ 的 `loot_table`、`predicate`、`item_modifier` 单数数据目录由版本适配层处理；
+- `loot_tables.json`：`mcmods-loot-tables/v2` 战利品表、谓词与物品修饰器。每张表有可用的生效 `definition`、规范化 `pools[]`、递归 `entries[]`、rolls、条件、函数、权重和静态候选产物。根节点以 `definition_count`、`definition_missing_count` 与 `normalized_pool_count` 记录完整性。原版 `gameplay/fishing/**` 的 `category` 为 `fishing`。`possible_item_ids` 与 `possible_item_tags` 包含嵌套表的静态候选。运行时条件、动态表与函数可能改变掉落，因此 `possible_items_complete=false`。当前构建读取 Minecraft 1.20.1 的复数数据目录。
 - `data_files.json`：全部导出原始服务端数据文件的逻辑 ID、ZIP 路径、类型、大小和可用的 `source_mod_id`。命名空间归属与提供资源的 Mod 可以不同。早期 v1 文件项可以缺少这个来源字段。
 
 单人世界使用集成服务器的当前生效资源栈，因此数据包覆盖也会反映在导出结果中。连接远程服务器时，Minecraft 不会把完整服务端数据包下发给客户端，导出器只能回退扫描已安装 Mod 自带的 `data/`；此时 `data_files.json` 的 `resource_source=installed_mod_fallback` 且 `remote_server_data_complete=false`，网站不得把它误认为远程服务器完整数据快照。

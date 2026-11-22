@@ -4,20 +4,19 @@ import cn.mcmod.wiki.exporter.task.ExportContext;
 import cn.mcmod.wiki.exporter.task.OnceStage;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.npc.VillagerTrades;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.trading.MerchantOffer;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Exports deterministic samples of code-registered villager trades. Minecraft
@@ -36,8 +35,7 @@ public final class TradeDataStage extends OnceStage {
     @Override
     protected void run(ExportContext context) throws Exception {
         JsonArray professions = new JsonArray();
-        Object tradeMap = staticField("net.minecraft.world.entity.npc.VillagerTrades", "TRADES");
-        Map<?, ?> trades = tradeMap instanceof Map<?, ?> map ? map : Map.of();
+        var trades = VillagerTrades.TRADES;
         Entity trader = context.minecraft().level == null ? null : EntityType.VILLAGER.create(context.minecraft().level);
         try {
             BuiltInRegistries.VILLAGER_PROFESSION.entrySet().stream()
@@ -45,8 +43,7 @@ public final class TradeDataStage extends OnceStage {
                 .forEach(entry -> {
                     ResourceLocation professionId = entry.getKey().location();
                     boolean selectedProfession = context.matches(professionId);
-                    Object levelsObject = trades.get(entry.getValue());
-                    Map<?, ?> levels = levelsObject instanceof Map<?, ?> map ? map : Map.of();
+                    var levels = trades.getOrDefault(entry.getValue(), Int2ObjectMaps.emptyMap());
                     JsonArray levelRows = sampleLevels(context, professionId, levels, trader, selectedProfession);
                     if (!selectedProfession && levelRows.isEmpty()) {
                         return;
@@ -72,14 +69,12 @@ public final class TradeDataStage extends OnceStage {
         root.addProperty("sampling_note", "Code-registered ItemListing implementations expose generated offers, not their original random ranges; one deterministic sample is stored per listing.");
         root.addProperty("profession_count", professions.size());
         root.add("professions", professions);
-        Object wanderingMap = staticField("net.minecraft.world.entity.npc.VillagerTrades", "WANDERING_TRADER_TRADES");
         Entity wanderingTrader = context.minecraft().level == null ? null : EntityType.WANDERING_TRADER.create(context.minecraft().level);
         try {
-            Map<?, ?> wanderingLevels = wanderingMap instanceof Map<?, ?> map ? map : Map.of();
             JsonArray wandering = sampleLevels(
                 context,
                 new ResourceLocation("minecraft", "wandering_trader"),
-                wanderingLevels,
+                VillagerTrades.WANDERING_TRADER_TRADES,
                 wanderingTrader,
                 context.config().namespaces().isEmpty()
             );
@@ -94,25 +89,25 @@ public final class TradeDataStage extends OnceStage {
         context.report().addCount(ID, "villager_professions", professions.size());
     }
 
-    private static JsonArray sampleLevels(
+    static JsonArray sampleLevels(
         ExportContext context,
         ResourceLocation professionId,
-        Map<?, ?> levels,
+        Int2ObjectMap<VillagerTrades.ItemListing[]> levels,
         Entity trader,
         boolean selectedProfession
     ) {
         JsonArray result = new JsonArray();
-        levels.entrySet().stream()
-            .sorted(Comparator.comparingInt(entry -> ((Number) entry.getKey()).intValue()))
+        levels.int2ObjectEntrySet().stream()
+            .sorted(Comparator.comparingInt(Int2ObjectMap.Entry::getIntKey))
             .forEach(entry -> {
-                int level = ((Number) entry.getKey()).intValue();
-                Object listings = entry.getValue();
+                int level = entry.getIntKey();
+                VillagerTrades.ItemListing[] listings = entry.getValue();
                 JsonArray offers = new JsonArray();
-                if (listings != null && listings.getClass().isArray()) {
-                    for (int index = 0; index < Array.getLength(listings); index++) {
-                        Object listing = Array.get(listings, index);
+                if (listings != null) {
+                    for (int index = 0; index < listings.length; index++) {
                         try {
-                            MerchantOffer offer = invokeOffer(listing, trader, professionId, level, index);
+                            long seed = 31L * professionId.toString().hashCode() + 17L * level + index;
+                            MerchantOffer offer = listings[index].getOffer(trader, RandomSource.create(seed));
                             if (offer == null || (!selectedProfession && !containsTargetItem(context, offer))) {
                                 continue;
                             }
@@ -133,29 +128,6 @@ public final class TradeDataStage extends OnceStage {
                 }
             });
         return result;
-    }
-
-    private static MerchantOffer invokeOffer(
-        Object listing,
-        Entity trader,
-        ResourceLocation profession,
-        int level,
-        int index
-    ) throws Exception {
-        Method method = null;
-        for (Method candidate : listing.getClass().getMethods()) {
-            if (candidate.getName().equals("getOffer") && candidate.getParameterCount() == 2) {
-                method = candidate;
-                break;
-            }
-        }
-        if (method == null) {
-            return null;
-        }
-        method.setAccessible(true);
-        long seed = 31L * profession.toString().hashCode() + 17L * level + index;
-        Object value = method.invoke(listing, trader, RandomSource.create(seed));
-        return value instanceof MerchantOffer offer ? offer : null;
     }
 
     private static boolean containsTargetItem(ExportContext context, MerchantOffer offer) {
@@ -198,15 +170,6 @@ public final class TradeDataStage extends OnceStage {
             }
         }
         return new JsonObject();
-    }
-
-    private static Object staticField(String className, String fieldName) {
-        try {
-            Field field = Class.forName(className).getField(fieldName);
-            return field.get(null);
-        } catch (Throwable ignored) {
-            return null;
-        }
     }
 
     private static JsonObject baseId(ResourceLocation id) {
