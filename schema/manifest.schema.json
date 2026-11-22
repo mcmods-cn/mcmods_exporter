@@ -31,7 +31,8 @@
     },
     "stages": { "type": "array", "items": { "$ref": "#/$defs/stage" } },
     "errors": { "type": "array", "items": { "$ref": "#/$defs/error" } },
-    "error_count": { "type": "integer", "minimum": 0 }
+    "error_count": { "type": "integer", "minimum": 0 },
+    "errors_omitted": { "type": "integer", "minimum": 0 }
   },
   "allOf": [{
     "if": {"properties": {"status": {"const": "failed"}}},

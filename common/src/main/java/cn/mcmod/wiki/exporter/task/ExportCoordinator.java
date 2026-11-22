@@ -36,8 +36,8 @@ public final class ExportCoordinator {
             notifier.accept(Component.literal("[mcmods_exporter] 任务已创建: " + lastOutput.toAbsolutePath()));
             return true;
         } catch (Exception exception) {
-            McModsExporter.LOGGER.error("Could not create export job", exception);
-            notifier.accept(Component.literal("[mcmods_exporter] 无法创建任务: " + exception.getMessage()));
+            McModsExporter.LOGGER.warn("Could not create export job ({})", exception.getClass().getSimpleName());
+            notifier.accept(Component.literal("[mcmods_exporter] 无法创建任务。请检查输出目录和本地游戏日志。"));
             return false;
         }
     }

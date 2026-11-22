@@ -89,7 +89,7 @@ public final class ResourceStage extends OnceStage {
                 exported.put(next.id.toString(), new ExportedResource(next.id, target, kind, next.reason, size));
                 discoverDependencies(context, next.id, target, pending, queued);
             } catch (Throwable throwable) {
-                context.report().error(ID, next.id.toString(), throwable);
+                context.report().error(ID, next.id, throwable);
             }
         }
 

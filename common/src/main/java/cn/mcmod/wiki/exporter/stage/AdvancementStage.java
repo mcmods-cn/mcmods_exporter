@@ -96,7 +96,7 @@ public final class AdvancementStage extends OnceStage {
                     roots.add(advancement.getId().toString());
                 }
             } catch (Throwable throwable) {
-                context.report().error(ID, advancement.getId().toString(), throwable);
+                context.report().error(ID, advancement.getId(), throwable);
             }
         }
 

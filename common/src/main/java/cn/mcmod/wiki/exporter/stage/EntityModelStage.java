@@ -62,7 +62,7 @@ public final class EntityModelStage implements ExportStage {
             capture(context, entry.id, living, renderer, livingRenderer);
             context.report().addCount(ID, "models", 1);
         } catch (Throwable throwable) {
-            context.report().error(ID, entry.id.toString(), throwable);
+            context.report().error(ID, entry.id, throwable);
         } finally {
             if (entity != null) {
                 entity.discard();

@@ -138,7 +138,7 @@ public final class BlockEntityModelStage implements ExportStage {
             context.report().addCount(ID, "block_entities", 1);
             context.report().addCount(ID, "variants", variants.size());
         } catch (Throwable throwable) {
-            context.report().error(ID, entry.id.toString(), throwable);
+            context.report().error(ID, entry.id, throwable);
         }
         return finishIfNeeded(context);
     }

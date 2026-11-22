@@ -86,6 +86,16 @@ disk issue, and start a fresh job. For regression checks keep the previous JAR
 and ZIP hash, so the previous loader-matched JAR can be restored while existing
 import revisions continue to refer to their original package.
 
+On the first sampled error, the game log identifies a private file under the
+game instance's `logs/mcmods-export-*.log`. Its header records the export
+archive name, stage and object. Stacks include causes and suppressed exceptions.
+Treat these files as private when sharing a ZIP or reporting an issue. Each
+job samples one stack per stage, object and exception type, up to 15 ordinary
+errors plus a reserved archive failure. Individual stacks have a marked
+32,768-character limit. If the file system cannot create an owner-only file,
+the game reports that diagnostic logging is unavailable and keeps the manifest
+error counts. A successful job with no errors creates no diagnostic file.
+
 To investigate a slow export, reuse the same world, installed mods, resources,
 configuration and rendering environment. Inspect the stage `work_steps`,
 `max_step_us` and elapsed time in the manifest. In the world-generation stage

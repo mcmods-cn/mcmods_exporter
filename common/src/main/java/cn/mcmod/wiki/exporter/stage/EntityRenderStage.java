@@ -56,7 +56,7 @@ public final class EntityRenderStage implements ExportStage {
                 context.report().addCount(ID, "not_living", 1);
             }
         } catch (Throwable throwable) {
-            context.report().error(ID, entry.id.toString(), throwable);
+            context.report().error(ID, entry.id, throwable);
         } finally {
             if (entity != null) {
                 entity.discard();

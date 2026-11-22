@@ -49,7 +49,7 @@ public final class RecipeDataStage extends OnceStage {
             try {
                 data.add(recipeJson(context, recipe));
             } catch (Throwable throwable) {
-                context.report().error(ID, recipe.getId().toString(), throwable);
+                context.report().error(ID, recipe.getId(), throwable);
             }
         }
         JsonObject root = new JsonObject();

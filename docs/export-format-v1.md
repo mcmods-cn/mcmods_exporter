@@ -2,6 +2,8 @@
 
 最终产物是 `<Mod ID>-<时间戳>.zip`，ZIP 根目录的 `manifest.json` 是导出包入口。多个显式目标 ID 用 `+` 连接；全量导出使用 `all-mods`。导入端必须先检查 `schema_version`、`status` 和 `package_format`。现有 v1 写入器将遍历结束的任务标为 `complete`，可能附有逐对象错误或失败阶段。完整导出验收还需检查 `error_count`、`errors[]`、`stages[].status` 和对应能力声明。网站导入和发布分别校验来源、授权和审核状态。打包失败且暂存目录可写时，目录版清单记录 `status=failed`、`package_format=directory` 和打包错误。该状态只用于失败暂存，不应用于上传。较早的 v1 写入器可能以 `complete` 配合目录格式和打包错误表示同一情形。
 
+`error_count` 是发生次数，`errors[]` 保留最多 128 条去重样本。重复或超限时，可选字段 `errors_omitted` 记录省略次数。错误样本含阶段、固定操作名或经过检查的资源 ID、异常类别。第三方自由文本使用 `object` 代称。需要本地排查时，根据游戏日志中的提示打开本次任务的私有诊断文件。[诊断与验证](contract-validation.md)
+
 阶段的可选字段 `work_steps` 和 `max_step_us` 记录步数和最长一次调度耗时；首步包含初始化。新旧清单均可通过各自声明的成员判读。墙钟 `duration_ms` 包含跨 tick 等待，不用于推断最快或最慢帧。
 
 

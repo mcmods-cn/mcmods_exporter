@@ -5,20 +5,37 @@ import cn.mcmod.wiki.exporter.config.ExportConfig;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import dev.architectury.platform.Platform;
+import net.minecraft.resources.ResourceLocation;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 public final class ExportReport {
+    static final int MAX_ERROR_SAMPLES = 128;
     private final Instant startedAt = Instant.now();
     private final JsonArray errors = new JsonArray();
+    private final Set<ErrorKey> sampled = new HashSet<>();
+    private final LocalExportDiagnostics local;
+    private long errorCount;
     private final Map<String, StageInfo> stages = new LinkedHashMap<>();
     private List<String> selectedModules = List.of();
     private String status = "running";
     private Instant finishedAt;
+
+    public ExportReport() {
+        this.local = null;
+    }
+
+    ExportReport(Path logDirectory, Path staging, String archiveName) {
+        this.local = new LocalExportDiagnostics(logDirectory, staging, archiveName);
+    }
 
     static void rethrowFatal(Throwable throwable) {
         if (throwable instanceof VirtualMachineError fatal) {
@@ -65,15 +82,54 @@ public final class ExportReport {
     }
 
     public void error(String stageId, String subject, Throwable throwable) {
+        // Free-form context can come from third-party helpers. Only fixed operation
+        // names or a typed Minecraft resource ID belong in an uploadable manifest.
+        subject = Objects.requireNonNullElse(subject, "object");
+        String publicSubject = switch (subject) {
+            case "stage", "zip", "index", "categories_index", "manifest", "create", "staging_cleanup" -> subject;
+            default -> "object";
+        };
+        recordError(stageId, subject, publicSubject, throwable);
+    }
+
+    public void error(String stageId, ResourceLocation object, Throwable throwable) {
+        if (object == null) {
+            error(stageId, "object", throwable);
+            return;
+        }
+        String id = object.toString();
+        String path = object.getPath();
+        boolean safe = id.length() <= 256 && !path.startsWith("/") && !path.contains("..") && !path.contains("//");
+        recordError(stageId, id, safe ? id : "object", throwable);
+    }
+
+    private void recordError(String stageId, String subject, String publicSubject, Throwable throwable) {
         rethrowFatal(throwable);
+        errorCount++;
+        // Keep one sample for a terminal archive failure even after an object error storm.
+        boolean packageFailure = stageId.equals("package") && publicSubject.equals("zip");
+        if (sampled.size() >= MAX_ERROR_SAMPLES - (packageFailure ? 0 : 1)) {
+            return;
+        }
+        String key = subject.length() <= 512 ? subject : subject.substring(0, 512);
+        if (!sampled.add(new ErrorKey(stageId, key, throwable.getClass()))) {
+            return;
+        }
+        if (local != null) {
+            local.sample(stageId, subject, throwable, packageFailure);
+        }
         JsonObject error = new JsonObject();
         error.addProperty("stage", stageId);
-        error.addProperty("subject", subject);
-        // The manifest is uploaded with the archive. Third-party exception messages
-        // can include a user's absolute paths, pack names or file contents.
+        error.addProperty("subject", publicSubject);
         String failure = throwable.getClass().getSimpleName();
         error.addProperty("message", failure.isEmpty() ? "Export error" : failure);
         errors.add(error);
+    }
+
+    void closeDiagnostics() {
+        if (local != null) {
+            local.close(errorCount);
+        }
     }
 
     public void finish(boolean cancelled) {
@@ -137,8 +193,13 @@ public final class ExportReport {
         stages.forEach((id, info) -> stageArray.add(info.toJson(id)));
         root.add("stages", stageArray);
         root.add("errors", errors);
-        root.addProperty("error_count", errors.size());
+        root.addProperty("error_count", errorCount);
+        if (errorCount > errors.size()) {
+            root.addProperty("errors_omitted", errorCount - errors.size());
+        }
     }
+
+    private record ErrorKey(String stage, String subject, Class<?> failure) { }
 
     private static final class StageInfo {
         private Instant startedAt;

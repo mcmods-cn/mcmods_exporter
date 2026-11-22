@@ -1,6 +1,5 @@
 package cn.mcmod.wiki.exporter.task;
 
-import cn.mcmod.wiki.exporter.McModsExporter;
 import cn.mcmod.wiki.exporter.config.ExportConfig;
 import cn.mcmod.wiki.exporter.util.ExportArchives;
 import cn.mcmod.wiki.exporter.util.JsonFiles;
@@ -45,18 +44,23 @@ final class ExportJob {
         this.sourceConnection = minecraft.getConnection();
         var server = minecraft.getSingleplayerServer();
         this.sourceServerResources = server == null ? null : server.getResourceManager();
-        Files.createDirectories(config.outputRoot());
         PackagePaths paths = uniqueResultPaths(config);
         Path root = paths.staging();
         this.archive = paths.archive();
         this.output = root;
-        Files.createDirectories(root);
-        ExportReport report = new ExportReport();
-        this.context = new ExportContext(minecraft, config, root, report);
-        ExportPipeline.Selection pipeline = ExportPipeline.create(config);
-        this.stages = new ArrayDeque<>(pipeline.stages());
-        this.stageCount = stages.size();
-        report.modulesSelected(pipeline.modules());
+        ExportReport report = new ExportReport(minecraft.gameDirectory.toPath().resolve("logs"), root, archive.getFileName().toString());
+        try {
+            Files.createDirectories(root);
+            this.context = new ExportContext(minecraft, config, root, report);
+            ExportPipeline.Selection pipeline = ExportPipeline.create(config);
+            this.stages = new ArrayDeque<>(pipeline.stages());
+            this.stageCount = stages.size();
+            report.modulesSelected(pipeline.modules());
+        } catch (IOException | RuntimeException failure) {
+            report.error("job", "create", failure);
+            report.closeDiagnostics();
+            throw failure;
+        }
     }
 
     private static PackagePaths uniqueResultPaths(ExportConfig config) {
@@ -111,7 +115,6 @@ final class ExportJob {
                 }
             } catch (Throwable throwable) {
                 ExportReport.rethrowFatal(throwable);
-                McModsExporter.LOGGER.error("Export stage {} failed", stage.id(), throwable);
                 context.report().stageFailed(stage.id(), throwable);
                 notify(Component.literal("[mcmods_exporter] 阶段失败，已记录并继续: " + stage.id()));
                 stages.removeFirst();
@@ -142,19 +145,21 @@ final class ExportJob {
                 try {
                     ExportArchives.deleteTree(context.root());
                 } catch (IOException cleanupFailure) {
-                    McModsExporter.LOGGER.warn("Could not remove export staging directory {}", context.root(), cleanupFailure);
+                    context.report().error("package", "staging_cleanup", cleanupFailure);
                 }
                 notify(Component.literal("[mcmods_exporter] 导出完成: " + archive.toAbsolutePath()));
                 packagedSuccessfully = true;
             }
         } catch (IOException exception) {
-            McModsExporter.LOGGER.error("Could not write export package", exception);
             context.report().packageFailed(exception);
             try {
                 JsonFiles.write(context.root().resolve("manifest.json"), context.report().manifest(config, context.languages(), null));
-            } catch (IOException ignored) {
+            } catch (IOException manifestFailure) {
+                context.report().error("package", "manifest", manifestFailure);
             }
-            notify(Component.literal("[mcmods_exporter] 无法生成 ZIP: " + exception.getMessage()));
+            notify(Component.literal("[mcmods_exporter] 无法生成 ZIP。请检查输出目录和本地游戏日志。"));
+        } finally {
+            context.report().closeDiagnostics();
         }
         if (!wasCancelled && packagedSuccessfully && config.exitAfterExport()) {
             context.minecraft().stop();

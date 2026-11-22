@@ -53,7 +53,7 @@ public final class BlockIconStage implements ExportStage {
                 context.report().addCount(ID, "blocks", 1);
             }
         } catch (Throwable throwable) {
-            context.report().error(ID, entry.id.toString(), throwable);
+            context.report().error(ID, entry.id, throwable);
         }
         return index >= entries.size() ? StageResult.DONE : StageResult.MORE_WORK;
     }
