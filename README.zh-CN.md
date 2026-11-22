@@ -16,7 +16,7 @@
 | 状态效果 | 效果 ID、分类、颜色、即时/有益属性、多语言名称，以及效果自身的 32/128/256 透明 PNG；不导出药水瓶和药箭 |
 | 流体与化学品 | 流体本体 ID、名称和实际流体贴图；Mekanism 气体、灌注类型、颜料、浆液分别分类，输出数量、Tag、多语言名称和 32/128/256 PNG |
 | 配方 | 游戏已解析后的规范化输入候选、输出、类型和可用的序列化器 ID |
-| 配方 GUI | 每个 JEI 合成方式只导出一张无物品背景和一个布局集合；集合含可点击槽位、候选材料、Catalyst 与可公开取得的能量/时间/温度等参数 |
+| 配方 GUI | 一个 JEI 类别可有多个布局模板，每个模板对应一张无物品背景。类别记录 Catalyst，配方绑定记录槽位与候选材料，也可记录可公开取得的能量、时间和温度 |
 | 生物实体 | 注册信息、默认属性/掉落/刷怪蛋/繁殖材料、群系刷怪规则、透明斜视角 32/128/256 PNG、静态 idle OBJ、UV、法线、纹理引用 |
 | 附魔 | 类型、稀有度、等级、类别、宝藏/诅咒/交易/发现属性和多语言名称 |
 | 热键 | 只保留目标 Mod 的翻译键、类别、默认绑定、当前绑定、是否解绑和多语言名称 |
@@ -74,7 +74,7 @@
 - `profile`：`data`、`images` 或 `all`。
 - `modules`：逗号分隔的模块 ID；留空或 `all` 表示启用当前 profile 允许的全部模块。可选值为 `compatibility`、`registries`、`associations`、`trades`、`tags`、`recipes`、`advancements`、`worldgen`、`resources`、`block_entity_models`、`entity_models`、`item_icons`、`block_icons`、`effect_icons`、`jei`、`entity_renders`。语言模块始终启用，保证名称引用可解析。
 - `sizes`：会保留用户增加的尺寸，同时始终包含需求规定的 32、128、256。
-- `tickBudgetMs`：每个客户端 tick 的软时间预算，范围 1–100 ms。调度器在两个 step 之间检查时间；世界生成注册表每个 step 最多编码一个条目，各索引独立写出。单个编解码器、资源扫描、一次索引写入、渲染和最终打包仍可能占用更久。
+- `tickBudgetMs`：每个客户端 tick 的软时间预算，范围 1–100 ms。调度器在两个 step 之间检查时间。世界生成注册表每步最多编码一个条目，语言阶段每步最多处理一种语言。资源扫描、单次编解码、文件写入、渲染和最终打包仍可能超过预算。
 - `exit`：仅自动模式生效，ZIP 成功生成后关闭客户端；打包失败时保留客户端与暂存目录，便于排查。
 
 若要做到完全无人值守，可再使用 Minecraft 1.20.1 的游戏参数：
@@ -150,7 +150,9 @@ resources/index.json
 compatibility/capabilities.json
 ```
 
-索引 JSON 使用 UTF-8，依各自的 `schema_version` 解析。翻译映射与复制的游戏资源保持其原始文档约定。核心 Schema 位于 `schema/`，完整语义见 [docs/export-format-v1.md](docs/export-format-v1.md)。`manifest.json` 记录各阶段计数和逐对象错误；每个已执行阶段记录 `work_steps` 和 `max_step_us`（最长一次调度的微秒数，含本阶段初始化）。切换世界/连接、可见的资源重载、服务端数据栈更换或客户端正常关闭时取消正在运行的任务。操作系统强制终止时，应检查暂存目录是否已有完整清单。打包写入失败时，暂存目录在可写的情况下记录 `status=failed`。错误记录保存阶段、逻辑对象和异常类型，第三方异常文本留在导出包之外。单个对象失败可形成包含错误的已结束包。验收需同时检查 `status`、每个阶段、`error_count` 与 `compatibility/capabilities.json`。模板省略、能力降级和执行失败各有独立标记。
+索引 JSON 使用 UTF-8，依各自的 `schema_version` 解析。翻译映射与复制的游戏资源保持其原始文档约定。核心 Schema 位于 `schema/`，完整语义见 [docs/export-format-v1.md](docs/export-format-v1.md)。`manifest.json` 记录各阶段计数和错误样本。每个已执行阶段记录 `work_steps` 和 `max_step_us`（最长一次调度的微秒数，含本阶段初始化）。切换世界/连接、可见的资源重载、服务端数据栈更换或客户端正常关闭时取消正在运行的任务。操作系统强制终止时，应检查暂存目录是否已有完整清单。打包写入失败时，暂存目录在可写的情况下记录 `status=failed`。
+
+清单的错误样本只包含阶段、逻辑对象和异常类型。详细异常样本保存在游戏目录的私有 `logs/mcmods-export-*.log`，游戏日志会提示文件名。单个对象失败可形成包含错误的已结束包。验收需同时检查 `status`、每个阶段、`error_count` 与 `compatibility/capabilities.json`。模板省略、能力降级和执行失败各有独立标记。[诊断与复跑](docs/contract-validation.md#producing-a-package-from-a-checkout)
 
 ## 实体模型边界
 
