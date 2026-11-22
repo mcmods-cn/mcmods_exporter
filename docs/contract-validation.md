@@ -33,7 +33,7 @@ schema versions or filling in missing documents:
 python tools/check_export_contracts.py --export-root /path/to/unpacked-export
 ```
 
-This command validates the actual manifest, capabilities, four affected indexes
+This command validates the actual manifest, capabilities, five content indexes
 and every referenced JEI template/binding collection. It also joins each v7
 category to its collections, checks counts and the omission policy, and resolves
 each binding to the declared slot of the template in that category. The capability

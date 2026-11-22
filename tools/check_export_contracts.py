@@ -19,6 +19,7 @@ CONTRACTS = {
     "jei-categories-v7": ("jei-categories.schema.json", "JeiRecipeGuiStage.java", "recipes/jei/categories.json", None),
     "jei-categories-v7-templates-only": ("jei-categories.schema.json", "JeiRecipeGuiStage.java", None, None),
     "advancements-v2": ("advancements.schema.json", "AdvancementStage.java", "advancements/advancements.json", None),
+    "worldgen-data-files-v1": ("worldgen.schema.json", "WorldgenDataStage.java", "worldgen/data_files.json", "files"),
     "natural-generation-v2": ("worldgen.schema.json", "WorldgenDataStage.java", "worldgen/natural_generation.json", "naturalGeneration"),
     "loot-tables-v2": ("worldgen.schema.json", "WorldgenDataStage.java", "worldgen/loot_tables.json", "lootTables"),
 }
@@ -166,6 +167,19 @@ def main():
         require(not Draft202012Validator(load(ROOT / "schema/worldgen.schema.json")).is_valid(invalid), "Invalid nested outputs accepted")
 
     record("natural-generation-v2:reject-wrong-nested-type", rejects_wrong_nested_type)
+
+    def checks_worldgen_data_file_source():
+        validator = Draft202012Validator(load(ROOT / "schema/worldgen.schema.json"))
+        document = load(ROOT / "schema/fixtures/worldgen-data-files-v1.json")
+        item = document["files"][0]
+        require(item["source_mod_id"] != item["object_id"].split(":", 1)[0], "Fixture must cover a namespace override")
+        validator.validate(document)
+        item["source_mod_id"] = 1
+        require(not validator.is_valid(document), "Non-string source mod ID was accepted")
+        del item["source_mod_id"]
+        validator.validate(document)
+
+    record("worldgen-data-files-v1:source-mod-id-and-prior-v1-compatibility", checks_worldgen_data_file_source)
 
     def checks_advancement_rewards():
         validator = Draft202012Validator(load(ROOT / "schema/advancements.schema.json"))

@@ -1,0 +1,16 @@
+{
+  "schema_version": "mcmods-worldgen-files/v1",
+  "resource_source": "integrated_server_resource_stack",
+  "remote_server_data_complete": true,
+  "count": 1,
+  "files": [
+    {
+      "kind": "loot_table",
+      "resource_id": "minecraft:loot_tables/blocks/stone.json",
+      "object_id": "minecraft:blocks/stone",
+      "source_mod_id": "fixture",
+      "path": "data/minecraft/loot_tables/blocks/stone.json",
+      "size_bytes": 142
+    }
+  ]
+}
