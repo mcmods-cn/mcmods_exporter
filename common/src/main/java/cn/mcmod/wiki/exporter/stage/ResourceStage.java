@@ -1,20 +1,27 @@
 package cn.mcmod.wiki.exporter.stage;
 
 import cn.mcmod.wiki.exporter.task.ExportContext;
-import cn.mcmod.wiki.exporter.task.OnceStage;
+import cn.mcmod.wiki.exporter.task.ExportStage;
+import cn.mcmod.wiki.exporter.task.StageResult;
 import cn.mcmod.wiki.exporter.util.ExportPaths;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
@@ -22,8 +29,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -36,8 +46,20 @@ import java.util.TreeSet;
  * of copying every texture in a namespace. Standard JSON models, composite
  * children, OBJ/MTL references and default entity textures are roots/edges.
  */
-public final class ResourceStage extends OnceStage {
+public final class ResourceStage implements ExportStage {
     public static final String ID = "resources";
+    private final Deque<PendingResource> pending = new ArrayDeque<>();
+    private final Set<String> queued = new TreeSet<>();
+    private final Map<String, ExportedResource> exported = new TreeMap<>();
+    private final JsonArray files = new JsonArray();
+    private final Map<String, Integer> counts = new TreeMap<>();
+    private ResourceManager manager;
+    private Iterator<Map.Entry<ResourceKey<Block>, Block>> blocks;
+    private Iterator<Map.Entry<ResourceKey<Item>, Item>> items;
+    private Iterator<Map.Entry<ResourceKey<EntityType<?>>, EntityType<?>>> entities = Collections.emptyIterator();
+    private Iterator<Map.Entry<ResourceKey<Block>, Block>> blockEntities = Collections.emptyIterator();
+    private Iterator<ExportedResource> indexEntries;
+    private int dependencyCount;
 
     @Override
     public String id() {
@@ -45,71 +67,97 @@ public final class ResourceStage extends OnceStage {
     }
 
     @Override
-    protected void run(ExportContext context) throws Exception {
-        ResourceManager manager = context.minecraft().getResourceManager();
-        Deque<PendingResource> pending = new ArrayDeque<>();
-        Set<String> queued = new TreeSet<>();
-        Map<String, ExportedResource> exported = new TreeMap<>();
+    public void start(ExportContext context) {
+        var minecraft = context.minecraft();
+        var selectedBlocks = prepare(context, minecraft.getResourceManager());
+        if (minecraft.level != null) {
+            entities = matchingEntries(context, BuiltInRegistries.ENTITY_TYPE).iterator();
+        }
+        blockEntities = selectedBlocks.stream().filter(entry -> entry.getValue() instanceof EntityBlock).iterator();
+    }
 
-        BuiltInRegistries.BLOCK.entrySet().stream()
+    List<Map.Entry<ResourceKey<Block>, Block>> prepare(ExportContext context, ResourceManager manager) {
+        this.manager = manager;
+        var selectedBlocks = matchingEntries(context, BuiltInRegistries.BLOCK);
+        blocks = selectedBlocks.iterator();
+        items = matchingEntries(context, BuiltInRegistries.ITEM).iterator();
+        return selectedBlocks;
+    }
+
+    private static <T> List<Map.Entry<ResourceKey<T>, T>> matchingEntries(ExportContext context, Registry<T> registry) {
+        return registry.entrySet().stream()
             .filter(entry -> context.matches(entry.getKey().location()))
             .sorted(Comparator.comparing(entry -> entry.getKey().location().toString()))
-            .forEach(entry -> {
-                ResourceLocation id = entry.getKey().location();
-                enqueue(pending, queued, asset(id, "blockstates/", ".json"), "registered_block");
-                enqueue(pending, queued, asset(id, "models/block/", ".json"), "registered_block_fallback_model");
-            });
-        BuiltInRegistries.ITEM.entrySet().stream()
-            .filter(entry -> context.matches(entry.getKey().location()))
-            .sorted(Comparator.comparing(entry -> entry.getKey().location().toString()))
-            .forEach(entry -> enqueue(
-                pending,
-                queued,
-                asset(entry.getKey().location(), "models/item/", ".json"),
-                "registered_item"
-            ));
-        enqueueDefaultEntityTextures(context, pending, queued);
-        enqueueBlockEntityTextures(context, pending, queued);
+            .toList();
+    }
 
-        while (!pending.isEmpty()) {
-            PendingResource next = pending.removeFirst();
-            Optional<Resource> found = manager.getResource(next.id);
-            if (found.isEmpty()) {
-                context.report().addCount(ID, "missing_optional_dependencies", 1);
-                continue;
+    @Override
+    public StageResult step(ExportContext context) throws IOException {
+        // Seed all roots before following dependencies, so deduplication keeps the first inclusion reason.
+        if (blocks.hasNext()) {
+            ResourceLocation id = blocks.next().getKey().location();
+            enqueue(asset(id, "blockstates/", ".json"), "registered_block");
+            enqueue(asset(id, "models/block/", ".json"), "registered_block_fallback_model");
+        } else if (items.hasNext()) {
+            enqueue(asset(items.next().getKey().location(), "models/item/", ".json"), "registered_item");
+        } else if (entities.hasNext()) {
+            enqueueDefaultEntityTexture(context, entities.next());
+        } else if (blockEntities.hasNext()) {
+            enqueueBlockEntityTextures(context, blockEntities.next());
+        } else if (!pending.isEmpty()) {
+            copyResource(context, pending.removeFirst());
+        } else {
+            if (indexEntries == null) {
+                indexEntries = exported.values().iterator();
             }
-            Path target = ExportPaths.resourceFile(context.root(), "assets", next.id);
-            try {
-                Files.createDirectories(target.getParent());
-                try (InputStream input = found.get().open()) {
-                    Files.copy(input, target, StandardCopyOption.REPLACE_EXISTING);
-                }
-                long size = Files.size(target);
-                String kind = kind(next.id.getPath());
-                exported.put(next.id.toString(), new ExportedResource(next.id, target, kind, next.reason, size));
-                discoverDependencies(context, next.id, target, pending, queued);
-            } catch (Throwable throwable) {
-                context.report().error(ID, next.id, throwable);
+            if (indexEntries.hasNext()) {
+                appendIndexEntry(context, indexEntries.next());
+            } else {
+                writeIndex(context);
+                return StageResult.DONE;
             }
         }
+        return StageResult.MORE_WORK;
+    }
 
-        com.google.gson.JsonArray files = new com.google.gson.JsonArray();
-        Map<String, Integer> counts = new TreeMap<>();
-        int dependencyCount = 0;
-        for (ExportedResource resource : exported.values()) {
-            JsonObject json = new JsonObject();
-            json.addProperty("kind", resource.kind);
-            json.addProperty("id", resource.id.toString());
-            json.addProperty("path", context.root().relativize(resource.path).toString().replace('\\', '/'));
-            json.addProperty("size_bytes", resource.size);
-            json.addProperty("selected_namespace", context.matches(resource.id));
-            json.addProperty("inclusion_reason", resource.reason);
-            if (!context.matches(resource.id)) {
-                dependencyCount++;
-            }
-            counts.merge(resource.kind, 1, Integer::sum);
-            files.add(json);
+    private void copyResource(ExportContext context, PendingResource next) {
+        Optional<Resource> found = manager.getResource(next.id);
+        if (found.isEmpty()) {
+            context.report().addCount(ID, "missing_optional_dependencies", 1);
+            return;
         }
+        Path target = ExportPaths.resourceFile(context.root(), "assets", next.id);
+        try {
+            Files.createDirectories(target.getParent());
+            try (InputStream input = found.get().open()) {
+                Files.copy(input, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+            long size = Files.size(target);
+            String kind = kind(next.id.getPath());
+            exported.put(next.id.toString(), new ExportedResource(next.id, target, kind, next.reason, size));
+            discoverDependencies(context, next.id, target);
+        } catch (Throwable throwable) {
+            context.report().error(ID, next.id, throwable);
+        }
+    }
+
+    private void appendIndexEntry(ExportContext context, ExportedResource resource) {
+        JsonObject json = new JsonObject();
+        json.addProperty("kind", resource.kind);
+        json.addProperty("id", resource.id.toString());
+        json.addProperty("path", context.root().relativize(resource.path).toString().replace('\\', '/'));
+        json.addProperty("size_bytes", resource.size);
+        boolean selected = context.matches(resource.id);
+        json.addProperty("selected_namespace", selected);
+        json.addProperty("inclusion_reason", resource.reason);
+        if (!selected) {
+            dependencyCount++;
+        }
+        counts.merge(resource.kind, 1, Integer::sum);
+        files.add(json);
+    }
+
+    private void writeIndex(ExportContext context) throws IOException {
         JsonObject output = new JsonObject();
         output.addProperty("schema_version", "mcmods-resources/v2");
         output.addProperty("selection", "registered_content_dependency_closure");
@@ -125,99 +173,76 @@ public final class ResourceStage extends OnceStage {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private static void enqueueDefaultEntityTextures(
+    private void enqueueDefaultEntityTexture(
         ExportContext context,
-        Deque<PendingResource> pending,
-        Set<String> queued
+        Map.Entry<ResourceKey<EntityType<?>>, EntityType<?>> entry
     ) {
-        if (context.minecraft().level == null) {
-            return;
+        Entity entity = null;
+        try {
+            entity = entry.getValue().create(context.minecraft().level);
+            if (entity == null) {
+                return;
+            }
+            net.minecraft.client.renderer.entity.EntityRenderer renderer =
+                context.minecraft().getEntityRenderDispatcher().getRenderer(entity);
+            enqueue(renderer.getTextureLocation(entity), "default_entity_texture");
+        } catch (Throwable throwable) {
+            context.report().error(ID, entry.getKey().location() + ":entity_texture", throwable);
+        } finally {
+            if (entity != null) {
+                entity.discard();
+            }
         }
-        BuiltInRegistries.ENTITY_TYPE.entrySet().stream()
-            .filter(entry -> context.matches(entry.getKey().location()))
-            .sorted(Comparator.comparing(entry -> entry.getKey().location().toString()))
-            .forEach(entry -> {
-                Entity entity = null;
-                try {
-                    entity = ((EntityType<?>) entry.getValue()).create(context.minecraft().level);
-                    if (entity == null) {
-                        return;
-                    }
-                    net.minecraft.client.renderer.entity.EntityRenderer renderer =
-                        context.minecraft().getEntityRenderDispatcher().getRenderer(entity);
-                    ResourceLocation texture = renderer.getTextureLocation(entity);
-                    if (texture != null) {
-                        enqueue(pending, queued, texture, "default_entity_texture");
-                    }
-                } catch (Throwable throwable) {
-                    context.report().error(ID, entry.getKey().location() + ":entity_texture", throwable);
-                } finally {
-                    if (entity != null) {
-                        entity.discard();
-                    }
-                }
-            });
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static void enqueueBlockEntityTextures(
+    private void enqueueBlockEntityTextures(
         ExportContext context,
-        Deque<PendingResource> pending,
-        Set<String> queued
+        Map.Entry<ResourceKey<Block>, Block> entry
     ) {
-        BuiltInRegistries.BLOCK.entrySet().stream()
-            .filter(entry -> context.matches(entry.getKey().location()))
-            .filter(entry -> entry.getValue() instanceof EntityBlock)
-            .sorted(Comparator.comparing(entry -> entry.getKey().location().toString()))
-            .forEach(entry -> {
-                EntityBlock block = (EntityBlock) entry.getValue();
-                BlockEntity blockEntity = null;
-                try {
-                    blockEntity = block.newBlockEntity(net.minecraft.core.BlockPos.ZERO, entry.getValue().defaultBlockState());
-                    if (blockEntity == null) {
-                        return;
-                    }
-                    net.minecraft.client.renderer.blockentity.BlockEntityRenderer renderer =
-                        context.minecraft().getBlockEntityRenderDispatcher().getRenderer(blockEntity);
-                    for (BlockEntityTextureResolver.TextureReference reference :
-                        BlockEntityTextureResolver.resolve(blockEntity, renderer)) {
-                        ResourceLocation file = textureFile(reference.texture());
-                        if (context.minecraft().getResourceManager().getResource(file).isPresent()) {
-                            enqueue(pending, queued, file, "block_entity_texture");
-                        }
-                    }
-                } catch (Throwable throwable) {
-                    context.report().error(ID, entry.getKey().location() + ":block_entity_texture", throwable);
+        EntityBlock block = (EntityBlock) entry.getValue();
+        try {
+            BlockEntity blockEntity = block.newBlockEntity(net.minecraft.core.BlockPos.ZERO, entry.getValue().defaultBlockState());
+            if (blockEntity == null) {
+                return;
+            }
+            net.minecraft.client.renderer.blockentity.BlockEntityRenderer<?> renderer =
+                context.minecraft().getBlockEntityRenderDispatcher().getRenderer(blockEntity);
+            for (BlockEntityTextureResolver.TextureReference reference :
+                BlockEntityTextureResolver.resolve(blockEntity, renderer)) {
+                ResourceLocation file = textureFile(reference.texture());
+                if (manager.getResource(file).isPresent()) {
+                    enqueue(file, "block_entity_texture");
                 }
-            });
+            }
+        } catch (Throwable throwable) {
+            context.report().error(ID, entry.getKey().location() + ":block_entity_texture", throwable);
+        }
     }
 
-    private static void discoverDependencies(
+    private void discoverDependencies(
         ExportContext context,
         ResourceLocation source,
-        Path copied,
-        Deque<PendingResource> pending,
-        Set<String> queued
+        Path copied
     ) {
         String path = source.getPath().toLowerCase(Locale.ROOT);
         try {
             if (path.endsWith(".json")) {
                 try (Reader reader = Files.newBufferedReader(copied, StandardCharsets.UTF_8)) {
                     JsonElement json = JsonParser.parseReader(reader);
-                    scanJson(json, null, false, source, pending, queued);
+                    scanJson(json, null, false, source);
                 }
             } else if (path.endsWith(".obj")) {
                 for (String line : Files.readAllLines(copied, StandardCharsets.UTF_8)) {
                     String trimmed = line.trim();
                     if (trimmed.startsWith("mtllib ")) {
-                        enqueueRelativeFile(pending, queued, source, trimmed.substring(7).trim(), "obj_material");
+                        enqueueRelativeFile(source, trimmed.substring(7).trim(), "obj_material");
                     }
                 }
             } else if (path.endsWith(".mtl")) {
                 for (String line : Files.readAllLines(copied, StandardCharsets.UTF_8)) {
                     String trimmed = line.trim();
                     if (trimmed.toLowerCase(Locale.ROOT).startsWith("map_kd ")) {
-                        enqueueRelativeFile(pending, queued, source, trimmed.substring(7).trim(), "material_texture");
+                        enqueueRelativeFile(source, trimmed.substring(7).trim(), "material_texture");
                     }
                 }
             }
@@ -226,25 +251,23 @@ public final class ResourceStage extends OnceStage {
         }
         if (path.endsWith(".png")) {
             ResourceLocation metadata = new ResourceLocation(source.getNamespace(), source.getPath() + ".mcmeta");
-            if (context.minecraft().getResourceManager().getResource(metadata).isPresent()) {
-                enqueue(pending, queued, metadata, "texture_metadata");
+            if (manager.getResource(metadata).isPresent()) {
+                enqueue(metadata, "texture_metadata");
             }
         }
     }
 
-    private static void scanJson(
+    private void scanJson(
         JsonElement element,
         String key,
         boolean inTextures,
-        ResourceLocation source,
-        Deque<PendingResource> pending,
-        Set<String> queued
+        ResourceLocation source
     ) {
         if (element == null || element.isJsonNull()) {
             return;
         }
         if (element.isJsonArray()) {
-            element.getAsJsonArray().forEach(child -> scanJson(child, key, inTextures, source, pending, queued));
+            element.getAsJsonArray().forEach(child -> scanJson(child, key, inTextures, source));
             return;
         }
         if (element.isJsonObject()) {
@@ -252,9 +275,7 @@ public final class ResourceStage extends OnceStage {
                 entry.getValue(),
                 entry.getKey(),
                 inTextures || entry.getKey().equals("textures"),
-                source,
-                pending,
-                queued
+                source
             ));
             return;
         }
@@ -269,30 +290,28 @@ public final class ResourceStage extends OnceStage {
         if (normalizedKey.equals("parent")) {
             ResourceLocation id = parseLocation(value, source.getNamespace());
             if (id != null && !id.getPath().equals("builtin/generated") && !id.getPath().equals("builtin/entity")) {
-                enqueue(pending, queued, modelFile(id), "parent_model");
+                enqueue(modelFile(id), "parent_model");
             }
         } else if (normalizedKey.equals("model")) {
             ResourceLocation id = parseLocation(value, source.getNamespace());
             if (id != null) {
-                enqueue(pending, queued, modelOrCustomFile(id), "referenced_model");
+                enqueue(modelOrCustomFile(id), "referenced_model");
             }
         } else if (inTextures || normalizedKey.equals("texture")) {
             ResourceLocation id = parseLocation(value, source.getNamespace());
             if (id != null) {
-                enqueue(pending, queued, textureFile(id), "model_texture");
+                enqueue(textureFile(id), "model_texture");
             }
         }
         if (value.endsWith(".obj") || value.endsWith(".mtl") || value.endsWith(".png")) {
             ResourceLocation id = parseLocation(value, source.getNamespace());
             if (id != null) {
-                enqueue(pending, queued, normalizeExplicitFile(id), "custom_loader_resource");
+                enqueue(normalizeExplicitFile(id), "custom_loader_resource");
             }
         }
     }
 
-    private static void enqueueRelativeFile(
-        Deque<PendingResource> pending,
-        Set<String> queued,
+    private void enqueueRelativeFile(
         ResourceLocation source,
         String value,
         String reason
@@ -307,7 +326,7 @@ public final class ResourceStage extends OnceStage {
                 : "";
             explicit = new ResourceLocation(source.getNamespace(), parent + explicit.getPath());
         }
-        enqueue(pending, queued, normalizeExplicitFile(explicit), reason);
+        enqueue(normalizeExplicitFile(explicit), reason);
     }
 
     private static ResourceLocation asset(ResourceLocation id, String prefix, String suffix) {
@@ -360,12 +379,7 @@ public final class ResourceStage extends OnceStage {
         }
     }
 
-    private static void enqueue(
-        Deque<PendingResource> pending,
-        Set<String> queued,
-        ResourceLocation id,
-        String reason
-    ) {
+    private void enqueue(ResourceLocation id, String reason) {
         if (id != null && queued.add(id.toString())) {
             pending.addLast(new PendingResource(id, reason));
         }

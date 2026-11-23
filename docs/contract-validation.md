@@ -182,6 +182,14 @@ The uninstrumented manifests record a different unit, the longest stage step.
 For languages this changed from one 15,863 ms step to 146 steps with a 1,432 ms
 maximum in the separate full-package run.
 
+The `resources` stage seeds registered roots in stable order, follows the
+dependency queue one resource at a time, and collects the sorted index one
+record at a time. The client can check the tick budget between these operations.
+Each resource lookup, stream and scan stays on the client thread. Streams are
+closed before the next step. The completed index still uses atomic JSON output.
+Initial registry sorting, individual pack calls, JSON parsing and final index
+serialization can exceed the soft budget.
+
 ### Checking JEI ingredient placement in game output
 
 With Minecraft 1.20.1 and JEI 15.20.0.133, export the `minecraft` namespace
