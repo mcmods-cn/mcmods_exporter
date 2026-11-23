@@ -33,9 +33,12 @@ allprojects {
     group = rootProject.maven_group
 
     repositories {
-        def aliyun = maven { url "https://maven.aliyun.com/repository/public" }
-        remove(aliyun)
-        addFirst(aliyun)
+        exclusiveContent {
+            forRepository {
+                maven { url "https://maven.architectury.dev/" }
+            }
+            filter { includeGroup("dev.architectury") }
+        }
         maven { url "https://maven.blamejared.com" }
         mavenCentral()
     }
