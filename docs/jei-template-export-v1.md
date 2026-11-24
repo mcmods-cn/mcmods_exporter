@@ -22,9 +22,11 @@ recipes/jei/backgrounds/<namespace>/<recipe_type_path>/<template_id>.png
 
 对应 Schema：
 
-- `schema/jei-categories.schema.json`
-- `schema/jei-templates.schema.json`
-- `schema/jei-recipes.schema.json`
+- [类别索引 v7](../schema/jei-categories.schema.json)
+- [模板集合 v2](../schema/jei-templates.schema.json)
+- [配方绑定集合 v2](../schema/jei-recipes.schema.json)
+
+各文件的 `schema_version` 决定使用哪个 Schema。[兼容样例与验证流程](contract-validation.md)
 
 旧的 `recipes/jei/layouts/**` 和 `schema/jei-layout.schema.json` 不再导出或维护。
 

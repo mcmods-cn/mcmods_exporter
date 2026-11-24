@@ -2,7 +2,7 @@
 
 这是一个为百科网站批量建档准备数据的客户端 Mod。它在游戏内把运行时对象整理为稳定、精简的数据结构，并把当前生效资源和真实客户端渲染结果打包成 ZIP，避免上传后再反编译 Mod、猜测资源覆盖关系或重复做格式转换。
 
-当前首发目标：Minecraft 1.20.1、Java 17、Fabric 与 Forge。Fabric 需要 Fabric API，两端都需要 Architectury API 和 JEI 15.20+。JEI 是强制客户端依赖，用于导出真实配方类别布局、非物品 Ingredient 和类别级 Recipe Catalyst。
+当前构建支持 Minecraft 1.20.1、Java 17、Fabric 与 Forge。Fabric 需要 Fabric API，两端都需要 Architectury API 9.2.14+ 和 JEI 15.20+。JEI 提供真实配方类别布局、非物品 Ingredient 和类别级 Recipe Catalyst。[构建版本](gradle.properties) · [当前发行验证](docs/contract-validation.md#validated-source-and-artifacts)
 
 ## 已实现的内容
 
@@ -27,7 +27,7 @@
 
 ## 安装和手动导出
 
-1. 安装与 Minecraft 1.20.1 对应的导出器、JEI 15.20+、Architectury API；Fabric 还需 Fabric API。
+1. 将与 Minecraft 1.20.1 及所选加载器匹配的导出器、JEI、Architectury API 放入实例的 `mods/`。Fabric 实例还需 Fabric API。
 2. 加载目标 Mod 及需要采集的资源包和数据包。如需其翻译，再启用 i18n 自动汉化更新 Mod。
 3. 进入一个单人世界或服务器，等待配方、进度与标签同步完成。
 4. 执行命令：
@@ -70,12 +70,13 @@
 - `recipeTypes.exclude`：完全排除指定的 `recipe_type_id`。
 - `recipeTypes.templateOnly`：保留类别、Catalyst、背景 GUI 与模板，但不导出具体配方；适合铁砧等动态条目很多的类别。
 
-首次运行还会生成 `config/mcmods_exporter.properties`，其中可以填写同名配置键；JVM `-D` 参数优先于配置文件。完整规则见 [`docs/recipe-type-export-policy.md`](docs/recipe-type-export-policy.md)。
 - `profile`：`data`、`images` 或 `all`。
 - `modules`：逗号分隔的模块 ID；留空或 `all` 表示启用当前 profile 允许的全部模块。可选值为 `compatibility`、`registries`、`associations`、`trades`、`tags`、`recipes`、`advancements`、`worldgen`、`resources`、`block_entity_models`、`entity_models`、`item_icons`、`block_icons`、`effect_icons`、`jei`、`entity_renders`。语言模块始终启用，保证名称引用可解析。
 - `sizes`：会保留用户增加的尺寸，同时始终包含需求规定的 32、128、256。
-- `tickBudgetMs`：每个客户端 tick 的软时间预算，范围 1–100 ms。调度器在两个 step 之间检查时间。世界生成注册表每步最多编码一个条目，语言阶段每步最多处理一种语言。资源扫描、单次编解码、采集阶段文件写入及渲染单步仍可能超过预算。最终压缩、CRC 校验与暂存清理在后台执行。
+- `tickBudgetMs`：每个客户端 tick 的软时间预算，范围 1–100 ms。调度器在两步之间检查时间。注册表逐对象采集，世界生成注册表逐条编码，语言阶段逐语言处理。资源逐文件查找、复制和追踪依赖，索引逐条组装。单次资源调用、整份 JSON 写入及渲染仍可能超过预算。最终压缩、CRC 校验与暂存清理在后台执行。[实测与测量口径](docs/contract-validation.md#resource-scheduling-comparison)
 - `exit`：仅自动模式生效，ZIP 成功生成后关闭客户端；打包失败时保留客户端与暂存目录，便于排查。
+
+首次运行会生成 `config/mcmods_exporter.properties`，可填写同名配置键。JVM `-D` 参数优先于配置文件。[配置文件与配方过滤规则](docs/recipe-type-export-policy.md)
 
 若要做到完全无人值守，可再使用 Minecraft 1.20.1 的游戏参数：
 
@@ -177,11 +178,11 @@ OBJ 是实体在 idle 姿态下的基础 `EntityModel` 静态快照，含顶点�
 
 历史包缺少 `ordered` 字段时，可先按[存量排序字段诊断与处置说明](docs/legacy-jei-ordering.md)只读统计。缺失不能推断为 `false`；保留原包，具备原始环境时使用修正版重新导出并通过正常审核形成新修订。
 
-## 构建
+## 构建与验证
 
 ```powershell
 $env:JAVA_HOME='C:\path\to\jdk-17'
-./gradlew.bat clean build
+.\gradlew.bat --no-daemon clean :common:test :fabric:build :forge:build
 ```
 
 产物：
@@ -189,7 +190,7 @@ $env:JAVA_HOME='C:\path\to\jdk-17'
 - `fabric/build/libs/mcmods_exporter-0.10.2.jar`
 - `forge/build/libs/mcmods_exporter-0.10.2.jar`
 
-实际版本号取自根目录 `gradle.properties` 的 `mod_version`。请使用无 `-dev-shadow`、`-sources` 后缀的加载器产物。
+实际版本号取自根目录 `gradle.properties` 的 `mod_version`。安装对应加载器的 remapped JAR。Linux 和 macOS 使用 `./gradlew` 传入相同参数。[协议校验、产物哈希与真实原包验证](docs/contract-validation.md)
 
 ## 后续版本适配
 

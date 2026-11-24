@@ -1,6 +1,12 @@
 # SYS48 T01/T03 at exporter 8062148
 
-This document preserves the successive runs and their original commands. For the current checkout use the [build instructions](../../../README.md) and [contract checks](../../../docs/contract-validation.md). Historical worktree paths and resource windows apply only to the recorded runs.
+For the current checkout, execute the normal JDK 17 Gradle wrapper and
+Python checks from the repository root. See the current [build and contract checks](../../../docs/contract-validation.md#build-and-contract-checks) and the [read-only legacy ordering diagnostic](../../../docs/legacy-jei-ordering.md).
+
+## Historical audit record
+
+The following runs retain their original paths and commands. Those paths and
+resource windows belong to the recorded audit environment.
 
 Test-only proof derived directly from `806214802c1e3447a9895fa5311e73f3be6edfcc`.
 No production files, existing tests, schema labels, support matrix or root ledger

@@ -6,13 +6,14 @@ exports. They preserve templates-only omission semantics, displayed advancement
 filters, partial natural-generation records, provider-valued counts, missing loot
 definitions, and raw unknown loot extensions.
 
-Run `python -m pip install -r tools/requirements-contracts.txt`, then
-`python tools/check_export_contracts.py`. For an unmodified actual game export,
-unpack its ZIP and run `python tools/check_export_contracts.py --export-root PATH`.
-The latter fails on missing files; it never substitutes synthetic examples.
-Keep the original ZIP, SHA256, loader/JEI matrix, game logs and invocation beside
-the validation report. Schema success alone is not a game or website end-to-end
-acceptance result.
+From the repository root, use Python 3.12 to run
+`python -m pip install -r tools/requirements-contracts.txt`, then
+`python tools/check_export_contracts.py`. To validate an unmodified game export
+with profile `all`, unpack its ZIP and run
+`python tools/check_export_contracts.py --export-root PATH`. Missing required
+files fail the real-package check. Keep the original ZIP, SHA-256, loader and
+JEI versions, game logs and command beside the validation report.
+[Current source, scope and artifact digests](../../docs/contract-validation.md)
 
 `jei-categories-v7.json` exercises full export; the templates-only fixture has
 four layout samples and zero actual recipes. The legacy v6 schema remains

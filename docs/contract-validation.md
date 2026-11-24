@@ -1,9 +1,9 @@
 # Export contract validation
 
-The current build targets Minecraft 1.20.1, Java 17, Fabric 0.16.14 or Forge
-47.4.21, Architectury 9.2.14 and JEI 15.20.0.133. `gradle.properties` is the
-source for build versions. No Minecraft 1.21/NeoForge runtime is implied by the
-format's future porting notes.
+The current build targets Minecraft 1.20.1 and Java 17. The reference builds
+use Fabric Loader 0.16.14 with Fabric API 0.92.9+1.20.1, or Forge 47.4.21.
+Both use Architectury 9.2.14 and JEI 15.20.0.133. Follow the separate porting
+guide for other Minecraft versions and loaders. [Build versions](../gradle.properties) · [Porting guide](version-porting.md)
 
 | Document | Current producer | Current schema validation | Prior format |
 | --- | --- | --- | --- |
@@ -17,13 +17,21 @@ format's future porting notes.
 Each exported advancement carries a `rewards` field. Minecraft 1.20.1 writes
 `null` for `AdvancementRewards.EMPTY` and an object for a reward definition.
 
-Install the validator dependency and run the complete synthetic positive and
-negative contract examples:
+## Build and contract checks
+
+Run the wrapper from a clean checkout with JDK 17. The wrapper pins Gradle 8.8
+and verifies its distribution checksum. Python 3.12 runs the contract checks
+and the legacy ordering diagnostics tests. [Wrapper configuration](../gradle/wrapper/gradle-wrapper.properties) · [GitHub Actions](https://github.com/mcmods-cn/mcmods_exporter/actions/workflows/contracts.yml)
 
 ```sh
+./gradlew --no-daemon clean :common:test :fabric:build :forge:build
 python -m pip install -r tools/requirements-contracts.txt
 python tools/check_export_contracts.py
+python -m unittest discover -s tools/audit/sys48-contract -p 'test_*.py'
 ```
+
+On Windows use `gradlew.bat` with the same Gradle arguments. The release JARs
+are under `fabric/build/libs/` and `forge/build/libs/`.
 
 For a real game `all` export, preserve the ZIP unchanged, record its SHA256 and
 unpack it into a separate directory. Validate the directory without renaming
@@ -43,11 +51,43 @@ The complete-export check requires a supported Minecraft version and loader,
 `error_count=0`. Diagnostics identify the missing file or the failing schema
 path and rule.
 
-The bundled examples are synthetic wire-contract samples. JUnit logic tests,
-synthetic schema validation, real game serialization, API/database import,
-queue/Worker execution, independent moderation and public browser rendering are
-separate evidence layers. A schema PASS is not an end-to-end import or release
-approval. Preserve all prior failures and environment errors when rerunning.
+The bundled examples are synthetic wire-contract samples. Store JUnit, schema
+checks, actual game serialization, API/database import, queue/Worker execution,
+independent review, anonymous browser rendering and launcher verification as
+separate results. Preserve earlier failures and environment errors when rerunning.
+
+## Validated source and artifacts
+
+The 2026-11-23 builds and development-client exports are tied to exporter
+source `5d058d38984c26ee1eb96cf29bdd92dc32617f4b`. A clean source archive
+built with Temurin 17.0.21.1 and Gradle 8.8 passed 77 JUnit tests with zero
+skips. The Python suite passed 45 synthetic checks, 54 checks with each of
+the two unmodified development-client ZIPs, and two ordering diagnostic tests.
+The artifact digests and evidence below identify that source revision for
+later documentation-only revisions. [Validated source](https://github.com/mcmods-cn/mcmods_exporter/commit/5d058d38984c26ee1eb96cf29bdd92dc32617f4b)
+
+| Artifact | Size in bytes | SHA-256 |
+| --- | ---: | --- |
+| Fabric remapped JAR, version 0.10.2 | 302,340 | `4075257837c10037e28ca17bee60f6ca3ac06202c069ccf3088791a4e3b50c78` |
+| Forge remapped JAR, version 0.10.2 | 306,030 | `9d33a2e0070d65c3b0ed96d622f8bcd8967ae751061d25b5246b08f1337616e1` |
+| Fabric development export `minecraft-20261123-220043-817.zip` | 57,555,352 | `31a50489c64c63ee843f350ad84a0c1668dffecd3229795b1389cdca651782e1` |
+
+Two fresh standard profiles identified the installed remapped JARs. An
+in-world export using an installed release JAR remains pending and requires an
+authorized Minecraft Launcher session. The ZIP in the table came from a
+Fabric development client exporting the `minecraft` namespace with the `all`
+profile.
+
+An isolated HTTPS website using backend `db0acc9` and frontend `a71d99f`
+accepted that same ZIP. Resuming the interrupted upload preserved the upload
+ID, and repeated completion preserved one import binding. JetStream recorded
+one delivery, one acknowledgement and no redelivery. The browser verified
+anonymous access was denied before independent approval and rendered an item
+and a recipe afterward. An earlier run exercised local fallback when the
+existing test broker lacked capacity for a stream. The successful JetStream
+results came from a fresh isolated stack. Retain the ZIP digest, source
+commits and review results when repeating this gate against an owned project.
+[Site verification and pending deployment checks](https://github.com/mcmods-cn/mcmods-cn-backend/blob/main/docs/governance.md#当前版本与验收)
 
 ## Producing a package from a checkout
 
@@ -78,9 +118,8 @@ input mod hash, command, ZIP hash and manifest outcome. For an installed-JAR
 smoke test, load the remapped JAR, Architectury, JEI and the applicable Fabric
 API in a separate launcher profile.
 
-Record installation, loader discovery, and in-world export separately. The
-0.10.2 remapped JARs from `3ad1dd8` were installed in fresh Minecraft 1.20.1
-profiles. Fabric Loader 0.16.14 and Forge 47.4.21 each identified
+The earlier 0.10.2 remapped JARs from `3ad1dd8` were installed in fresh
+Minecraft 1.20.1 profiles. Fabric Loader 0.16.14 and Forge 47.4.21 each identified
 `mcmods_exporter` version 0.10.2 in the instance's `mods/` directory. The
 official launcher had an empty account store. Its vanilla demo entry required
 `accessToken`, so standard-profile world entry remains unverified. The real
@@ -108,10 +147,11 @@ error counts. A successful job with no errors creates no diagnostic file.
 
 To investigate a slow export, reuse the same world, installed mods, resources,
 configuration and rendering environment. Inspect the stage `work_steps`,
-`max_step_us` and elapsed time in the manifest. In the world-generation stage
-each registry step handles at most one entry. Resource scans, individual codecs,
-collection-phase writes and renders use the client thread. Measure the packaging
-wall time separately from active export ticks and full game frames.
+`max_step_us` and `duration_ms` in the manifest. Registry capture processes
+one object per step and writes each completed registry as a single JSON file.
+World-generation registry steps encode one entry at a time. Resource scans,
+individual codecs, collection-phase writes and renders use the client thread.
+Measure packaging wall time, active export ticks and full game frames separately.
 
 When collection ends, the client serializes the manifest and starts one worker
 with the staging path, output path and immutable manifest text. The worker
@@ -182,6 +222,8 @@ The uninstrumented manifests record a different unit, the longest stage step.
 For languages this changed from one 15,863 ms step to 146 steps with a 1,432 ms
 maximum in the separate full-package run.
 
+### Resource scheduling comparison
+
 The `resources` stage seeds registered roots in stable order, follows the
 dependency queue one resource at a time, and collects the sorted index one
 record at a time. The client can check the tick budget between these operations.
@@ -189,6 +231,36 @@ Each resource lookup, stream and scan stays on the client thread. Streams are
 closed before the next step. The completed index still uses atomic JSON output.
 Initial registry sorting, individual pack calls, JSON parsing and final index
 serialization can exceed the soft budget.
+
+The 2026-11-23 pair used the same singleplayer world, fixture mod and resource
+stack with Minecraft 1.20.1, Fabric Loader 0.16.14 and JEI 15.20.0.133. Both
+development runs used one pinned game CPU, software OpenGL, a 1,856 MiB Java
+heap and a 12 ms soft budget. Timings describe the shared test host.
+
+| Measurement | `71e548a` | `5d058d3` |
+| --- | ---: | ---: |
+| Resource work steps | 1 | 15,491 |
+| Longest resource step | 1,719.044 ms | 29.544 ms |
+| Resource stage elapsed time | 1,719 ms | 4,618 ms |
+| Active exporter tick p95 | 57.635 ms | 54.005 ms |
+| Full game frame p95 | 96.242 ms | 119.993 ms |
+| Packaging elapsed time | 13,979.621 ms | 12,321.471 ms |
+
+The 6,322 exported resource files and `resources/index.json` were identical
+byte for byte. The complete archive payload also contains rendering data with
+differences between runs. Another `5d058d3` development run measured full game
+frame p95 at 95.903 ms. Its capture controller exited 2 after the game completed
+because the controller script changed during execution. The frozen rerun is the
+`5d058d3` sample in the table.
+
+In a separate `5d058d3` run, a resource reload during copying reached the
+cancelled state in 57.757 ms and left 515 files in staging. The final resource
+index, published ZIP and temporary ZIP counts were all zero.
+
+To compare revisions, export the same namespace, world, mods and resource stack
+from separate checkouts with the same JVM, rendering, language and budget
+settings. Preserve both original ZIPs and compare the `resources` stage fields
+and `resources/index.json` alongside any game frame samples.
 
 ### Checking JEI ingredient placement in game output
 

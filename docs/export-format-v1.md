@@ -4,7 +4,7 @@
 
 `error_count` 是发生次数，`errors[]` 保留最多 128 条去重样本。重复或超限时，可选字段 `errors_omitted` 记录省略次数。错误样本含阶段、固定操作名或经过检查的资源 ID、异常类别。第三方自由文本使用 `object` 代称。需要本地排查时，根据游戏日志中的提示打开本次任务的私有诊断文件。[诊断与验证](contract-validation.md)
 
-阶段的可选字段 `work_steps` 和 `max_step_us` 记录步数和最长一次调度耗时；首步包含初始化。新旧清单均可通过各自声明的成员判读。墙钟 `duration_ms` 包含跨 tick 等待，不用于推断最快或最慢帧。
+阶段的可选字段 `work_steps` 和 `max_step_us` 记录步数和最长一次调度耗时。首步包含初始化。阶段的 `duration_ms` 是含跨 tick 等待的墙钟耗时。帧耗时需在游戏客户端单独采样。[时间字段与实测](contract-validation.md#resource-scheduling-comparison)
 
 
 ## 网站单项目导入范围
@@ -145,7 +145,9 @@ Mekanism 1.20.1 的四套 ChemicalStack 全部保留，但必须分开入库：`
 
 ## 资源整理
 
-`resources/index.json` 使用 `registered_content_dependency_closure`：从已注册方块、物品、实体默认纹理和方块实体运行时材质出发，递归追踪 blockstate、父模型、模型贴图、Forge/NeoForge/Fabric composite 子模型、OBJ、MTL 与贴图元数据。引用到原版或依赖 Mod 的必要父模型、实体贴图会以 `selected_namespace=false` 保留；目标命名空间中没有被注册内容引用的测试贴图、废弃模型不会导出。来源包、实现类、异常堆栈、重复原始语言文件等网站不需要的内容不会进入最终包。
+`resources/index.json` 使用 `mcmods-resources/v2`，其 `selection` 为 `registered_content_dependency_closure`。导出器从已注册方块、物品、实体默认纹理和方块实体运行时材质出发，递归追踪 blockstate、父模型、模型贴图、composite 子模型、OBJ、MTL 与贴图元数据。原版或依赖 Mod 提供的必要父模型和实体贴图以 `selected_namespace=false` 保留。每条资源记录含逻辑 ID、ZIP 路径、大小、类别和收录原因。客户端分步采集，完成后按资源 ID 排序并原子写入整份索引。[资源 Schema](../schema/resources.schema.json)
+
+目标命名空间中未引用的测试贴图和废弃模型留在游戏资源包内。语言文件合并为翻译快照，异常堆栈保存在本地诊断文件。[诊断与验证](contract-validation.md)
 
 `compatibility/capabilities.json` 明确记录当前包中各功能是 `available`、`degraded` 还是 `unavailable`。网站必须按能力状态导入，不能把低版本没有某 API 导致的缺失误判成“该 Mod 没有此内容”。
 
