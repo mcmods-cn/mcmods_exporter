@@ -207,6 +207,20 @@ def main():
     record("jei-v2:complete-template-distinct-hit-and-visual-rect", lambda: template_schema.validate(template))
     record("jei-v2:complete-bindings-empty-slot-and-unknown-chance", lambda: recipe_schema.validate(recipes))
 
+    def check_observed_quantities():
+        sample = copy.deepcopy(recipes)
+        binding = sample["recipes"][0]["bindings"][1]
+        binding["alternatives"] = [
+            {"type": "fluid_stack", "resource_location": "example:fluid"},
+            {"type": "fluid_stack", "resource_location": "example:empty", "amount": 0},
+        ]
+        recipe_schema.validate(sample)
+        for invalid in (-1, None, "0"):
+            binding["alternatives"][1]["amount"] = invalid
+            require(not recipe_schema.is_valid(sample), "An unrepresentable helper quantity was accepted")
+
+    record("jei-v7:absent-and-zero-candidate-quantities", check_observed_quantities)
+
     def rejects_bad_rect():
         invalid = copy.deepcopy(template)
         invalid["templates"][0]["slots"][0]["rect"]["width"] = -1

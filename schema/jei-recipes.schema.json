@@ -84,7 +84,7 @@
         "resource_location_unavailable": { "type": "boolean" },
         "unique_id": { "type": "string" },
         "unique_id_unavailable": { "type": "boolean" },
-        "amount": { "type": "integer", "minimum": 0 },
+        "amount": { "type": "integer", "minimum": 0, "description": "Observed JEI helper quantity. Zero is explicit; when neither amount nor count is available the quantity is unknown." },
         "item": { "type": "string" },
         "count": { "type": "integer", "minimum": 0 },
         "nbt_snbt": { "type": "string" }

@@ -86,6 +86,9 @@ JEI 使用“合成方式背景、通用槽位模板、具体配方绑定”三�
 
 网站按 `canvas.width × canvas.height` 显示背景，用 `template_id` 与 `bindings[].slot_id` 找到槽位。图标和数量文字按 `visual_rect` 绘制，交互区域使用 `rect` 并遵循绑定的 `clickable`。旧包缺少 `visual_rect` 时，绘制回退到 `rect`。固定容量配方共享模板。动态容量按模板分别使用背景。
 
+当前 v7 类别下，JEI helper 提供非负数量时按原值写入 `amount`，包括 0；helper 返回负值则省略此字段。物品堆还可以提供 `count`。两者均未给出表示数量未知。这个约定适用于采集的 JEI 候选，人工编辑和原版配方各自遵循对应格式。
+
+
 ## 流体与非物品 Ingredient
 
 `registries/fluids.json` 只保存 Minecraft 流体注册表中的源流体，不再把流动变体当成独立流体类型。名称优先使用 `fluid.<namespace>.<path>`，只把桶 ID 当作可选关联字段，绝不再用“某某桶”作为流体显示名。
