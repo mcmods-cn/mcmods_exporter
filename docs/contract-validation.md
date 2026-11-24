@@ -264,6 +264,23 @@ from separate checkouts with the same JVM, rendering, language and budget
 settings. Preserve both original ZIPs and compare the `resources` stage fields
 and `resources/index.json` alongside any game frame samples.
 
+### Matched client traces from 24 November 2026
+
+Two Fabric 1.20.1 development clients used the same 59-file world and input mod, software rendering and the 12 ms soft budget. The baseline was `91b0fafe` and the measured change was `b9104c34`. Their ZIPs contained the same 6,322 resource files and identical resource indexes. The latter ZIP has SHA-256 `b0ade4147adc0f0b25632c6cd99464b31851ca57c29c621bb9e31657b34043b6`. Each raw trace is identified by the producing commit. [Frame, tick, stage and process samples](20261124-client-timings.zip)
+
+| Observation | `91b0fafe` | `b9104c34` |
+| --- | ---: | ---: |
+| Full game frames, count | 1,848 | 1,881 |
+| Full frame P50 / P95 / P99 / max, ms | 36.291 / 145.895 / 586.984 / 2,565.232 | 41.845 / 195.987 / 805.074 / 2,820.482 |
+| Active exporter ticks, count | 2,160 | 2,547 |
+| Active tick P50 / P95 / P99 / max, ms | 15.028 / 61.220 / 169.194 / 2,223.414 | 15.407 / 68.329 / 215.788 / 2,290.285 |
+| ZIP compression / full packaging wall time, s | 10.677 / 11.263 | 17.411 / 17.873 |
+| Process peak resident memory, KiB | 2,368,204 | 2,416,304 |
+
+Compute nearest-rank percentiles from the `elapsed_ns` column in each CSV. Tick rows record the stage on entry and on return. A tick can cross stage boundaries. Both jobs completed normally, so their metadata has no cancellation-latency observation. The resource-reload run above measures cancellation separately.
+
+Full-frame P95 rose in this pair. Earlier matched runs recorded 209→273 ms, 193.658→274.288 ms and, in reverse order, 276.187→253.373 ms. Host co-load and cold caches varied. These measurements do not isolate GC, disk contention or GPU time. Use repeated, alternating runs on the target hardware before setting a frame-time budget.
+
 ### Checking JEI ingredient placement in game output
 
 With Minecraft 1.20.1 and JEI 15.20.0.133, export the `minecraft` namespace
