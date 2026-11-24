@@ -243,6 +243,21 @@ def main():
 
     record("jei-v7:reject-undeclared-slot", rejects_dangling_slot)
 
+    registry_schema = Draft202012Validator(load(ROOT / "schema/registry.schema.json"))
+    for registry, valid, invalid in (
+        ("mods", "minecraft", "minecraft:stone"),
+        ("key_mappings", "key.example.open_menu", ""),
+        ("items", "minecraft:stone", "stone"),
+    ):
+        def check_registry_id(registry=registry, valid=valid, invalid=invalid):
+            row = {"id": valid}
+            document = {"schema_version": "mcmods-registry/v1", "registry": registry, "count": 1, "entries": [row]}
+            registry_schema.validate(document)
+            row["id"] = invalid
+            require(not registry_schema.is_valid(document), "Invalid ID for this registry was accepted")
+
+        record(f"registry:{registry}-identity", check_registry_id)
+
     manifest_schema = Draft202012Validator(load(ROOT / "schema/manifest.schema.json"))
     failed_manifest = load(ROOT / "schema/fixtures/manifest-package-failed-v1.json")
     record("manifest:failed-staging-directory", lambda: manifest_schema.validate(failed_manifest))
@@ -265,6 +280,15 @@ def main():
         record("manifest:actual-game-schema", lambda: Draft202012Validator(
             load(ROOT / "schema/manifest.schema.json")
         ).validate(export_document(export_root, "manifest.json")))
+
+        def actual_registry_identities():
+            for name in ("mods", "key_mappings", "items"):
+                document = export_document(export_root, f"registries/{name}.json")
+                registry_schema.validate(document)
+                require(document["registry"] == name, "Registry identity disagrees with its filename")
+                require(document["count"] == len(document["entries"]), "Registry entry count mismatch")
+
+        record("registry:actual-game-mod-key-and-item-identities", actual_registry_identities)
 
         def actual_capabilities():
             manifest = export_document(export_root, "manifest.json")

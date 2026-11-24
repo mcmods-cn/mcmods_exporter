@@ -15,7 +15,7 @@
 
 ## ID 与路径
 
-- 所有注册对象使用完整的 `namespace:path`。
+- 游戏注册对象使用完整的 `namespace:path`。`registries/mods.json` 的 `id` 是加载器的 Mod ID，例如 `minecraft`。`registries/key_mappings.json` 的 `id` 是按键翻译键，例如 `key.example.open_menu`。
 - JSON 内始终使用 `/`；磁盘路径保留 ID 的子目录结构。
 - PNG 路径由类别、尺寸、命名空间和 ID 路径直接组成，不需要转义冒号。
 - 客户端资源只保留网页直接使用的生效 blockstate、模型与贴图。配方、进度、Tag 和语言只保留已经解析、合并、规范化后的 JSON；世界生成与战利品表保留规范化索引和必要的生效原始 JSON，结构从 `mcmods-structures/v2` 起只保留顶层注册结构，不再复制内部 NBT 零件。
@@ -69,7 +69,7 @@ JEI 使用“合成方式背景、通用槽位模板、具体配方绑定”三�
 - 普通配方和 JEI 绑定都输出 `source_mod_id`、`source_mod_version`、`source_mod_id_source`。权威配方以 `recipe_id` 命名空间作为来源；只有没有权威 ID 的 JEI 动态条目才回退到类别命名空间；
 - 指定 Mod 导出时，只保留其权威 `recipe_id` 命名空间下的配方。跨类别的重复展示按权威 `recipe_id` 去重，即使底层配方类型不同。排除统计在 `categories.json.filter_summary`。
 - `canvas`、`content` 和模板中的所有槽位矩形使用 `logical_pixels`；PNG 的实际像素倍率由 `image_scale` 指定；
-- `templates[].slots[].role` 是 `input`、`output`、`catalyst` 或 `render_only`；
+- `templates[].slots[].role` 是 `input`、`output`、`byproduct`、`catalyst` 或 `render_only`；
 - `rect` 定位点击区域，`visual_rect` 定位材料绘制区域。自定义底板与覆盖层由 JEI 绘入模板背景。旧包坐标的处理见[模板协议](jei-template-export-v1.md#5-模板集合)。
 - `bindings[].alternatives` 包含轮换展示的所有 JEI Ingredient，而不只是截图瞬间显示的一个物品；
 - 概率从 JEI 最终 tooltip 或类别直接绘制的百分比统一提取到绑定的 `chance*` 字段，并从共享背景中剥离；不依赖特定 Mod 的私有配方 API。非主输出只有在名称/tooltip 明示副产品或取得小于 100% 的概率时才标为 `byproduct`；

@@ -44,8 +44,10 @@ python tools/check_export_contracts.py --export-root /path/to/unpacked-export
 This command validates the actual manifest, capabilities, five content indexes
 and every referenced JEI template/binding collection. It also joins each v7
 category to its collections, checks counts and the omission policy, and resolves
-each binding to the declared slot of the template in that category. The capability
-loader, Minecraft version, profile and format must agree with the manifest.
+each binding to the declared slot of the template in that category. The mod,
+key-mapping and item registries each have their own ID rules. Their declared
+counts must match their entries. The capability loader, Minecraft version,
+profile and format must agree with the manifest.
 The complete-export check requires a supported Minecraft version and loader,
 `profile=all`, `status=complete`, finished stages and an empty error list with
 `error_count=0`. Diagnostics identify the missing file or the failing schema

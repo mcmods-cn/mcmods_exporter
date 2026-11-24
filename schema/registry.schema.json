@@ -12,7 +12,7 @@
       "items": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$" },
+          "id": { "type": "string", "minLength": 1 },
           "translation_key": { "type": "string" },
           "names": { "type": "object", "additionalProperties": { "type": "string" } },
           "tooltips": {
@@ -69,6 +69,20 @@
           "effect_attribute_modifiers": { "type": "array" }
         },
         "additionalProperties": true
+      }
+    }
+  },
+  "if": { "properties": { "registry": { "const": "mods" } } },
+  "then": {
+    "properties": {
+      "entries": { "items": { "properties": { "id": { "pattern": "^[a-z0-9_.-]+$" } } } }
+    }
+  },
+  "else": {
+    "if": { "properties": { "registry": { "not": { "const": "key_mappings" } } } },
+    "then": {
+      "properties": {
+        "entries": { "items": { "properties": { "id": { "$ref": "#/$defs/resourceId" } } } }
       }
     }
   },
