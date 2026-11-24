@@ -7,10 +7,8 @@ import com.google.gson.JsonElement;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 
 public final class JsonFiles {
     public static final Gson GSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().setPrettyPrinting().create();
@@ -27,25 +25,11 @@ public final class JsonFiles {
     }
 
     private static void writeAtomically(Path file, WriteContent content) throws IOException {
-        Files.createDirectories(file.getParent());
-        Path temporary = Files.createTempFile(file.getParent(), ".mcmods-json-", ".tmp");
-        try {
+        ExportFiles.replace(file, temporary -> {
             try (BufferedWriter writer = Files.newBufferedWriter(temporary, StandardCharsets.UTF_8)) {
                 content.write(writer);
             }
-            try {
-                Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException unsupported) {
-                Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
-            }
-        } catch (IOException | RuntimeException | Error failure) {
-            try {
-                Files.deleteIfExists(temporary);
-            } catch (IOException cleanupFailure) {
-                failure.addSuppressed(cleanupFailure);
-            }
-            throw failure;
-        }
+        });
     }
 
     @FunctionalInterface

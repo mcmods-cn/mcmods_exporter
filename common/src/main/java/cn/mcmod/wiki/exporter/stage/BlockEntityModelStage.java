@@ -4,6 +4,7 @@ import cn.mcmod.wiki.exporter.render.ObjVertexConsumer;
 import cn.mcmod.wiki.exporter.task.ExportContext;
 import cn.mcmod.wiki.exporter.task.ExportStage;
 import cn.mcmod.wiki.exporter.task.StageResult;
+import cn.mcmod.wiki.exporter.util.ExportFiles;
 import cn.mcmod.wiki.exporter.util.ExportPaths;
 import cn.mcmod.wiki.exporter.util.JsonFiles;
 import com.google.gson.JsonArray;
@@ -32,7 +33,6 @@ import net.minecraft.world.level.block.entity.EnderChestBlockEntity;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -280,10 +280,7 @@ public final class BlockEntityModelStage implements ExportStage {
             return null;
         }
         Path path = ExportPaths.resourceFile(context.root(), "assets", resourceId);
-        Files.createDirectories(path.getParent());
-        try (InputStream input = resource.get().open()) {
-            Files.copy(input, path, StandardCopyOption.REPLACE_EXISTING);
-        }
+        ExportFiles.copy(path, resource.get()::open);
         JsonObject json = new JsonObject();
         json.addProperty("appearance", reference.appearance());
         json.addProperty("texture_id", reference.texture().toString());
@@ -294,7 +291,7 @@ public final class BlockEntityModelStage implements ExportStage {
         if (reference.atlas() != null) {
             json.addProperty("atlas_id", reference.atlas().toString());
         }
-        try (InputStream input = resource.get().open(); NativeImage image = NativeImage.read(input)) {
+        try (InputStream input = Files.newInputStream(path); NativeImage image = NativeImage.read(input)) {
             json.addProperty("width", image.getWidth());
             json.addProperty("height", image.getHeight());
         }

@@ -3,6 +3,7 @@ package cn.mcmod.wiki.exporter.stage;
 import cn.mcmod.wiki.exporter.task.ExportContext;
 import cn.mcmod.wiki.exporter.task.ExportStage;
 import cn.mcmod.wiki.exporter.task.StageResult;
+import cn.mcmod.wiki.exporter.util.ExportFiles;
 import cn.mcmod.wiki.exporter.util.ExportPaths;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -22,12 +23,10 @@ import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Comparator;
@@ -121,17 +120,14 @@ public final class ResourceStage implements ExportStage {
     }
 
     private void copyResource(ExportContext context, PendingResource next) {
-        Optional<Resource> found = manager.getResource(next.id);
-        if (found.isEmpty()) {
-            context.report().addCount(ID, "missing_optional_dependencies", 1);
-            return;
-        }
-        Path target = ExportPaths.resourceFile(context.root(), "assets", next.id);
         try {
-            Files.createDirectories(target.getParent());
-            try (InputStream input = found.get().open()) {
-                Files.copy(input, target, StandardCopyOption.REPLACE_EXISTING);
+            Optional<Resource> found = manager.getResource(next.id);
+            if (found.isEmpty()) {
+                context.report().addCount(ID, "missing_optional_dependencies", 1);
+                return;
             }
+            Path target = ExportPaths.resourceFile(context.root(), "assets", next.id);
+            ExportFiles.copy(target, found.get()::open);
             long size = Files.size(target);
             String kind = kind(next.id.getPath());
             exported.put(next.id.toString(), new ExportedResource(next.id, target, kind, next.reason, size));

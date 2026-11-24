@@ -3,6 +3,7 @@ package cn.mcmod.wiki.exporter.stage;
 import cn.mcmod.wiki.exporter.task.ExportContext;
 import cn.mcmod.wiki.exporter.task.ExportStage;
 import cn.mcmod.wiki.exporter.task.StageResult;
+import cn.mcmod.wiki.exporter.util.ExportFiles;
 import cn.mcmod.wiki.exporter.util.ExportPaths;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -27,7 +28,6 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -233,10 +233,9 @@ public final class WorldgenDataStage implements ExportStage {
         if (files.containsKey(resourceId.toString())) {
             return;
         }
-        try (InputStream input = resource.open()) {
+        try {
             Path target = ExportPaths.resourceFile(context.root(), "data", resourceId);
-            Files.createDirectories(target.getParent());
-            Files.copy(input, target, StandardCopyOption.REPLACE_EXISTING);
+            ExportFiles.copy(target, resource::open);
             DataFile file = describeFile(
                 resourceId,
                 target,
@@ -283,8 +282,7 @@ public final class WorldgenDataStage implements ExportStage {
                                 return;
                             }
                             Path target = ExportPaths.resourceFile(context.root(), "data", resourceId);
-                            Files.createDirectories(target.getParent());
-                            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+                            ExportFiles.copy(target, () -> Files.newInputStream(source));
                             DataFile file = describeFile(
                                 resourceId,
                                 target,
