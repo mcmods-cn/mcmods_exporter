@@ -30,6 +30,20 @@ class JeiSlotSemanticsTest {
     }
 
     @Test
+    void hyphenatedByproductLabelNeedsNoProbabilityEstimate() {
+        JsonArray slots = new JsonArray();
+        slots.add(output(0, 10, 10, null));
+        slots.add(output(1, 30, 10, "By-product"));
+
+        JeiSlotSemantics.enrich(slots, List.of());
+
+        JsonObject byproduct = slots.get(1).getAsJsonObject();
+        assertEquals("byproduct", byproduct.get("role").getAsString());
+        assertEquals("jei_slot_tooltip", byproduct.get("role_source").getAsString());
+        assertFalse(byproduct.get("chance_available").getAsBoolean());
+    }
+
+    @Test
     void twoGuaranteedOutputsRemainNormalOutputsWithoutEvidence() {
         JsonArray slots = new JsonArray();
         slots.add(output(0, 10, 10, null));

@@ -19,7 +19,7 @@ final class JeiSlotSemantics {
         "chance", "probability", "probabil", "概率", "几率", "機率", "確率", "шанс"
     );
     private static final List<String> BYPRODUCT_HINTS = List.of(
-        "secondary", "byproduct", "by-product", "bonus", "extra_output", "extra output",
+        "secondary", "byproduct", "by_product", "bonus", "extra_output", "extra output",
         "副产品", "副產物", "副产物", "副产出", "副輸出", "副输出", "次要产物", "次要產物"
     );
     private static final List<String> PRIMARY_HINTS = List.of(
