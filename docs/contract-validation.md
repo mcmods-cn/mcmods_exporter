@@ -31,7 +31,7 @@ python -m unittest discover -s tools/audit/sys48-contract -p 'test_*.py'
 ```
 
 On Windows use `gradlew.bat` with the same Gradle arguments. The release JARs
-are under `fabric/build/libs/` and `forge/build/libs/`.
+are under `fabric/build/libs/` and `forge/build/libs/`. The successful `loaders` job attaches the two remapped JARs and `SHA256SUMS` in the workflow artifact `mcmods-exporter-<commit>`. After extracting it, run `sha256sum -c SHA256SUMS` in the artifact directory.
 
 For a real game `all` export, preserve the ZIP unchanged, record its SHA256 and
 unpack it into a separate directory. Validate the directory without renaming

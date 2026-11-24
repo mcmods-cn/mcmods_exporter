@@ -28,3 +28,29 @@ jobs:
           distribution: temurin
           java-version: '17'
       - run: ./gradlew --no-daemon clean :common:test :fabric:build :forge:build
+      - name: Collect remapped loader JARs and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=$(sed -n 's/^archives_base_name=//p' gradle.properties)
+          version=$(sed -n 's/^mod_version=//p' gradle.properties)
+          test -n "$archive" && test -n "$version"
+          destination="$RUNNER_TEMP/mcmods-remapped"
+          mkdir "$destination"
+          for loader in fabric forge; do
+            jar="$loader/build/libs/$archive-$version.jar"
+            metadata=fabric.mod.json
+            if [[ "$loader" == forge ]]; then metadata=META-INF/mods.toml; fi
+            # Both remapJar tasks set archiveClassifier to null.
+            unzip -tq "$jar"
+            test "$(unzip -Z1 "$jar" "$metadata")" = "$metadata"
+            cp "$jar" "$destination/$archive-$version-$loader.jar"
+          done
+          cd "$destination"
+          sha256sum -- *.jar > SHA256SUMS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mcmods-exporter-${{ github.sha }}
+          path: ${{ runner.temp }}/mcmods-remapped/
+          if-no-files-found: error
+          compression-level: 0
