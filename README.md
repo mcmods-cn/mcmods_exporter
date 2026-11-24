@@ -20,7 +20,7 @@ python tools/check_export_contracts.py
 
 Windows PowerShell 用 `.\gradlew.bat` 执行相同的 Gradle 参数。安装 `fabric/build/libs/` 或 `forge/build/libs/` 中与加载器匹配的发布 JAR。协议校验使用 Python 3.12，默认读取合成样例。核验真实输出时保留原 ZIP 和 SHA-256，向 `--export-root` 提供解包目录。[验证命令与历史样例](docs/contract-validation.md) · [GitHub Actions](https://github.com/mcmods-cn/mcmods_exporter/actions/workflows/contracts.yml)
 
-源提交 `5d058d3` 在 JDK 17 上通过 77 项 JUnit 测试并构建两种发布 JAR。标准 Fabric、Forge 配置均识别了各自的 JAR。开发客户端导出的真实原包通过 54 项合成与实包检查，并在隔离网站中完成上传、独立审核和匿名展示。使用正式 JAR 进入世界会话并重新导出的验收仍待执行。[验证提交、产物哈希与验收范围](docs/contract-validation.md#validated-source-and-artifacts)
+下载与目标提交对应的 `mcmods-exporter-<commit>` 工作流产物，解包后运行 `sha256sum -c SHA256SUMS`。提交 `e751c8b` 的 Fabric 和 Forge 发行 JAR 均通过 JDK 17 构建并由标准加载器识别。进入世界导出仍需有效的 Minecraft 会话。隔离网站已使用 Fabric 开发客户端生成的同一原包完成续传、导入、独立审核和匿名展示。[已验证的发行构建](https://github.com/mcmods-cn/mcmods_exporter/actions/runs/45390514931) · [两个发行 JAR 的哈希与联调范围](https://github.com/mcmods-cn/mcmods-cn-backend/blob/main/docs/governance.md#发行文件逐文件记录与复验) · [此前验证的源码与样本](docs/contract-validation.md#validated-source-and-artifacts)
 
 从源码启动客户端时，需要将对应加载器的 JEI 完整实现加入开发运行环境。先使用独立单人世界和目标模组生成 ZIP，再以同一文件核验后端解码与网站导入。[开发客户端、诊断与回滚](docs/contract-validation.md#producing-a-package-from-a-checkout)
 
